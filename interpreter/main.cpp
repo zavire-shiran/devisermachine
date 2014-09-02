@@ -23,4 +23,8 @@ int main(int argc, char** argv)
     cout << "(eq c1 c2) " << eq(c1, c2) << endl;
     cout << "(eqv c1 c2) " << eqv(c1, c2) << endl;
     cout << "(equal c1 c2) " << equal(c1, c2) << endl;
+    cout << endl;
+    cout << "(eq c1 n1) " << eq(c1, n1) << endl;
+    cout << "(eqv c1 n1) " << eqv(c1, n1) << endl;
+    cout << "(equal c1 n1) " << equal(c1, n1) << endl;
 }
