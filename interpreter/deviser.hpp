@@ -16,6 +16,12 @@ public:
     virtual int objtype() const = 0;
 };
 
+class nil : public lispobj {
+public:
+    nil();
+    virtual int objtype() const;
+};
+
 class symbol : public lispobj {
 public:
     symbol(string sn);
@@ -51,3 +57,5 @@ private:
 bool eq(shared_ptr<lispobj> left, shared_ptr<lispobj> right);
 bool eqv(shared_ptr<lispobj> left, shared_ptr<lispobj> right);
 bool equal(shared_ptr<lispobj> left, shared_ptr<lispobj> right);
+
+void print(shared_ptr<lispobj> obj);
