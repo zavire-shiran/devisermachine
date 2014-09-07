@@ -50,5 +50,17 @@ int main(int argc, char** argv)
 
     cout << "(print 11) ";
     print(l1);
+    cout << endl << endl;
+
+    cout << "(print (read \"123\")) ";
+    print(read("123"));
+    cout << endl;
+
+    cout << "(print (read \"abc\")) ";
+    print(read("abc"));
+    cout << endl;
+
+    cout << "(print (read \"(123 abc)\")) ";
+    print(read("(123 abc)"));
     cout << endl;
 }

@@ -1,8 +1,10 @@
 #include <memory>
+#include <vector>
 #include <string>
 
 using std::string;
 using std::shared_ptr;
+using std::vector;
 
 const int INVALID_TYPE = 0;
 const int NIL_TYPE = 1;
@@ -58,4 +60,7 @@ bool eq(shared_ptr<lispobj> left, shared_ptr<lispobj> right);
 bool eqv(shared_ptr<lispobj> left, shared_ptr<lispobj> right);
 bool equal(shared_ptr<lispobj> left, shared_ptr<lispobj> right);
 
+shared_ptr<lispobj> make_list(const vector<shared_ptr<lispobj> >& list_values);
+
 void print(shared_ptr<lispobj> obj);
+shared_ptr<lispobj> read(string str);

@@ -148,3 +148,55 @@ void print(shared_ptr<lispobj> obj) {
         break;
     };
 }
+
+shared_ptr<lispobj> make_list(const vector<shared_ptr<lispobj> >& list_values) {
+    shared_ptr<lispobj> ret(new nil());
+
+    for(auto it = list_values.rbegin(); it != list_values.rend(); ++it) {
+        ret.reset(new cons(*it, ret));
+    }
+
+    return ret;
+}
+
+shared_ptr<lispobj> _read(string& str) {
+    // remove leading whitespace, could be faster, but wevs
+    while(isspace(str[0])) {
+        str.erase(0, 1);
+    }
+
+    // figure out type of object
+    if(str[0] == '(') { //list
+        str.erase(0, 1);
+        vector<shared_ptr<lispobj> > list_values;
+
+        while(str[0] != ')') {
+            while(isspace(str[0])) {
+                str.erase(0, 1);
+            }
+
+            list_values.push_back(_read(str));
+        }
+
+        str.erase(0, 1);
+        return make_list(list_values);
+    } else if (isdigit(str[0])) { // number ('.' too, once we have non-integers)
+        size_t pos = 0;
+        int n = std::stoi(str, &pos);
+        str.erase(0, pos);
+        return std::make_shared<number>(n);
+    } else { //symbol
+        int n = 1;
+        while(!isspace(str[n]) && str[n] != '(' && str[n] != ')') {
+            ++n;
+        }
+
+        string sym_name = str.substr(0, n);
+        str.erase(0, n);
+        return std::make_shared<symbol>(sym_name);
+    }
+}
+
+shared_ptr<lispobj> read(string str) {
+    return _read(str);
+}
