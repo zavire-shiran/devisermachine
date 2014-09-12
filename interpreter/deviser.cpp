@@ -262,7 +262,7 @@ public:
         mark(m),
         code(c)
     {}
-        
+
     shared_ptr<environment> env;
     int mark;
     shared_ptr<lispobj> code;
@@ -276,9 +276,9 @@ const int evaled = 2;
 shared_ptr<lispobj> eval(shared_ptr<lispobj> code, shared_ptr<environment> tle) {
     std::deque<stackframe> exec_stack;
     shared_ptr<lispobj> nil_obj(new nil());
-    
+
     exec_stack.push_front(stackframe(tle, evaluating, code));
-    
+
     while(exec_stack.size() > 1 || exec_stack.front().mark != evaled) {
         if(exec_stack.front().mark == evaled) {
             shared_ptr<lispobj> c = exec_stack.front().code;
