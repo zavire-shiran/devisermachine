@@ -304,7 +304,7 @@ shared_ptr<lispobj> eval(shared_ptr<lispobj> code, shared_ptr<environment> tle) 
     exec_stack.push_front(stackframe(tle, evaluating, code));
 
     while(exec_stack.size() > 1 || exec_stack.front().mark != evaled) {
-//        print_stack(exec_stack);
+        //print_stack(exec_stack);
         if(exec_stack.front().mark == evaled) {
             shared_ptr<lispobj> c = exec_stack.front().code;
             exec_stack.pop_front();

@@ -74,12 +74,15 @@ int main(int /*argc*/, char** /*argv*/)
     print(eval(read("123"), env));
     cout << endl;
 
-    cout << "(print (eval (read \"a\")))" << endl;
+    cout << "(print (eval (read \"a\"))) => ";
     print(eval(read("a"), env));
     cout << endl;
 
-    cout << "(print (eval (read \"(+ 1 1)\")))" << endl;
+    cout << "(print (eval (read \"(+ 1 1)\"))) => ";
     print(eval(read("(+ 1 1)"), env));
     cout << endl;
 
+    cout << "(print (eval (read \"(+ a 3)\"))) => ";
+    print(eval(read("(+ a 3)"), env));
+    cout << endl;
 }
