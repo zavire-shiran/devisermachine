@@ -9,6 +9,7 @@ using std::endl;
 
 int main(int /*argc*/, char** /*argv*/)
 {
+    cout << "Begin" << endl;
     shared_ptr<nil> nil1(new nil());
     shared_ptr<number> n1(new number(0));
     shared_ptr<number> n2(new number(1));
@@ -17,8 +18,11 @@ int main(int /*argc*/, char** /*argv*/)
     shared_ptr<cons> c2(new cons(n1, n2));
     shared_ptr<cons> c3(new cons(n2, nil1));
     shared_ptr<cons> l1(new cons(n1, c3));
-
-    shared_ptr<environment> env(new environment());
+    cout << "One" << endl;
+    auto env = make_standard_env();
+    cout << "Two" << endl;
+    env->set("a", n2);
+    cout << "Three" << endl;
 
     cout << "(eq n2 n3) " << eq(n2, n3) << endl;
     cout << "(eqv n2 n3) " << eqv(n2, n3) << endl;
@@ -64,9 +68,18 @@ int main(int /*argc*/, char** /*argv*/)
 
     cout << "(print (read \"(123 abc)\")) ";
     print(read("(123 abc)"));
-    cout << endl;
+    cout << endl << endl;
 
     cout << "(print (eval (read \"123\")))" << endl;
     print(eval(read("123"), env));
     cout << endl;
+
+    cout << "(print (eval (read \"a\")))" << endl;
+    print(eval(read("a"), env));
+    cout << endl;
+
+    cout << "(print (eval (read \"(+ 1 1)\")))" << endl;
+    print(eval(read("(+ 1 1)"), env));
+    cout << endl;
+
 }

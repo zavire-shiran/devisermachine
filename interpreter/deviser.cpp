@@ -74,6 +74,10 @@ cfunc::cfunc(std::function<shared_ptr<lispobj>(vector<shared_ptr<lispobj> >)> f)
 
 }
 
+int cfunc::objtype() const {
+    return CFUNC_TYPE;
+}
+
 bool eq(shared_ptr<lispobj> left, shared_ptr<lispobj> right) {
     if(left == right) return true;
     if(left->objtype() != right->objtype()) return false;
@@ -166,6 +170,9 @@ void print(shared_ptr<lispobj> obj) {
     }
     case NIL_TYPE:
         cout << "'()";
+        break;
+    case CFUNC_TYPE:
+        cout << "CFUNC";
         break;
     };
 }
@@ -273,6 +280,23 @@ const int evaluating = 0;
 const int applying = 1;
 const int evaled = 2;
 
+void print_stack(const std::deque<stackframe> exec_stack) {
+    cout << "Stack size: " << exec_stack.size() << endl;
+
+    for(auto frame : exec_stack) {
+        cout << "frame " << frame.mark << endl;
+        cout << "  code: ";
+        print(frame.code);
+        cout << endl;
+        cout << "  args:" << endl;
+        for(auto arg: frame.evaled_args) {
+            cout << "    ";
+            print(arg);
+            cout << endl;
+        }
+    }
+}
+
 shared_ptr<lispobj> eval(shared_ptr<lispobj> code, shared_ptr<environment> tle) {
     std::deque<stackframe> exec_stack;
     shared_ptr<lispobj> nil_obj(new nil());
@@ -280,6 +304,7 @@ shared_ptr<lispobj> eval(shared_ptr<lispobj> code, shared_ptr<environment> tle) 
     exec_stack.push_front(stackframe(tle, evaluating, code));
 
     while(exec_stack.size() > 1 || exec_stack.front().mark != evaled) {
+//        print_stack(exec_stack);
         if(exec_stack.front().mark == evaled) {
             shared_ptr<lispobj> c = exec_stack.front().code;
             exec_stack.pop_front();
@@ -318,13 +343,13 @@ shared_ptr<lispobj> eval(shared_ptr<lispobj> code, shared_ptr<environment> tle) 
                 exec_stack.front().code = c->cdr();
                 exec_stack.push_front(stackframe(exec_stack.front().env,
                                                  evaluating,
-                                                 c->cdr()));
+                                                 c->car()));
             } else if(exec_stack.front().code->objtype() == NIL_TYPE) {
                 auto evaled_args = exec_stack.front().evaled_args;
                 if(evaled_args.empty()) {
                     cout << "ERROR: empty function application" << endl;
                     return nullptr;
-                } else if(evaled_args.front()->objtype() != FUNC_TYPE) {
+                } else if(evaled_args.front()->objtype() == FUNC_TYPE) {
                     shared_ptr<lispfunc> func = std::dynamic_pointer_cast<lispfunc>(evaled_args.front());
                     evaled_args.erase(evaled_args.begin());
                     shared_ptr<environment> env(new environment(func->closure));
@@ -353,7 +378,7 @@ shared_ptr<lispobj> eval(shared_ptr<lispobj> code, shared_ptr<environment> tle) 
 
                     exec_stack.front().mark = applying;
                     exec_stack.front().code = func->code;
-                } else if(evaled_args.front()->objtype() != CFUNC_TYPE) {
+                } else if(evaled_args.front()->objtype() == CFUNC_TYPE) {
                     shared_ptr<cfunc> func = std::dynamic_pointer_cast<cfunc>(evaled_args.front());
                     evaled_args.erase(evaled_args.begin());
                     shared_ptr<lispobj> ret = func->func(evaled_args);
@@ -378,4 +403,23 @@ shared_ptr<lispobj> eval(shared_ptr<lispobj> code, shared_ptr<environment> tle) 
     }
 
     return exec_stack.front().code;
+}
+
+shared_ptr<lispobj> plus(vector<shared_ptr<lispobj> > args) {
+    int sum = 0;
+    for(auto obj : args) {
+        if(obj->objtype() != NUMBER_TYPE) {
+            cout << "plus requires numbers" << endl;
+            return nullptr;
+        }
+        shared_ptr<number> n = std::dynamic_pointer_cast<number>(obj);
+        sum += n->value();
+    }
+    return std::make_shared<number>(sum);
+}
+
+shared_ptr<environment> make_standard_env() {
+    shared_ptr<environment> env(new environment());
+    env->set("+", std::make_shared<cfunc>(cfunc(plus)));
+    return env;
 }

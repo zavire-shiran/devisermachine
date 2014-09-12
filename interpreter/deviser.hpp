@@ -86,6 +86,7 @@ public:
 class cfunc : public lispobj {
 public:
     cfunc(std::function<shared_ptr<lispobj>(vector<shared_ptr<lispobj> >)> f);
+    virtual int objtype() const;
 
     std::function<shared_ptr<lispobj>(vector<shared_ptr<lispobj> >)> func;
 };
@@ -100,3 +101,4 @@ void print(shared_ptr<lispobj> obj);
 shared_ptr<lispobj> read(string str);
 
 shared_ptr<lispobj> eval(shared_ptr<lispobj> code, shared_ptr<environment> tle);
+shared_ptr<environment> make_standard_env();
