@@ -418,8 +418,38 @@ shared_ptr<lispobj> plus(vector<shared_ptr<lispobj> > args) {
     return std::make_shared<number>(sum);
 }
 
+shared_ptr<lispobj> minus(vector<shared_ptr<lispobj> > args) {
+    if(args.size() > 1) {
+        if(args[0]->objtype() != NUMBER_TYPE) {
+            cout << "minus requires numbers" << endl;
+            return nullptr;
+        }
+        shared_ptr<number> n = std::dynamic_pointer_cast<number>(args[0]);
+        int diff = n->value();
+        args.erase(args.begin());
+
+        for(auto obj : args) {
+            if(obj->objtype() != NUMBER_TYPE) {
+                cout << "plus requires numbers" << endl;
+                return nullptr;
+            }
+            shared_ptr<number> n = std::dynamic_pointer_cast<number>(obj);
+            diff -= n->value();
+        }
+        return std::make_shared<number>(diff);
+    } else {
+        shared_ptr<lispobj> obj(args[0]);
+        if(obj->objtype() != NUMBER_TYPE) {
+            cout << "minus requires numbers" << endl;
+        }
+        shared_ptr<number> n = std::dynamic_pointer_cast<number>(obj);
+        return std::make_shared<number>(-(n->value()));
+    }
+}
+
 shared_ptr<environment> make_standard_env() {
     shared_ptr<environment> env(new environment());
     env->set("+", std::make_shared<cfunc>(cfunc(plus)));
+    env->set("-", std::make_shared<cfunc>(cfunc(minus)));
     return env;
 }
