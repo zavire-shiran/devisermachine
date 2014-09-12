@@ -447,9 +447,23 @@ shared_ptr<lispobj> minus(vector<shared_ptr<lispobj> > args) {
     }
 }
 
+shared_ptr<lispobj> multiply(vector<shared_ptr<lispobj> > args) {
+    int product = 1;
+    for(auto obj : args) {
+        if(obj->objtype() != NUMBER_TYPE) {
+            cout << "plus requires numbers" << endl;
+            return nullptr;
+        }
+        shared_ptr<number> n = std::dynamic_pointer_cast<number>(obj);
+        product *= n->value();
+    }
+    return std::make_shared<number>(product);
+}
+
 shared_ptr<environment> make_standard_env() {
     shared_ptr<environment> env(new environment());
     env->set("+", std::make_shared<cfunc>(cfunc(plus)));
     env->set("-", std::make_shared<cfunc>(cfunc(minus)));
+    env->set("*", std::make_shared<cfunc>(cfunc(multiply)));
     return env;
 }

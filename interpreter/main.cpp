@@ -90,4 +90,12 @@ int main(int /*argc*/, char** /*argv*/)
     cout << "(print (eval (read \"(- a 3)\"))) => ";
     print(eval(read("(- a 3)"), env));
     cout << endl;
+
+    cout << "(print (eval (read \"(* 10 12)\"))) => ";
+    print(eval(read("(* 10 12)"), env));
+    cout << endl;
+
+    cout << "(print (eval (read \"(* a 3)\"))) => ";
+    print(eval(read("(* a 3)"), env));
+    cout << endl;
 }
