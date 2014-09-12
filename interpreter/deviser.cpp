@@ -1,4 +1,5 @@
 #include <iostream>
+#include <stack>
 #include "deviser.hpp"
 
 using std::cout;
@@ -51,6 +52,26 @@ int number::objtype() const {
 
 int number::value() const {
     return num;
+}
+
+lispfunc::lispfunc(shared_ptr<lispobj> _args,
+                   shared_ptr<environment> _closure,
+                   shared_ptr<lispobj> _code) :
+    args(_args),
+    closure(_closure),
+    code(_code)
+{
+
+}
+
+int lispfunc::objtype() const {
+    return FUNC_TYPE;
+}
+
+cfunc::cfunc(std::function<shared_ptr<lispobj>(vector<shared_ptr<lispobj> >)> f) :
+    func(f)
+{
+
 }
 
 bool eq(shared_ptr<lispobj> left, shared_ptr<lispobj> right) {
@@ -199,4 +220,162 @@ shared_ptr<lispobj> _read(string& str) {
 
 shared_ptr<lispobj> read(string str) {
     return _read(str);
+}
+
+environment::environment() {
+
+}
+
+environment::environment(shared_ptr<environment> env) :
+    parent(env)
+{
+
+}
+
+void environment::set(string name, shared_ptr<lispobj> value) {
+    // this is probably not the correct semantics when setting
+    // a closed-upon value. ex:
+    /*(define a 1)
+      (define (incrementer)
+        (set! a (+ a 1))) */
+    // a would get set in function scope, not the parent scope.
+
+    bindings[name] = value;
+}
+
+shared_ptr<lispobj> environment::get(string name) {
+    auto it = bindings.find(name);
+    if(it != bindings.end()) {
+        return it->second;
+    } else if(parent) {
+        return parent->get(name);
+    } else {
+        //XXX: should probably be undefined or error
+        return std::make_shared<nil>();
+    }
+}
+
+class stackframe {
+public:
+    stackframe(shared_ptr<environment> e, int m, shared_ptr<lispobj> c) :
+        env(e),
+        mark(m),
+        code(c)
+    {}
+        
+    shared_ptr<environment> env;
+    int mark;
+    shared_ptr<lispobj> code;
+    vector<shared_ptr<lispobj> > evaled_args;
+};
+
+const int evaluating = 0;
+const int applying = 1;
+const int evaled = 2;
+
+shared_ptr<lispobj> eval(shared_ptr<lispobj> code, shared_ptr<environment> tle) {
+    std::deque<stackframe> exec_stack;
+    shared_ptr<lispobj> nil_obj(new nil());
+    
+    exec_stack.push_front(stackframe(tle, evaluating, code));
+    
+    while(exec_stack.size() > 1 || exec_stack.front().mark != evaled) {
+        if(exec_stack.front().mark == evaled) {
+            shared_ptr<lispobj> c = exec_stack.front().code;
+            exec_stack.pop_front();
+            if(exec_stack.front().mark == applying &&
+               exec_stack.front().code->objtype() == NIL_TYPE) {
+                exec_stack.front().mark = evaled;
+                exec_stack.front().code = c;
+            } else if(exec_stack.front().mark == evaluating) {
+                exec_stack.front().evaled_args.push_back(c);
+                //special forms go here?
+                //if(exec_stack.front().evaled_args.size() == 1 &&
+                //   it's a special form) {
+                //   make special form happen }
+            } else {
+                cout << "ERROR: bad stack" << endl;
+                return nullptr;
+            }
+        } else if(exec_stack.front().mark == applying) {
+            if(code->objtype() == NIL_TYPE) {
+                exec_stack.front().mark = evaled;
+            } else if(code->objtype() == CONS_TYPE) {
+                shared_ptr<cons> c = std::dynamic_pointer_cast<cons>(exec_stack.front().code);
+                shared_ptr<lispobj> next_statement = c->car();
+                exec_stack.front().code = c->cdr();
+                exec_stack.push_front(stackframe(exec_stack.front().env,
+                                                 evaluating,
+                                                 next_statement));
+            } else {
+                cout << "ERROR: bad stack" << endl;
+                return nullptr;
+            }
+        } else if(exec_stack.front().mark == evaluating) {
+            if(exec_stack.front().code->objtype() == CONS_TYPE) {
+                //evaluating arguments
+                shared_ptr<cons> c = std::dynamic_pointer_cast<cons>(exec_stack.front().code);
+                exec_stack.front().code = c->cdr();
+                exec_stack.push_front(stackframe(exec_stack.front().env,
+                                                 evaluating,
+                                                 c->cdr()));
+            } else if(exec_stack.front().code->objtype() == NIL_TYPE) {
+                auto evaled_args = exec_stack.front().evaled_args;
+                if(evaled_args.empty()) {
+                    cout << "ERROR: empty function application" << endl;
+                    return nullptr;
+                } else if(evaled_args.front()->objtype() != FUNC_TYPE) {
+                    shared_ptr<lispfunc> func = std::dynamic_pointer_cast<lispfunc>(evaled_args.front());
+                    evaled_args.erase(evaled_args.begin());
+                    shared_ptr<environment> env(new environment(func->closure));
+
+                    auto arg_value_iter = evaled_args.begin();
+                    shared_ptr<lispobj> arg_names = func->args;
+                    while(arg_value_iter != evaled_args.end() &&
+                          arg_names->objtype() == CONS_TYPE) {
+                        shared_ptr<cons> c = std::dynamic_pointer_cast<cons>(arg_names);
+                        shared_ptr<lispobj> name = c->car();
+                        if(name->objtype() == SYMBOL_TYPE) {
+                            shared_ptr<symbol> s = std::dynamic_pointer_cast<symbol>(name);
+                            env->set(s->name(), *arg_value_iter);
+                        } else {
+                            cout << "ERROR: arguments must be symbols" << endl;
+                            return nullptr;
+                        }
+                        arg_names = c->cdr();
+                    }
+
+                    if(arg_names->objtype() != NIL_TYPE ||
+                       arg_value_iter != evaled_args.end()) {
+                        cout << "ERROR: function arity does not match call." << endl;
+                        return nullptr;
+                    }
+
+                    exec_stack.front().mark = applying;
+                    exec_stack.front().code = func->code;
+                } else if(evaled_args.front()->objtype() != CFUNC_TYPE) {
+                    shared_ptr<cfunc> func = std::dynamic_pointer_cast<cfunc>(evaled_args.front());
+                    evaled_args.erase(evaled_args.begin());
+                    shared_ptr<lispobj> ret = func->func(evaled_args);
+                    return ret;
+                } else {
+                    cout << "ERROR: trying to apply a non-function" << endl;
+                    return nullptr;
+                }
+            } else if(exec_stack.front().code->objtype() == SYMBOL_TYPE) {
+                //variable lookup
+                exec_stack.front().mark = evaled;
+                shared_ptr<symbol> s = std::dynamic_pointer_cast<symbol>(exec_stack.front().code);
+                exec_stack.front().code = exec_stack.front().env->get(s->name());
+            } else {
+                //constant value
+                exec_stack.front().mark = evaled;
+            }
+        } else {
+            cout << "ERROR: bad stack" << endl;
+            return nullptr;
+        }
+    }
+
+    return exec_stack.front().code;
 }
