@@ -7,6 +7,12 @@ using std::shared_ptr;
 using std::cout;
 using std::endl;
 
+void read_eval_print(const string& lispstr, shared_ptr<environment> env) {
+    cout << "(print (eval (read \"" << lispstr << "\"))) => ";
+    print(eval(read(lispstr), env));
+    cout << endl;
+}
+
 int main(int /*argc*/, char** /*argv*/)
 {
     shared_ptr<nil> nil1(new nil());
@@ -63,39 +69,20 @@ int main(int /*argc*/, char** /*argv*/)
     print(read("abc"));
     cout << endl;
 
-    cout << "(print (read \"(123 abc)\")) ";
-    print(read("(123 abc)"));
+    cout << "(print (read \"(123 abc )\")) ";
+    print(read("(123 abc )"));
     cout << endl << endl;
 
-    cout << "(print (eval (read \"123\")))" << endl;
-    print(eval(read("123"), env));
-    cout << endl;
-
-    cout << "(print (eval (read \"a\"))) => ";
-    print(eval(read("a"), env));
-    cout << endl;
-
-    cout << "(print (eval (read \"(+ 1 1)\"))) => ";
-    print(eval(read("(+ 1 1)"), env));
-    cout << endl;
-
-    cout << "(print (eval (read \"(+ a 3)\"))) => ";
-    print(eval(read("(+ a 3)"), env));
-    cout << endl;
-
-    cout << "(print (eval (read \"(- a)\"))) => ";
-    print(eval(read("(- a)"), env));
-    cout << endl;
-
-    cout << "(print (eval (read \"(- a 3)\"))) => ";
-    print(eval(read("(- a 3)"), env));
-    cout << endl;
-
-    cout << "(print (eval (read \"(* 10 12)\"))) => ";
-    print(eval(read("(* 10 12)"), env));
-    cout << endl;
-
-    cout << "(print (eval (read \"(* a 3)\"))) => ";
-    print(eval(read("(* a 3)"), env));
-    cout << endl;
+    read_eval_print("123", env);
+    read_eval_print("a", env);
+    read_eval_print("( + 1 1 )", env);
+    read_eval_print("(+ a 3)", env);
+    read_eval_print("(- a)", env);
+    read_eval_print("(- a 3)", env);
+    read_eval_print("(* 10 12)", env);
+    read_eval_print("(* a 3)", env);
+    read_eval_print("(/ 12 2)", env);
+    read_eval_print("(/ 3 a)", env);
+    read_eval_print("(/ 12 5)", env);
+    read_eval_print("(/ a 3)", env);
 }

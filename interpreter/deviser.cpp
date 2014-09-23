@@ -193,6 +193,10 @@ shared_ptr<lispobj> _read(string& str) {
         str.erase(0, 1);
     }
 
+    if(str[0] == ')') {
+        return nullptr;
+    }
+
     // figure out type of object
     if(str[0] == '(') { //list
         str.erase(0, 1);
@@ -203,7 +207,10 @@ shared_ptr<lispobj> _read(string& str) {
                 str.erase(0, 1);
             }
 
-            list_values.push_back(_read(str));
+            auto obj = _read(str);
+            if(obj) {
+               list_values.push_back(obj);
+            }
         }
 
         str.erase(0, 1);
@@ -430,7 +437,7 @@ shared_ptr<lispobj> minus(vector<shared_ptr<lispobj> > args) {
 
         for(auto obj : args) {
             if(obj->objtype() != NUMBER_TYPE) {
-                cout << "plus requires numbers" << endl;
+                cout << "minus requires numbers" << endl;
                 return nullptr;
             }
             shared_ptr<number> n = std::dynamic_pointer_cast<number>(obj);
@@ -460,10 +467,40 @@ shared_ptr<lispobj> multiply(vector<shared_ptr<lispobj> > args) {
     return std::make_shared<number>(product);
 }
 
+shared_ptr<lispobj> divide(vector<shared_ptr<lispobj> > args) {
+    if(args.size() > 1) {
+        if(args[0]->objtype() != NUMBER_TYPE) {
+            cout << "divide requires numbers" << endl;
+            return nullptr;
+        }
+        shared_ptr<number> n = std::dynamic_pointer_cast<number>(args[0]);
+        int quotient = n->value();
+        args.erase(args.begin());
+
+        for(auto obj : args) {
+            if(obj->objtype() != NUMBER_TYPE) {
+                cout << "divide requires numbers" << endl;
+                return nullptr;
+            }
+            shared_ptr<number> n = std::dynamic_pointer_cast<number>(obj);
+            quotient /= n->value();
+        }
+        return std::make_shared<number>(quotient);
+    } else {
+        shared_ptr<lispobj> obj(args[0]);
+        if(obj->objtype() != NUMBER_TYPE) {
+            cout << "divide requires numbers" << endl;
+        }
+        shared_ptr<number> n = std::dynamic_pointer_cast<number>(obj);
+        return std::make_shared<number>(n->value());
+    }
+}
+
 shared_ptr<environment> make_standard_env() {
     shared_ptr<environment> env(new environment());
     env->set("+", std::make_shared<cfunc>(cfunc(plus)));
     env->set("-", std::make_shared<cfunc>(cfunc(minus)));
     env->set("*", std::make_shared<cfunc>(cfunc(multiply)));
+    env->set("/", std::make_shared<cfunc>(cfunc(divide)));
     return env;
 }
