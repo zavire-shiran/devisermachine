@@ -76,6 +76,7 @@ int main(int /*argc*/, char** /*argv*/)
     read_eval_print("123", env);
     read_eval_print("a", env);
     read_eval_print("( + 1 1 )", env);
+    read_eval_print("( + 1 (+ 1 1) )", env);
     read_eval_print("(+ a 3)", env);
     read_eval_print("(- a)", env);
     read_eval_print("(- a 3)", env);

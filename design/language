@@ -1,6 +1,7 @@
 compilation is a caching operation
 compilation is an optimization, since it is equivalent to interpreting
-all software is distributed by code. there is *NO* support for loading binaries (except kernel)
+all software is distributed by code. there is *NO* support for loading binaries
+  (except kernel)
 modules are the atomic unit of completed compilations
   most compilation steps are also cached
   perhaps you can tell that caching is big in this
@@ -18,5 +19,6 @@ all hardware must be exposed in the language
 
 since our kernel will have to be pre-compiled, the gc will be in there
   which means our language has to have primitives for carving memory into values
+    each variable is a pointer (or other primitive type? int, etc?) on the stack    
 
 only explicitly sized types. i.e. no generic "int"

@@ -1,4 +1,4 @@
-CC := g++
+CC := g++ -g
 CCFLAGS := -std=c++0x
 LD := g++
 LDFLAGS :=
@@ -11,3 +11,6 @@ main.o: main.cpp deviser.hpp
 
 deviser.o: deviser.cpp deviser.hpp
 	$(CC) -c $(CCFLAGS) -o $@ $<
+
+clean:
+	rm -f *.o deviser

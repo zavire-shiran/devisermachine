@@ -246,14 +246,25 @@ environment::environment(shared_ptr<environment> env) :
 
 }
 
-void environment::set(string name, shared_ptr<lispobj> value) {
-    // this is probably not the correct semantics when setting
-    // a closed-upon value. ex:
-    /*(define a 1)
-      (define (incrementer)
-        (set! a (+ a 1))) */
-    // a would get set in function scope, not the parent scope.
+void environment::define(string name, shared_ptr<lispobj> value) {
+    // shadow any bindings in parent scopes, but don't modify them.
+    // maybe should error when name already exists
+    bindings[name] = value;
+}
 
+void environment::set(string name, shared_ptr<lispobj> value) {
+    // try to find a variable binding. if it already exists,
+    // set it in the same environment that we found it
+    shared_ptr<environment> env = shared_ptr<environment>(this);
+    while(env != nullptr) {
+        auto iter = env->bindings.find(name);
+        if(iter != env->bindings.end()) {
+            iter->second = value;
+            return;
+        }
+    }
+
+    // it have not been set yet, so set it in the lowest frame
     bindings[name] = value;
 }
 
@@ -389,7 +400,9 @@ shared_ptr<lispobj> eval(shared_ptr<lispobj> code, shared_ptr<environment> tle) 
                     shared_ptr<cfunc> func = std::dynamic_pointer_cast<cfunc>(evaled_args.front());
                     evaled_args.erase(evaled_args.begin());
                     shared_ptr<lispobj> ret = func->func(evaled_args);
-                    return ret;
+                    exec_stack.front().mark = evaled;
+                    exec_stack.front().code = ret;
+                    exec_stack.front().evaled_args.clear();
                 } else {
                     cout << "ERROR: trying to apply a non-function" << endl;
                     return nullptr;

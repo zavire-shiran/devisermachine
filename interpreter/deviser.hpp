@@ -25,6 +25,7 @@ class environment {
 public:
     environment();
     environment(shared_ptr<environment> env);
+    void define(string name, shared_ptr<lispobj> value);
     void set(string name, shared_ptr<lispobj> value);
     shared_ptr<lispobj> get(string name);
 
