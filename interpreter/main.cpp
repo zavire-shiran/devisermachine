@@ -25,7 +25,7 @@ int main(int /*argc*/, char** /*argv*/)
     shared_ptr<cons> l1(new cons(n1, c3));
 
     auto env = make_standard_env();
-    env->set("a", n2);
+    env->define("a", n2);
 
     cout << "(eq n2 n3) " << eq(n2, n3) << endl;
     cout << "(eqv n2 n3) " << eqv(n2, n3) << endl;
@@ -86,4 +86,23 @@ int main(int /*argc*/, char** /*argv*/)
     read_eval_print("(/ 3 a)", env);
     read_eval_print("(/ 12 5)", env);
     read_eval_print("(/ a 3)", env);
+    cout << endl;
+
+    shared_ptr<lispfunc> lfunc(new lispfunc(read("(x)"), env, read("((+ x x))")));
+    env->define("double", lfunc);
+    read_eval_print("(double 1)", env);
+    read_eval_print("(double 2)", env);
+    read_eval_print("(double 3)", env);
+    read_eval_print("(double 4)", env);
+    read_eval_print("(double (double 1))", env);
+    read_eval_print("(double (double 2))", env);
+    read_eval_print("(double (double 3))", env);
+    read_eval_print("(double (double 4))", env);
+
+    shared_ptr<lispfunc> lfunc2(new lispfunc(read("(x y)"), env, read("((+ (double x) (double y)))")));
+    env->define("double+double", lfunc2);
+    read_eval_print("(double+double 1 1)", env);
+    read_eval_print("(double+double 1 4)", env);
+    read_eval_print("(double+double 2 3)", env);
+    read_eval_print("(double+double 2 5)", env);
 }

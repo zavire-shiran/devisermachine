@@ -28,6 +28,7 @@ public:
     void define(string name, shared_ptr<lispobj> value);
     void set(string name, shared_ptr<lispobj> value);
     shared_ptr<lispobj> get(string name);
+    void dump();
 
 private:
     std::map<string, shared_ptr<lispobj> > bindings;

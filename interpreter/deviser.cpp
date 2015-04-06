@@ -236,7 +236,9 @@ shared_ptr<lispobj> read(string str) {
     return _read(str);
 }
 
-environment::environment() {
+environment::environment() :
+    parent(nullptr)
+{
 
 }
 
@@ -278,6 +280,15 @@ shared_ptr<lispobj> environment::get(string name) {
         //XXX: should probably be undefined or error
         return std::make_shared<nil>();
     }
+}
+
+void environment::dump() {
+    for(auto it = bindings.begin(); it != bindings.end(); ++it) {
+        cout << it->first << ": " << it->second << endl;
+    }
+
+    cout << "parent env:" << endl;
+    parent->dump();
 }
 
 class stackframe {
@@ -380,21 +391,31 @@ shared_ptr<lispobj> eval(shared_ptr<lispobj> code, shared_ptr<environment> tle) 
                         shared_ptr<lispobj> name = c->car();
                         if(name->objtype() == SYMBOL_TYPE) {
                             shared_ptr<symbol> s = std::dynamic_pointer_cast<symbol>(name);
-                            env->set(s->name(), *arg_value_iter);
+                            env->define(s->name(), *arg_value_iter);
                         } else {
                             cout << "ERROR: arguments must be symbols" << endl;
                             return nullptr;
                         }
                         arg_names = c->cdr();
+                        ++arg_value_iter;
                     }
 
                     if(arg_names->objtype() != NIL_TYPE ||
                        arg_value_iter != evaled_args.end()) {
                         cout << "ERROR: function arity does not match call." << endl;
+                        print(func->args); cout << endl;
+                        for(auto arg_value_iter = evaled_args.begin();
+                            arg_value_iter != evaled_args.end();
+                            ++arg_value_iter) {
+                            print(*arg_value_iter); cout << " ";
+                        }
+                        cout << endl;
+                        print(arg_names); cout << endl;
                         return nullptr;
                     }
 
                     exec_stack.front().mark = applying;
+                    exec_stack.front().env = env;
                     exec_stack.front().code = func->code;
                 } else if(evaled_args.front()->objtype() == CFUNC_TYPE) {
                     shared_ptr<cfunc> func = std::dynamic_pointer_cast<cfunc>(evaled_args.front());
@@ -412,6 +433,8 @@ shared_ptr<lispobj> eval(shared_ptr<lispobj> code, shared_ptr<environment> tle) 
                 exec_stack.front().mark = evaled;
                 shared_ptr<symbol> s = std::dynamic_pointer_cast<symbol>(exec_stack.front().code);
                 exec_stack.front().code = exec_stack.front().env->get(s->name());
+                //cout << "getting var " << s->name() << ": ";
+                //print(exec_stack.front().code); cout << endl;
             } else {
                 //constant value
                 exec_stack.front().mark = evaled;
@@ -511,9 +534,9 @@ shared_ptr<lispobj> divide(vector<shared_ptr<lispobj> > args) {
 
 shared_ptr<environment> make_standard_env() {
     shared_ptr<environment> env(new environment());
-    env->set("+", std::make_shared<cfunc>(cfunc(plus)));
-    env->set("-", std::make_shared<cfunc>(cfunc(minus)));
-    env->set("*", std::make_shared<cfunc>(cfunc(multiply)));
-    env->set("/", std::make_shared<cfunc>(cfunc(divide)));
+    env->define("+", std::make_shared<cfunc>(cfunc(plus)));
+    env->define("-", std::make_shared<cfunc>(cfunc(minus)));
+    env->define("*", std::make_shared<cfunc>(cfunc(multiply)));
+    env->define("/", std::make_shared<cfunc>(cfunc(divide)));
     return env;
 }
