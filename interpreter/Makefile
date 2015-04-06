@@ -12,5 +12,6 @@ main.o: main.cpp deviser.hpp
 deviser.o: deviser.cpp deviser.hpp
 	$(CC) -c $(CCFLAGS) -o $@ $<
 
+.PHONY: clean
 clean:
 	rm -f *.o deviser

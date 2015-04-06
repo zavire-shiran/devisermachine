@@ -264,6 +264,7 @@ void environment::set(string name, shared_ptr<lispobj> value) {
             iter->second = value;
             return;
         }
+        env = env->parent;
     }
 
     // it have not been set yet, so set it in the lowest frame
@@ -326,6 +327,49 @@ void print_stack(const std::deque<stackframe> exec_stack) {
     }
 }
 
+int apply_lispfunc(std::deque<stackframe>& exec_stack) {
+    auto evaled_args = exec_stack.front().evaled_args;
+    shared_ptr<lispfunc> func = std::dynamic_pointer_cast<lispfunc>(evaled_args.front());
+    evaled_args.erase(evaled_args.begin());
+    shared_ptr<environment> env(new environment(func->closure));
+
+    auto arg_value_iter = evaled_args.begin();
+    shared_ptr<lispobj> arg_names = func->args;
+    while(arg_value_iter != evaled_args.end() &&
+          arg_names->objtype() == CONS_TYPE) {
+        shared_ptr<cons> c = std::dynamic_pointer_cast<cons>(arg_names);
+        shared_ptr<lispobj> name = c->car();
+        if(name->objtype() == SYMBOL_TYPE) {
+            shared_ptr<symbol> s = std::dynamic_pointer_cast<symbol>(name);
+            env->define(s->name(), *arg_value_iter);
+        } else {
+            cout << "ERROR: arguments must be symbols" << endl;
+            return 1;
+        }
+        arg_names = c->cdr();
+        ++arg_value_iter;
+    }
+
+    if(arg_names->objtype() != NIL_TYPE ||
+       arg_value_iter != evaled_args.end()) {
+        cout << "ERROR: function arity does not match call." << endl;
+        print(func->args); cout << endl;
+        for(auto arg_value_iter = evaled_args.begin();
+            arg_value_iter != evaled_args.end();
+            ++arg_value_iter) {
+            print(*arg_value_iter); cout << " ";
+        }
+        cout << endl;
+        print(arg_names); cout << endl;
+        return 1;
+    }
+
+    exec_stack.front().mark = applying;
+    exec_stack.front().env = env;
+    exec_stack.front().code = func->code;
+    return 0;
+}
+
 shared_ptr<lispobj> eval(shared_ptr<lispobj> code, shared_ptr<environment> tle) {
     std::deque<stackframe> exec_stack;
     shared_ptr<lispobj> nil_obj(new nil());
@@ -343,10 +387,6 @@ shared_ptr<lispobj> eval(shared_ptr<lispobj> code, shared_ptr<environment> tle) 
                 exec_stack.front().code = c;
             } else if(exec_stack.front().mark == evaluating) {
                 exec_stack.front().evaled_args.push_back(c);
-                //special forms go here?
-                //if(exec_stack.front().evaled_args.size() == 1 &&
-                //   it's a special form) {
-                //   make special form happen }
             } else {
                 cout << "ERROR: bad stack" << endl;
                 return nullptr;
@@ -369,6 +409,7 @@ shared_ptr<lispobj> eval(shared_ptr<lispobj> code, shared_ptr<environment> tle) 
             if(exec_stack.front().code->objtype() == CONS_TYPE) {
                 //evaluating arguments
                 shared_ptr<cons> c = std::dynamic_pointer_cast<cons>(exec_stack.front().code);
+                //special forms go here, rather than normal argument evaluation
                 exec_stack.front().code = c->cdr();
                 exec_stack.push_front(stackframe(exec_stack.front().env,
                                                  evaluating,
@@ -379,44 +420,9 @@ shared_ptr<lispobj> eval(shared_ptr<lispobj> code, shared_ptr<environment> tle) 
                     cout << "ERROR: empty function application" << endl;
                     return nullptr;
                 } else if(evaled_args.front()->objtype() == FUNC_TYPE) {
-                    shared_ptr<lispfunc> func = std::dynamic_pointer_cast<lispfunc>(evaled_args.front());
-                    evaled_args.erase(evaled_args.begin());
-                    shared_ptr<environment> env(new environment(func->closure));
-
-                    auto arg_value_iter = evaled_args.begin();
-                    shared_ptr<lispobj> arg_names = func->args;
-                    while(arg_value_iter != evaled_args.end() &&
-                          arg_names->objtype() == CONS_TYPE) {
-                        shared_ptr<cons> c = std::dynamic_pointer_cast<cons>(arg_names);
-                        shared_ptr<lispobj> name = c->car();
-                        if(name->objtype() == SYMBOL_TYPE) {
-                            shared_ptr<symbol> s = std::dynamic_pointer_cast<symbol>(name);
-                            env->define(s->name(), *arg_value_iter);
-                        } else {
-                            cout << "ERROR: arguments must be symbols" << endl;
-                            return nullptr;
-                        }
-                        arg_names = c->cdr();
-                        ++arg_value_iter;
-                    }
-
-                    if(arg_names->objtype() != NIL_TYPE ||
-                       arg_value_iter != evaled_args.end()) {
-                        cout << "ERROR: function arity does not match call." << endl;
-                        print(func->args); cout << endl;
-                        for(auto arg_value_iter = evaled_args.begin();
-                            arg_value_iter != evaled_args.end();
-                            ++arg_value_iter) {
-                            print(*arg_value_iter); cout << " ";
-                        }
-                        cout << endl;
-                        print(arg_names); cout << endl;
+                    if(apply_lispfunc(exec_stack) != 0) {
                         return nullptr;
                     }
-
-                    exec_stack.front().mark = applying;
-                    exec_stack.front().env = env;
-                    exec_stack.front().code = func->code;
                 } else if(evaled_args.front()->objtype() == CFUNC_TYPE) {
                     shared_ptr<cfunc> func = std::dynamic_pointer_cast<cfunc>(evaled_args.front());
                     evaled_args.erase(evaled_args.begin());
