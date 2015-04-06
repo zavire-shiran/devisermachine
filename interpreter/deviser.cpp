@@ -228,7 +228,11 @@ shared_ptr<lispobj> _read(string& str) {
 
         string sym_name = str.substr(0, n);
         str.erase(0, n);
-        return std::make_shared<symbol>(sym_name);
+        if(sym_name == "nil") {
+            return std::make_shared<nil>();
+        } else {
+            return std::make_shared<symbol>(sym_name);
+        }
     }
 }
 
@@ -267,7 +271,7 @@ void environment::set(string name, shared_ptr<lispobj> value) {
         env = env->parent;
     }
 
-    // it have not been set yet, so set it in the lowest frame
+    // it has not been set yet, so set it in the current frame
     bindings[name] = value;
 }
 

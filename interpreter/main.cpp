@@ -65,6 +65,10 @@ int main(int /*argc*/, char** /*argv*/)
     print(read("123"));
     cout << endl;
 
+    cout << "(print (read \"nil\")) ";
+    print(read("nil"));
+    cout << endl;
+
     cout << "(print (read \"abc\")) ";
     print(read("abc"));
     cout << endl;
