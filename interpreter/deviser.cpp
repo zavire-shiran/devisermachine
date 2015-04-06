@@ -228,11 +228,7 @@ shared_ptr<lispobj> _read(string& str) {
 
         string sym_name = str.substr(0, n);
         str.erase(0, n);
-        if(sym_name == "nil") {
-            return std::make_shared<nil>();
-        } else {
-            return std::make_shared<symbol>(sym_name);
-        }
+        return std::make_shared<symbol>(sym_name);
     }
 }
 
@@ -313,6 +309,7 @@ public:
 const int evaluating = 0;
 const int applying = 1;
 const int evaled = 2;
+const int evalspecial = 3;
 
 void print_stack(const std::deque<stackframe> exec_stack) {
     cout << "Stack size: " << exec_stack.size() << endl;
@@ -374,6 +371,62 @@ int apply_lispfunc(std::deque<stackframe>& exec_stack) {
     return 0;
 }
 
+bool is_special_form(shared_ptr<lispobj> form) {
+    if(form->objtype() == SYMBOL_TYPE) {
+        shared_ptr<symbol> sym = std::dynamic_pointer_cast<symbol>(form);
+        if(sym->name() == "if") {
+            return true;
+        }
+    }
+    return false;
+}
+
+int eval_special_form(string name, std::deque<stackframe>& exec_stack) {
+    if(name == "if") {
+        if(exec_stack.front().evaled_args.size() == 1) {
+            shared_ptr<lispobj> lobj = exec_stack.front().code;
+            if(lobj->objtype() != CONS_TYPE) {
+                print(lobj);
+                cout << " if has no condition" << endl;
+                return 1;
+            }
+            shared_ptr<cons> c = std::dynamic_pointer_cast<cons>(lobj);
+            exec_stack.front().code = c->cdr();
+            exec_stack.push_front(stackframe(exec_stack.front().env,
+                                             evaluating,
+                                             c->car()));
+        } else if(exec_stack.front().evaled_args.size() == 2) {
+            if(exec_stack.front().evaled_args[1]->objtype() == NIL_TYPE) {
+                if(exec_stack.front().code->objtype() != CONS_TYPE) {
+                    cout << "if has no true branch" << endl;
+                    return 1;
+                }
+                shared_ptr<cons> c = std::dynamic_pointer_cast<cons>(exec_stack.front().code);
+                if(c->cdr()->objtype() != CONS_TYPE) {
+                    exec_stack.front().mark = evaled;
+                    exec_stack.front().code = std::make_shared<nil>();
+                    exec_stack.front().evaled_args.clear();
+                } else {
+                    shared_ptr<cons> c2 = std::dynamic_pointer_cast<cons>(c->cdr());
+                    exec_stack.front().mark = evaluating;
+                    exec_stack.front().code = c2->car();
+                    exec_stack.front().evaled_args.clear();
+                }
+            } else {
+                if(exec_stack.front().code->objtype() != CONS_TYPE) {
+                    cout << "if has no true branch" << endl;
+                    return 1;
+                }
+                shared_ptr<cons> c = std::dynamic_pointer_cast<cons>(exec_stack.front().code);
+                exec_stack.front().mark = evaluating;
+                exec_stack.front().code = c->car();
+                exec_stack.front().evaled_args.clear();
+            }
+        }
+    }
+    return 0;
+}
+
 shared_ptr<lispobj> eval(shared_ptr<lispobj> code, shared_ptr<environment> tle) {
     std::deque<stackframe> exec_stack;
     shared_ptr<lispobj> nil_obj(new nil());
@@ -389,7 +442,8 @@ shared_ptr<lispobj> eval(shared_ptr<lispobj> code, shared_ptr<environment> tle) 
                exec_stack.front().code->objtype() == NIL_TYPE) {
                 exec_stack.front().mark = evaled;
                 exec_stack.front().code = c;
-            } else if(exec_stack.front().mark == evaluating) {
+            } else if(exec_stack.front().mark == evaluating ||
+                      exec_stack.front().mark == evalspecial) {
                 exec_stack.front().evaled_args.push_back(c);
             } else {
                 cout << "ERROR: bad stack" << endl;
@@ -414,10 +468,17 @@ shared_ptr<lispobj> eval(shared_ptr<lispobj> code, shared_ptr<environment> tle) 
                 //evaluating arguments
                 shared_ptr<cons> c = std::dynamic_pointer_cast<cons>(exec_stack.front().code);
                 //special forms go here, rather than normal argument evaluation
-                exec_stack.front().code = c->cdr();
-                exec_stack.push_front(stackframe(exec_stack.front().env,
-                                                 evaluating,
-                                                 c->car()));
+                if(exec_stack.front().evaled_args.size() == 0 &&
+                   is_special_form(c->car())) {
+                    exec_stack.front().mark = evalspecial;
+                    exec_stack.front().evaled_args.push_back(c->car());
+                    exec_stack.front().code = c->cdr();
+                } else {
+                    exec_stack.front().code = c->cdr();
+                    exec_stack.push_front(stackframe(exec_stack.front().env,
+                                                     evaluating,
+                                                     c->car()));
+                }
             } else if(exec_stack.front().code->objtype() == NIL_TYPE) {
                 auto evaled_args = exec_stack.front().evaled_args;
                 if(evaled_args.empty()) {
@@ -442,12 +503,26 @@ shared_ptr<lispobj> eval(shared_ptr<lispobj> code, shared_ptr<environment> tle) 
                 //variable lookup
                 exec_stack.front().mark = evaled;
                 shared_ptr<symbol> s = std::dynamic_pointer_cast<symbol>(exec_stack.front().code);
-                exec_stack.front().code = exec_stack.front().env->get(s->name());
+                if(s->name() == "nil") {
+                    exec_stack.front().code = nil_obj;
+                } else {
+                    exec_stack.front().code = exec_stack.front().env->get(s->name());
+                }
                 //cout << "getting var " << s->name() << ": ";
                 //print(exec_stack.front().code); cout << endl;
             } else {
                 //constant value
                 exec_stack.front().mark = evaled;
+            }
+        } else if(exec_stack.front().mark == evalspecial) {
+            shared_ptr<lispobj> list_head = exec_stack.front().evaled_args[0];
+            if(list_head->objtype() != SYMBOL_TYPE) {
+                cout << "non-special form given evalspecial mark." << endl;
+                return nullptr;
+            }
+            shared_ptr<symbol> sym = std::dynamic_pointer_cast<symbol>(list_head);
+            if(eval_special_form(sym->name(), exec_stack) != 0) {
+                return nullptr;
             }
         } else {
             cout << "ERROR: bad stack" << endl;

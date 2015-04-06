@@ -73,6 +73,10 @@ int main(int /*argc*/, char** /*argv*/)
     print(read("abc"));
     cout << endl;
 
+    cout << "(print (read \"(if nil 0 1)\")) ";
+    print(read("(if nil 0 1)"));
+    cout << endl;
+
     cout << "(print (read \"(123 abc )\")) ";
     print(read("(123 abc )"));
     cout << endl << endl;
@@ -105,8 +109,16 @@ int main(int /*argc*/, char** /*argv*/)
 
     shared_ptr<lispfunc> lfunc2(new lispfunc(read("(x y)"), env, read("((+ (double x) (double y)))")));
     env->define("double+double", lfunc2);
-    read_eval_print("(double+double 1 1)", env);
-    read_eval_print("(double+double 1 4)", env);
+    read_eval_print("(double+double a 1)", env);
+    read_eval_print("(double+double a 4)", env);
     read_eval_print("(double+double 2 3)", env);
     read_eval_print("(double+double 2 5)", env);
+    cout << endl;
+
+    read_eval_print("(if nil 0 1)", env);
+    read_eval_print("(if 1 0 1)", env);
+    read_eval_print("(if nil 0 a)", env);
+    read_eval_print("(if 1 0 a)", env);
+    read_eval_print("(if nil 0)", env);
+    read_eval_print("(if 1 0)", env);
 }
