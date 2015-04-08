@@ -121,4 +121,9 @@ int main(int /*argc*/, char** /*argv*/)
     read_eval_print("(if 1 0 a)", env);
     read_eval_print("(if nil 0)", env);
     read_eval_print("(if 1 0)", env);
+
+    read_eval_print("((lambda () 1))", env);
+    read_eval_print("((lambda (x) x) 0)", env);
+    read_eval_print("((lambda (x) x) nil)", env);
+    read_eval_print("((lambda (x y) (+ x y)) 1 2)", env);
 }

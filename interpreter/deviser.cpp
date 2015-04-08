@@ -376,6 +376,8 @@ bool is_special_form(shared_ptr<lispobj> form) {
         shared_ptr<symbol> sym = std::dynamic_pointer_cast<symbol>(form);
         if(sym->name() == "if") {
             return true;
+        } else if(sym->name() == "lambda") {
+            return true;
         }
     }
     return false;
@@ -423,6 +425,22 @@ int eval_special_form(string name, std::deque<stackframe>& exec_stack) {
                 exec_stack.front().evaled_args.clear();
             }
         }
+    } else if(name == "lambda") {
+        shared_ptr<lispobj> lobj = exec_stack.front().code;
+        if(lobj->objtype() != CONS_TYPE) {
+            cout << "lambda needs more arguments" << endl;
+            return 1;
+        }
+
+        shared_ptr<cons> c = std::dynamic_pointer_cast<cons>(lobj);
+        if(c->cdr()->objtype() != CONS_TYPE) {
+            cout << "lambda needs more arguments" << endl;
+            return 1;
+        }
+        shared_ptr<cons> c2 = std::dynamic_pointer_cast<cons>(c->cdr());
+        shared_ptr<lispfunc> lfunc(new lispfunc(c->car(), exec_stack.front().env, c2));
+        exec_stack.front().mark = evaled;
+        exec_stack.front().code = lfunc;
     }
     return 0;
 }
