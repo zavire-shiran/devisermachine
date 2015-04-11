@@ -14,6 +14,7 @@ const int SYMBOL_TYPE = 3;
 const int NUMBER_TYPE = 4;
 const int FUNC_TYPE = 5;
 const int CFUNC_TYPE = 6;
+const int MODULE_TYPE = 7;
 
 class lispobj {
 public:
@@ -91,6 +92,27 @@ public:
     virtual int objtype() const;
 
     std::function<shared_ptr<lispobj>(vector<shared_ptr<lispobj> >)> func;
+};
+
+class module : public lispobj {
+public:
+    module(shared_ptr<lispobj> _name);
+    void add_import(shared_ptr<lispobj> modname);
+    void add_export(shared_ptr<symbol> sym);
+    void define(string name, shared_ptr<lispobj> value);
+    void add_init(shared_ptr<lispobj> initblock);
+    shared_ptr<lispobj> get_name() const;
+
+    virtual int objtype() const;
+
+private:
+    // we actually want a map from symbol to module that we get it from
+    // but that's hard because of import all...
+    shared_ptr<lispobj> name;
+    vector< shared_ptr<lispobj> > imports;
+    vector< shared_ptr<symbol> > exports;
+    environment env;
+    vector< shared_ptr<lispobj> > initblocks;
 };
 
 bool eq(shared_ptr<lispobj> left, shared_ptr<lispobj> right);

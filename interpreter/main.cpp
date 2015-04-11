@@ -126,4 +126,5 @@ int main(int /*argc*/, char** /*argv*/)
     read_eval_print("((lambda (x) x) 0)", env);
     read_eval_print("((lambda (x) x) nil)", env);
     read_eval_print("((lambda (x y) (+ x y)) 1 2)", env);
+    read_eval_print("(module (test asdf) (define a 1) (import (test one)) (export a) (init (+ 1 1)))", env);
 }

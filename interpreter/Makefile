@@ -1,4 +1,4 @@
-CC := g++ -g
+CC := g++ -g -Wall -Wextra
 CCFLAGS := -std=c++0x
 LD := g++
 LDFLAGS :=

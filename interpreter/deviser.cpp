@@ -78,6 +78,36 @@ int cfunc::objtype() const {
     return CFUNC_TYPE;
 }
 
+module::module(shared_ptr<lispobj> _name) :
+    name(_name)
+{
+
+}
+
+void module::add_import(shared_ptr<lispobj> modname) {
+    imports.push_back(modname);
+}
+
+void module::add_export(shared_ptr<symbol> sym) {
+    exports.push_back(sym);
+}
+
+void module::define(string name, shared_ptr<lispobj> value) {
+    env.define(name, value);
+}
+
+void module::add_init(shared_ptr<lispobj> initblock) {
+    initblocks.push_back(initblock);
+}
+
+shared_ptr<lispobj> module::get_name() const {
+    return name;
+}
+
+int module::objtype() const {
+    return MODULE_TYPE;
+}
+
 bool eq(shared_ptr<lispobj> left, shared_ptr<lispobj> right) {
     if(left == right) return true;
     if(left->objtype() != right->objtype()) return false;
@@ -173,6 +203,9 @@ void print(shared_ptr<lispobj> obj) {
         break;
     case CFUNC_TYPE:
         cout << "CFUNC";
+        break;
+    case MODULE_TYPE:
+        cout << "Module";
         break;
     };
 }
@@ -378,9 +411,77 @@ bool is_special_form(shared_ptr<lispobj> form) {
             return true;
         } else if(sym->name() == "lambda") {
             return true;
+        } else if(sym->name() == "module") {
+            return true;
         }
     }
     return false;
+}
+
+int add_import_to_module(shared_ptr<module> mod, shared_ptr<lispobj> importdecl) {
+    if(importdecl->objtype() != CONS_TYPE) {
+        return 1;
+    }
+
+    shared_ptr<cons> c = std::dynamic_pointer_cast<cons>(importdecl);
+    if(c->cdr()->objtype() != NIL_TYPE) {
+        cout << "too many arguments to import" << endl;
+        return 1;
+    }
+
+    mod->add_import(c->car());
+    return 0;
+}
+
+int add_export_to_module(shared_ptr<module> mod, shared_ptr<lispobj> exportdecl) {
+    if(exportdecl->objtype() != CONS_TYPE) {
+        cout << "nothing to export" << endl;
+        return 1;
+    }
+
+    while(exportdecl->objtype() == CONS_TYPE) {
+        shared_ptr<cons> c = std::dynamic_pointer_cast<cons>(exportdecl);
+        if(c->car()->objtype() != SYMBOL_TYPE) {
+            cout << "non-symbol in export list" << endl;
+            return 1;
+        }
+
+        mod->add_export(std::dynamic_pointer_cast<symbol>(c->car()));
+
+        exportdecl = c->cdr();
+    }
+
+    return 0;
+}
+
+int add_define_to_module(shared_ptr<module> mod,
+                         shared_ptr<lispobj> definedecl,
+                         shared_ptr<environment> env) {
+    if(definedecl->objtype() != CONS_TYPE) {
+        return 1;
+    }
+
+    shared_ptr<cons> c = std::dynamic_pointer_cast<cons>(definedecl);
+    if(c->car()->objtype() != SYMBOL_TYPE){
+        return 1;
+    }
+
+    shared_ptr<symbol> defname = std::dynamic_pointer_cast<symbol>(c->car());
+
+    if(c->cdr()->objtype() != CONS_TYPE) {
+        return 1;
+    }
+
+    c = std::dynamic_pointer_cast<cons>(c->cdr());
+    shared_ptr<lispobj> val = eval(c->car(), env);
+    if(val) {
+        mod->define(defname->name(), val);
+    } else {
+        cout << "error evaluating define for module" << endl;
+        return 1;
+    }
+
+    return 0;
 }
 
 int eval_special_form(string name, std::deque<stackframe>& exec_stack) {
@@ -441,6 +542,66 @@ int eval_special_form(string name, std::deque<stackframe>& exec_stack) {
         shared_ptr<lispfunc> lfunc(new lispfunc(c->car(), exec_stack.front().env, c2));
         exec_stack.front().mark = evaled;
         exec_stack.front().code = lfunc;
+    } else if(name == "module") {
+        if(exec_stack.front().code->objtype() != CONS_TYPE) {
+            cout << "module does not have name" << endl;
+            return 1;
+        }
+        shared_ptr<lispobj> lobj;
+        shared_ptr<cons> c = std::dynamic_pointer_cast<cons>(exec_stack.front().code);
+        shared_ptr<module> m(new module(c->car()));
+
+        lobj = c->cdr();
+        while(lobj->objtype() == CONS_TYPE) {
+            c = std::dynamic_pointer_cast<cons>(lobj);
+
+            if(c->car()->objtype() != CONS_TYPE) {
+                cout << "invalid module declaration:";
+                print(c);
+                cout << endl;
+                return 1;
+            }
+
+            shared_ptr<cons> decl = std::dynamic_pointer_cast<cons>(c->car());
+
+            if(decl->car()->objtype() != SYMBOL_TYPE) {
+                cout << "invalid module declaration:";
+                print(c);
+                cout << endl;
+                return 1;
+            }
+
+            shared_ptr<symbol> s = std::dynamic_pointer_cast<symbol>(decl->car());
+            if(s->name() == "import") {
+                if(add_import_to_module(m, decl->cdr())) {
+                    cout << "invalid import declaration: ";
+                    print(decl);
+                    cout << endl;
+                    return 1;
+                }
+            } else if(s->name() == "export") {
+                if(add_export_to_module(m, decl->cdr())) {
+                    cout << "invalid export declaration: ";
+                    print(decl);
+                    cout << endl;
+                    return 1;
+                }
+            } else if(s->name() == "define") {
+                if(add_define_to_module(m, decl->cdr(), exec_stack.front().env)) {
+                    cout << "invalid define declaration: ";
+                    print (decl);
+                    cout << endl;
+                    return 1;
+                }
+            } else if(s->name() == "init") {
+                m->add_init(decl->cdr());
+            }
+
+            lobj = c->cdr();
+        }
+
+        exec_stack.front().mark = evaled;
+        exec_stack.front().code = m;
     }
     return 0;
 }
