@@ -79,7 +79,8 @@ int cfunc::objtype() const {
 }
 
 module::module(shared_ptr<lispobj> _name) :
-    name(_name)
+    name(_name),
+    env(new environment())
 {
 
 }
@@ -93,7 +94,7 @@ void module::add_export(shared_ptr<symbol> sym) {
 }
 
 void module::define(string name, shared_ptr<lispobj> value) {
-    env.define(name, value);
+    env->define(name, value);
 }
 
 void module::add_init(shared_ptr<lispobj> initblock) {
@@ -104,8 +105,24 @@ shared_ptr<lispobj> module::get_name() const {
     return name;
 }
 
+shared_ptr<environment> module::get_env() const {
+    return env;
+}
+
 int module::objtype() const {
     return MODULE_TYPE;
+}
+
+const vector< shared_ptr<lispobj> >& module::get_imports() const {
+    return imports;
+}
+
+const vector< shared_ptr<symbol> >& module::get_exports() const {
+    return exports;
+}
+
+const vector< shared_ptr<lispobj> >& module::get_initblocks() const {
+    return initblocks;
 }
 
 bool eq(shared_ptr<lispobj> left, shared_ptr<lispobj> right) {
@@ -205,8 +222,31 @@ void print(shared_ptr<lispobj> obj) {
         cout << "CFUNC";
         break;
     case MODULE_TYPE:
-        cout << "Module";
+    {
+        shared_ptr<module> mod = std::dynamic_pointer_cast<module>(obj);
+        cout << "(module ";
+        print(mod->get_name());
+        cout << " (imports ";
+        auto imports = mod->get_imports();
+        for(auto import = imports.begin(); import != imports.end(); ++import) {
+            print(*import) ;
+            cout << " ";
+        }
+        cout << ") (exports ";
+        auto exports = mod->get_exports();
+        for(auto exprt = exports.begin(); exprt != exports.end(); ++exprt) {
+            print(*exprt);
+            cout << " ";
+        }
+        cout << ") (init ";
+        auto inits = mod->get_initblocks();
+        for(auto init = inits.begin(); init != inits.end(); ++init) {
+            print(*init);
+            cout  << " ";
+        }
+        cout << "))";
         break;
+    }
     };
 }
 

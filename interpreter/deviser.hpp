@@ -102,6 +102,11 @@ public:
     void define(string name, shared_ptr<lispobj> value);
     void add_init(shared_ptr<lispobj> initblock);
     shared_ptr<lispobj> get_name() const;
+    shared_ptr<environment> get_env() const;
+
+    const vector< shared_ptr<lispobj> >& get_imports() const;
+    const vector< shared_ptr<symbol> >& get_exports() const;
+    const vector< shared_ptr<lispobj> >& get_initblocks() const;
 
     virtual int objtype() const;
 
@@ -111,7 +116,7 @@ private:
     shared_ptr<lispobj> name;
     vector< shared_ptr<lispobj> > imports;
     vector< shared_ptr<symbol> > exports;
-    environment env;
+    shared_ptr<environment> env;
     vector< shared_ptr<lispobj> > initblocks;
 };
 
