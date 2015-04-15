@@ -244,7 +244,9 @@ void print(shared_ptr<lispobj> obj) {
             print(*init);
             cout  << " ";
         }
-        cout << "))";
+        cout << ") ";
+        mod->get_env()->dump();
+        cout << ")";
         break;
     }
     };
@@ -358,11 +360,15 @@ shared_ptr<lispobj> environment::get(string name) {
 
 void environment::dump() {
     for(auto it = bindings.begin(); it != bindings.end(); ++it) {
-        cout << it->first << ": " << it->second << endl;
+        cout << it->first << ": ";
+        print(it->second);
+        cout<< endl;
     }
 
-    cout << "parent env:" << endl;
-    parent->dump();
+    if(parent) {
+        cout << "parent env:" << endl;
+        parent->dump();
+    }
 }
 
 class stackframe {
