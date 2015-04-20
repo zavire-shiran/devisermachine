@@ -228,20 +228,20 @@ void print(shared_ptr<lispobj> obj) {
         print(mod->get_name());
         cout << " (imports ";
         auto imports = mod->get_imports();
-        for(auto import = imports.begin(); import != imports.end(); ++import) {
-            print(*import) ;
+        for(auto import : imports) {
+            print(import) ;
             cout << " ";
         }
         cout << ") (exports ";
         auto exports = mod->get_exports();
-        for(auto exprt = exports.begin(); exprt != exports.end(); ++exprt) {
-            print(*exprt);
+        for(auto exprt : exports) {
+            print(exprt);
             cout << " ";
         }
         cout << ") (init ";
         auto inits = mod->get_initblocks();
-        for(auto init = inits.begin(); init != inits.end(); ++init) {
-            print(*init);
+        for(auto init : inits) {
+            print(init);
             cout  << " ";
         }
         cout << ") ";
@@ -459,6 +459,8 @@ bool is_special_form(shared_ptr<lispobj> form) {
             return true;
         } else if(sym->name() == "module") {
             return true;
+        } else if(sym->name() == "import") {
+            return true;
         }
     }
     return false;
@@ -530,48 +532,118 @@ int add_define_to_module(shared_ptr<module> mod,
     return 0;
 }
 
-int eval_special_form(string name, std::deque<stackframe>& exec_stack) {
-    if(name == "if") {
-        if(exec_stack.front().evaled_args.size() == 1) {
-            shared_ptr<lispobj> lobj = exec_stack.front().code;
-            if(lobj->objtype() != CONS_TYPE) {
-                print(lobj);
-                cout << " if has no condition" << endl;
+int eval_module_special_form(std::deque<stackframe>& exec_stack) {
+    if(exec_stack.front().code->objtype() != CONS_TYPE) {
+        cout << "module does not have name" << endl;
+        return 1;
+    }
+    shared_ptr<lispobj> lobj;
+    shared_ptr<cons> c = std::dynamic_pointer_cast<cons>(exec_stack.front().code);
+    shared_ptr<module> m(new module(c->car()));
+
+    lobj = c->cdr();
+    while(lobj->objtype() == CONS_TYPE) {
+        c = std::dynamic_pointer_cast<cons>(lobj);
+
+        if(c->car()->objtype() != CONS_TYPE) {
+            cout << "invalid module declaration:";
+            print(c);
+            cout << endl;
+            return 1;
+        }
+
+        shared_ptr<cons> decl = std::dynamic_pointer_cast<cons>(c->car());
+
+        if(decl->car()->objtype() != SYMBOL_TYPE) {
+            cout << "invalid module declaration:";
+            print(c);
+            cout << endl;
+            return 1;
+        }
+
+        shared_ptr<symbol> s = std::dynamic_pointer_cast<symbol>(decl->car());
+        if(s->name() == "import") {
+            if(add_import_to_module(m, decl->cdr())) {
+                cout << "invalid import declaration: ";
+                print(decl);
+                cout << endl;
                 return 1;
             }
-            shared_ptr<cons> c = std::dynamic_pointer_cast<cons>(lobj);
-            exec_stack.front().code = c->cdr();
-            exec_stack.push_front(stackframe(exec_stack.front().env,
-                                             evaluating,
-                                             c->car()));
-        } else if(exec_stack.front().evaled_args.size() == 2) {
-            if(exec_stack.front().evaled_args[1]->objtype() == NIL_TYPE) {
-                if(exec_stack.front().code->objtype() != CONS_TYPE) {
-                    cout << "if has no true branch" << endl;
-                    return 1;
-                }
-                shared_ptr<cons> c = std::dynamic_pointer_cast<cons>(exec_stack.front().code);
-                if(c->cdr()->objtype() != CONS_TYPE) {
-                    exec_stack.front().mark = evaled;
-                    exec_stack.front().code = std::make_shared<nil>();
-                    exec_stack.front().evaled_args.clear();
-                } else {
-                    shared_ptr<cons> c2 = std::dynamic_pointer_cast<cons>(c->cdr());
-                    exec_stack.front().mark = evaluating;
-                    exec_stack.front().code = c2->car();
-                    exec_stack.front().evaled_args.clear();
-                }
+        } else if(s->name() == "export") {
+            if(add_export_to_module(m, decl->cdr())) {
+                cout << "invalid export declaration: ";
+                print(decl);
+                cout << endl;
+                return 1;
+            }
+        } else if(s->name() == "define") {
+            if(add_define_to_module(m, decl->cdr(), exec_stack.front().env)) {
+                cout << "invalid define declaration: ";
+                print (decl);
+                cout << endl;
+                return 1;
+            }
+        } else if(s->name() == "init") {
+            m->add_init(decl->cdr());
+        }
+
+        lobj = c->cdr();
+    }
+
+    exec_stack.front().mark = evaled;
+    exec_stack.front().code = m;
+
+    return 0;
+}
+
+int eval_if_special_form(std::deque<stackframe>& exec_stack) {
+    if(exec_stack.front().evaled_args.size() == 1) {
+        shared_ptr<lispobj> lobj = exec_stack.front().code;
+        if(lobj->objtype() != CONS_TYPE) {
+            print(lobj);
+            cout << " if has no condition" << endl;
+            return 1;
+        }
+        shared_ptr<cons> c = std::dynamic_pointer_cast<cons>(lobj);
+        exec_stack.front().code = c->cdr();
+        exec_stack.push_front(stackframe(exec_stack.front().env,
+                                         evaluating,
+                                         c->car()));
+    } else if(exec_stack.front().evaled_args.size() == 2) {
+        if(exec_stack.front().evaled_args[1]->objtype() == NIL_TYPE) {
+            if(exec_stack.front().code->objtype() != CONS_TYPE) {
+                cout << "if has no true branch" << endl;
+                return 1;
+            }
+            shared_ptr<cons> c = std::dynamic_pointer_cast<cons>(exec_stack.front().code);
+            if(c->cdr()->objtype() != CONS_TYPE) {
+                exec_stack.front().mark = evaled;
+                exec_stack.front().code = std::make_shared<nil>();
+                exec_stack.front().evaled_args.clear();
             } else {
-                if(exec_stack.front().code->objtype() != CONS_TYPE) {
-                    cout << "if has no true branch" << endl;
-                    return 1;
-                }
-                shared_ptr<cons> c = std::dynamic_pointer_cast<cons>(exec_stack.front().code);
+                shared_ptr<cons> c2 = std::dynamic_pointer_cast<cons>(c->cdr());
                 exec_stack.front().mark = evaluating;
-                exec_stack.front().code = c->car();
+                exec_stack.front().code = c2->car();
                 exec_stack.front().evaled_args.clear();
             }
+        } else {
+            if(exec_stack.front().code->objtype() != CONS_TYPE) {
+                cout << "if has no true branch" << endl;
+                return 1;
+            }
+            shared_ptr<cons> c = std::dynamic_pointer_cast<cons>(exec_stack.front().code);
+            exec_stack.front().mark = evaluating;
+            exec_stack.front().code = c->car();
+            exec_stack.front().evaled_args.clear();
         }
+    }
+
+    return 0;
+}
+
+int eval_special_form(string name, std::deque<stackframe>& exec_stack) {
+    if(name == "if") {
+        return eval_if_special_form(exec_stack);
     } else if(name == "lambda") {
         shared_ptr<lispobj> lobj = exec_stack.front().code;
         if(lobj->objtype() != CONS_TYPE) {
@@ -589,65 +661,9 @@ int eval_special_form(string name, std::deque<stackframe>& exec_stack) {
         exec_stack.front().mark = evaled;
         exec_stack.front().code = lfunc;
     } else if(name == "module") {
-        if(exec_stack.front().code->objtype() != CONS_TYPE) {
-            cout << "module does not have name" << endl;
-            return 1;
-        }
-        shared_ptr<lispobj> lobj;
-        shared_ptr<cons> c = std::dynamic_pointer_cast<cons>(exec_stack.front().code);
-        shared_ptr<module> m(new module(c->car()));
+        return eval_module_special_form(exec_stack);
+    } else if(name == "import") {
 
-        lobj = c->cdr();
-        while(lobj->objtype() == CONS_TYPE) {
-            c = std::dynamic_pointer_cast<cons>(lobj);
-
-            if(c->car()->objtype() != CONS_TYPE) {
-                cout << "invalid module declaration:";
-                print(c);
-                cout << endl;
-                return 1;
-            }
-
-            shared_ptr<cons> decl = std::dynamic_pointer_cast<cons>(c->car());
-
-            if(decl->car()->objtype() != SYMBOL_TYPE) {
-                cout << "invalid module declaration:";
-                print(c);
-                cout << endl;
-                return 1;
-            }
-
-            shared_ptr<symbol> s = std::dynamic_pointer_cast<symbol>(decl->car());
-            if(s->name() == "import") {
-                if(add_import_to_module(m, decl->cdr())) {
-                    cout << "invalid import declaration: ";
-                    print(decl);
-                    cout << endl;
-                    return 1;
-                }
-            } else if(s->name() == "export") {
-                if(add_export_to_module(m, decl->cdr())) {
-                    cout << "invalid export declaration: ";
-                    print(decl);
-                    cout << endl;
-                    return 1;
-                }
-            } else if(s->name() == "define") {
-                if(add_define_to_module(m, decl->cdr(), exec_stack.front().env)) {
-                    cout << "invalid define declaration: ";
-                    print (decl);
-                    cout << endl;
-                    return 1;
-                }
-            } else if(s->name() == "init") {
-                m->add_init(decl->cdr());
-            }
-
-            lobj = c->cdr();
-        }
-
-        exec_stack.front().mark = evaled;
-        exec_stack.front().code = m;
     }
     return 0;
 }
