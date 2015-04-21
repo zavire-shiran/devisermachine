@@ -55,7 +55,7 @@ int number::value() const {
 }
 
 lispfunc::lispfunc(shared_ptr<lispobj> _args,
-                   shared_ptr<environment> _closure,
+                   shared_ptr<lexicalscope> _closure,
                    shared_ptr<lispobj> _code) :
     args(_args),
     closure(_closure),
@@ -78,9 +78,10 @@ int cfunc::objtype() const {
     return CFUNC_TYPE;
 }
 
-module::module(shared_ptr<lispobj> _name) :
+module::module(shared_ptr<lispobj> _name, shared_ptr<environment> env) :
     name(_name),
-    env(new environment())
+    scope(new lexicalscope(env)),
+    inited(false)
 {
 
 }
@@ -94,7 +95,7 @@ void module::add_export(shared_ptr<symbol> sym) {
 }
 
 void module::define(string name, shared_ptr<lispobj> value) {
-    env->define(name, value);
+    scope->define(name, value);
 }
 
 void module::add_init(shared_ptr<lispobj> initblock) {
@@ -105,12 +106,23 @@ shared_ptr<lispobj> module::get_name() const {
     return name;
 }
 
-shared_ptr<environment> module::get_env() const {
-    return env;
+shared_ptr<lexicalscope> module::get_bindings() const {
+    return scope;
 }
 
 int module::objtype() const {
     return MODULE_TYPE;
+}
+
+void module::init(shared_ptr<environment> env) {
+    if(inited) {
+        return;
+    }
+
+    //init imports, adding them to module environment
+    //run all of the init blocks
+
+    inited = true;
 }
 
 const vector< shared_ptr<lispobj> >& module::get_imports() const {
@@ -245,7 +257,7 @@ void print(shared_ptr<lispobj> obj) {
             cout  << " ";
         }
         cout << ") ";
-        mod->get_env()->dump();
+        mod->get_bindings()->dump();
         cout << ")";
         break;
     }
@@ -312,53 +324,87 @@ shared_ptr<lispobj> read(string str) {
 }
 
 environment::environment() :
-    parent(nullptr)
+    scope(nullptr)
 {
 
 }
 
-environment::environment(shared_ptr<environment> env) :
-    parent(env)
+shared_ptr<lexicalscope> environment::get_scope() {
+    return scope;
+}
+
+void environment::set_scope(shared_ptr<lexicalscope> s) {
+    scope = s;
+}
+
+lexicalscope::lexicalscope(shared_ptr<environment> e) :
+    parent(nullptr),
+    env(e)
 {
 
 }
 
-void environment::define(string name, shared_ptr<lispobj> value) {
+lexicalscope::lexicalscope(shared_ptr<environment> e, shared_ptr<lexicalscope> p) :
+    parent(p),
+    env(e)
+{
+
+}
+
+void lexicalscope::define(string name, shared_ptr<lispobj> value) {
     // shadow any bindings in parent scopes, but don't modify them.
     // maybe should error when name already exists
     bindings[name] = value;
 }
 
-void environment::set(string name, shared_ptr<lispobj> value) {
+void lexicalscope::set(string name, shared_ptr<lispobj> value) {
     // try to find a variable binding. if it already exists,
-    // set it in the same environment that we found it
-    shared_ptr<environment> env = shared_ptr<environment>(this);
-    while(env != nullptr) {
-        auto iter = env->bindings.find(name);
-        if(iter != env->bindings.end()) {
+    // set it in the same lexicalscope that we found it
+    shared_ptr<lexicalscope> scope = shared_ptr<lexicalscope>(this);
+    while(scope != nullptr) {
+        auto iter = scope->bindings.find(name);
+        if(iter != scope->bindings.end()) {
             iter->second = value;
             return;
         }
-        env = env->parent;
+        scope = scope->parent;
     }
 
     // it has not been set yet, so set it in the current frame
     bindings[name] = value;
 }
 
-shared_ptr<lispobj> environment::get(string name) {
+shared_ptr<lispobj> lexicalscope::get(string name) {
     auto it = bindings.find(name);
     if(it != bindings.end()) {
         return it->second;
-    } else if(parent) {
-        return parent->get(name);
     } else {
-        //XXX: should probably be undefined or error
-        return std::make_shared<nil>();
+        for(shared_ptr<module> mod : imports) {
+            for(shared_ptr<symbol> sym : mod->get_exports()) {
+                if(sym->name() == name) {
+                    return mod->get_bindings()->get(name);
+                }
+            }
+        }
+
+        if(parent) {
+            return parent->get(name);
+        } else {
+            //XXX: should probably be undefined or error
+            return std::make_shared<nil>();
+        }
     }
 }
 
-void environment::dump() {
+void lexicalscope::add_import(shared_ptr<module> mod) {
+    imports.push_back(mod);
+}
+
+const vector< shared_ptr<module> >& lexicalscope::get_imports() const {
+    return imports;
+}
+
+void lexicalscope::dump() {
     for(auto it = bindings.begin(); it != bindings.end(); ++it) {
         cout << it->first << ": ";
         print(it->second);
@@ -366,20 +412,20 @@ void environment::dump() {
     }
 
     if(parent) {
-        cout << "parent env:" << endl;
+        cout << "parent lexicalscope:" << endl;
         parent->dump();
     }
 }
 
 class stackframe {
 public:
-    stackframe(shared_ptr<environment> e, int m, shared_ptr<lispobj> c) :
-        env(e),
+    stackframe(shared_ptr<lexicalscope> s, int m, shared_ptr<lispobj> c) :
+        scope(s),
         mark(m),
         code(c)
     {}
 
-    shared_ptr<environment> env;
+    shared_ptr<lexicalscope> scope;
     int mark;
     shared_ptr<lispobj> code;
     vector<shared_ptr<lispobj> > evaled_args;
@@ -407,11 +453,11 @@ void print_stack(const std::deque<stackframe> exec_stack) {
     }
 }
 
-int apply_lispfunc(std::deque<stackframe>& exec_stack) {
+int apply_lispfunc(std::deque<stackframe>& exec_stack, shared_ptr<environment> env) {
     auto evaled_args = exec_stack.front().evaled_args;
     shared_ptr<lispfunc> func = std::dynamic_pointer_cast<lispfunc>(evaled_args.front());
     evaled_args.erase(evaled_args.begin());
-    shared_ptr<environment> env(new environment(func->closure));
+    shared_ptr<lexicalscope> scope(new lexicalscope(env, func->closure));
 
     auto arg_value_iter = evaled_args.begin();
     shared_ptr<lispobj> arg_names = func->args;
@@ -421,7 +467,7 @@ int apply_lispfunc(std::deque<stackframe>& exec_stack) {
         shared_ptr<lispobj> name = c->car();
         if(name->objtype() == SYMBOL_TYPE) {
             shared_ptr<symbol> s = std::dynamic_pointer_cast<symbol>(name);
-            env->define(s->name(), *arg_value_iter);
+            scope->define(s->name(), *arg_value_iter);
         } else {
             cout << "ERROR: arguments must be symbols" << endl;
             return 1;
@@ -445,7 +491,7 @@ int apply_lispfunc(std::deque<stackframe>& exec_stack) {
     }
 
     exec_stack.front().mark = applying;
-    exec_stack.front().env = env;
+    exec_stack.front().scope = scope;
     exec_stack.front().code = func->code;
     return 0;
 }
@@ -504,6 +550,7 @@ int add_export_to_module(shared_ptr<module> mod, shared_ptr<lispobj> exportdecl)
 
 int add_define_to_module(shared_ptr<module> mod,
                          shared_ptr<lispobj> definedecl,
+                         shared_ptr<lexicalscope> scope,
                          shared_ptr<environment> env) {
     if(definedecl->objtype() != CONS_TYPE) {
         return 1;
@@ -521,7 +568,7 @@ int add_define_to_module(shared_ptr<module> mod,
     }
 
     c = std::dynamic_pointer_cast<cons>(c->cdr());
-    shared_ptr<lispobj> val = eval(c->car(), env);
+    shared_ptr<lispobj> val = eval(c->car(), scope, env);
     if(val) {
         mod->define(defname->name(), val);
     } else {
@@ -532,14 +579,15 @@ int add_define_to_module(shared_ptr<module> mod,
     return 0;
 }
 
-int eval_module_special_form(std::deque<stackframe>& exec_stack) {
+int eval_module_special_form(std::deque<stackframe>& exec_stack,
+                             shared_ptr<environment> env) {
     if(exec_stack.front().code->objtype() != CONS_TYPE) {
         cout << "module does not have name" << endl;
         return 1;
     }
     shared_ptr<lispobj> lobj;
     shared_ptr<cons> c = std::dynamic_pointer_cast<cons>(exec_stack.front().code);
-    shared_ptr<module> m(new module(c->car()));
+    shared_ptr<module> m(new module(c->car(), env));
 
     lobj = c->cdr();
     while(lobj->objtype() == CONS_TYPE) {
@@ -577,7 +625,7 @@ int eval_module_special_form(std::deque<stackframe>& exec_stack) {
                 return 1;
             }
         } else if(s->name() == "define") {
-            if(add_define_to_module(m, decl->cdr(), exec_stack.front().env)) {
+            if(add_define_to_module(m, decl->cdr(), exec_stack.front().scope, env)) {
                 cout << "invalid define declaration: ";
                 print (decl);
                 cout << endl;
@@ -606,7 +654,7 @@ int eval_if_special_form(std::deque<stackframe>& exec_stack) {
         }
         shared_ptr<cons> c = std::dynamic_pointer_cast<cons>(lobj);
         exec_stack.front().code = c->cdr();
-        exec_stack.push_front(stackframe(exec_stack.front().env,
+        exec_stack.push_front(stackframe(exec_stack.front().scope,
                                          evaluating,
                                          c->car()));
     } else if(exec_stack.front().evaled_args.size() == 2) {
@@ -641,7 +689,9 @@ int eval_if_special_form(std::deque<stackframe>& exec_stack) {
     return 0;
 }
 
-int eval_special_form(string name, std::deque<stackframe>& exec_stack) {
+int eval_special_form(string name,
+                      std::deque<stackframe>& exec_stack,
+                      shared_ptr<environment> env) {
     if(name == "if") {
         return eval_if_special_form(exec_stack);
     } else if(name == "lambda") {
@@ -657,22 +707,24 @@ int eval_special_form(string name, std::deque<stackframe>& exec_stack) {
             return 1;
         }
         shared_ptr<cons> c2 = std::dynamic_pointer_cast<cons>(c->cdr());
-        shared_ptr<lispfunc> lfunc(new lispfunc(c->car(), exec_stack.front().env, c2));
+        shared_ptr<lispfunc> lfunc(new lispfunc(c->car(), exec_stack.front().scope, c2));
         exec_stack.front().mark = evaled;
         exec_stack.front().code = lfunc;
     } else if(name == "module") {
-        return eval_module_special_form(exec_stack);
+        return eval_module_special_form(exec_stack, env);
     } else if(name == "import") {
 
     }
     return 0;
 }
 
-shared_ptr<lispobj> eval(shared_ptr<lispobj> code, shared_ptr<environment> tle) {
+shared_ptr<lispobj> eval(shared_ptr<lispobj> code,
+                         shared_ptr<lexicalscope> tls,
+                         shared_ptr<environment> env) {
     std::deque<stackframe> exec_stack;
     shared_ptr<lispobj> nil_obj(new nil());
 
-    exec_stack.push_front(stackframe(tle, evaluating, code));
+    exec_stack.push_front(stackframe(tls, evaluating, code));
 
     while(exec_stack.size() > 1 || exec_stack.front().mark != evaled) {
         //print_stack(exec_stack);
@@ -697,7 +749,7 @@ shared_ptr<lispobj> eval(shared_ptr<lispobj> code, shared_ptr<environment> tle) 
                 shared_ptr<cons> c = std::dynamic_pointer_cast<cons>(exec_stack.front().code);
                 shared_ptr<lispobj> next_statement = c->car();
                 exec_stack.front().code = c->cdr();
-                exec_stack.push_front(stackframe(exec_stack.front().env,
+                exec_stack.push_front(stackframe(exec_stack.front().scope,
                                                  evaluating,
                                                  next_statement));
             } else {
@@ -716,7 +768,7 @@ shared_ptr<lispobj> eval(shared_ptr<lispobj> code, shared_ptr<environment> tle) 
                     exec_stack.front().code = c->cdr();
                 } else {
                     exec_stack.front().code = c->cdr();
-                    exec_stack.push_front(stackframe(exec_stack.front().env,
+                    exec_stack.push_front(stackframe(exec_stack.front().scope,
                                                      evaluating,
                                                      c->car()));
                 }
@@ -726,7 +778,7 @@ shared_ptr<lispobj> eval(shared_ptr<lispobj> code, shared_ptr<environment> tle) 
                     cout << "ERROR: empty function application" << endl;
                     return nullptr;
                 } else if(evaled_args.front()->objtype() == FUNC_TYPE) {
-                    if(apply_lispfunc(exec_stack) != 0) {
+                    if(apply_lispfunc(exec_stack, env) != 0) {
                         return nullptr;
                     }
                 } else if(evaled_args.front()->objtype() == CFUNC_TYPE) {
@@ -747,7 +799,7 @@ shared_ptr<lispobj> eval(shared_ptr<lispobj> code, shared_ptr<environment> tle) 
                 if(s->name() == "nil") {
                     exec_stack.front().code = nil_obj;
                 } else {
-                    exec_stack.front().code = exec_stack.front().env->get(s->name());
+                    exec_stack.front().code = exec_stack.front().scope->get(s->name());
                 }
                 //cout << "getting var " << s->name() << ": ";
                 //print(exec_stack.front().code); cout << endl;
@@ -762,7 +814,7 @@ shared_ptr<lispobj> eval(shared_ptr<lispobj> code, shared_ptr<environment> tle) 
                 return nullptr;
             }
             shared_ptr<symbol> sym = std::dynamic_pointer_cast<symbol>(list_head);
-            if(eval_special_form(sym->name(), exec_stack) != 0) {
+            if(eval_special_form(sym->name(), exec_stack, env) != 0) {
                 return nullptr;
             }
         } else {
@@ -860,9 +912,10 @@ shared_ptr<lispobj> divide(vector<shared_ptr<lispobj> > args) {
 
 shared_ptr<environment> make_standard_env() {
     shared_ptr<environment> env(new environment());
-    env->define("+", std::make_shared<cfunc>(cfunc(plus)));
-    env->define("-", std::make_shared<cfunc>(cfunc(minus)));
-    env->define("*", std::make_shared<cfunc>(cfunc(multiply)));
-    env->define("/", std::make_shared<cfunc>(cfunc(divide)));
+    env->set_scope(std::make_shared<lexicalscope>(env));
+    env->get_scope()->define("+", std::make_shared<cfunc>(cfunc(plus)));
+    env->get_scope()->define("-", std::make_shared<cfunc>(cfunc(minus)));
+    env->get_scope()->define("*", std::make_shared<cfunc>(cfunc(multiply)));
+    env->get_scope()->define("/", std::make_shared<cfunc>(cfunc(divide)));
     return env;
 }
