@@ -114,15 +114,29 @@ int module::objtype() const {
     return MODULE_TYPE;
 }
 
-void module::init(shared_ptr<environment> env) {
+bool module::init(shared_ptr<environment> env) {
     if(inited) {
-        return;
+        return true;;
     }
 
-    //init imports, adding them to module environment
-    //run all of the init blocks
+    for(auto imp : imports) {
+        shared_ptr<module> mod = env->get_module_by_prefix(imp);
+        mod->init(env);
+        scope->add_import(mod);
+    }
+
+    // it would be good if this could go on the stack of the currently running eval
+    // but that's ~*~hard~*~, and this is easy
+    for(auto initblock : initblocks) {
+        shared_ptr<lexicalscope> initscope(new lexicalscope(env, scope));
+        if(eval(std::make_shared<cons>(std::make_shared<symbol>("begin"), initblock),
+                initscope, env) == nullptr) {
+            return false;
+        }
+    }
 
     inited = true;
+    return true;
 }
 
 const vector< shared_ptr<lispobj> >& module::get_imports() const {
@@ -335,6 +349,42 @@ shared_ptr<lexicalscope> environment::get_scope() {
 
 void environment::set_scope(shared_ptr<lexicalscope> s) {
     scope = s;
+}
+
+void environment::add_module_def(shared_ptr<module> m) {
+    modules.push_back(m);
+}
+
+bool prefix_match(shared_ptr<lispobj> name, shared_ptr<lispobj> prefix) {
+    if(prefix->objtype() == NIL_TYPE || eqv(name, prefix)) {
+        return true;
+    }
+
+    if(name->objtype() != prefix->objtype()) {
+        return false;
+    }
+
+    if(name->objtype() == CONS_TYPE) {
+        shared_ptr<cons> name_cons = std::dynamic_pointer_cast<cons>(name);
+        shared_ptr<cons> prefix_cons = std::dynamic_pointer_cast<cons>(prefix);
+        return prefix_match(name_cons->car(), prefix_cons->car()) &&
+            prefix_match(name_cons->cdr(), prefix_cons->cdr());
+    }
+
+    cout << "Invalid type in module name: ";
+    print(name);
+    cout << endl;
+    return false;
+}
+
+shared_ptr<module> environment::get_module_by_prefix(shared_ptr<lispobj> prefix) {
+    for(auto mod : modules) {
+        if(prefix_match(mod->get_name(), prefix)) {
+            return mod;
+        }
+    }
+
+    return nullptr;
 }
 
 lexicalscope::lexicalscope(shared_ptr<environment> e) :
@@ -713,7 +763,18 @@ int eval_special_form(string name,
     } else if(name == "module") {
         return eval_module_special_form(exec_stack, env);
     } else if(name == "import") {
+        shared_ptr<lispobj> lobj = exec_stack.front().code;
+        if(lobj->objtype() != CONS_TYPE) {
+            cout << "import needs more arguments" << endl;
+            return 1;
+        }
 
+        shared_ptr<cons> c = std::dynamic_pointer_cast<cons>(lobj);
+        shared_ptr<module> m = env->get_module_by_prefix(c->car());
+        if(!(m->init(env))) {
+            return 1;
+        }
+        exec_stack.front().scope->add_import(m);
     }
     return 0;
 }

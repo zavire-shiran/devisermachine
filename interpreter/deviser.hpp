@@ -32,9 +32,12 @@ public:
     environment();
     shared_ptr<lexicalscope> get_scope();
     void set_scope(shared_ptr<lexicalscope> s);
+    void add_module_def(shared_ptr<module> m);
+    shared_ptr<module> get_module_by_prefix(shared_ptr<lispobj> prefix);
 
 private:
     shared_ptr<lexicalscope> scope;
+    vector< shared_ptr<module> > modules;
 };
 
 class lexicalscope {
@@ -122,7 +125,7 @@ public:
     void add_init(shared_ptr<lispobj> initblock);
     shared_ptr<lispobj> get_name() const;
     shared_ptr<lexicalscope> get_bindings() const;
-    void init(shared_ptr<environment> env29);
+    bool init(shared_ptr<environment> env);
 
     const vector< shared_ptr<lispobj> >& get_imports() const;
     const vector< shared_ptr<symbol> >& get_exports() const;
