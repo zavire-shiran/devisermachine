@@ -557,6 +557,8 @@ bool is_special_form(shared_ptr<lispobj> form) {
             return true;
         } else if(sym->name() == "import") {
             return true;
+        } else if(sym->name() == "begin") {
+            return true;
         }
     }
     return false;
@@ -775,6 +777,8 @@ int eval_special_form(string name,
             return 1;
         }
         exec_stack.front().scope->add_import(m);
+    } else if(name == "begin") {
+        exec_stack.front().mark = applying;
     }
     return 0;
 }
@@ -792,10 +796,13 @@ shared_ptr<lispobj> eval(shared_ptr<lispobj> code,
         if(exec_stack.front().mark == evaled) {
             shared_ptr<lispobj> c = exec_stack.front().code;
             exec_stack.pop_front();
-            if(exec_stack.front().mark == applying &&
-               exec_stack.front().code->objtype() == NIL_TYPE) {
-                exec_stack.front().mark = evaled;
-                exec_stack.front().code = c;
+            if(exec_stack.front().mark == applying) {
+                if(exec_stack.front().code->objtype() == NIL_TYPE) {
+                    exec_stack.front().mark = evaled;
+                    exec_stack.front().code = c;
+                } else {
+                    //the frame was popped, and nothing else needs doing
+                }
             } else if(exec_stack.front().mark == evaluating ||
                       exec_stack.front().mark == evalspecial) {
                 exec_stack.front().evaled_args.push_back(c);
@@ -804,9 +811,9 @@ shared_ptr<lispobj> eval(shared_ptr<lispobj> code,
                 return nullptr;
             }
         } else if(exec_stack.front().mark == applying) {
-            if(code->objtype() == NIL_TYPE) {
+            if(exec_stack.front().code->objtype() == NIL_TYPE) {
                 exec_stack.front().mark = evaled;
-            } else if(code->objtype() == CONS_TYPE) {
+            } else if(exec_stack.front().code->objtype() == CONS_TYPE) {
                 shared_ptr<cons> c = std::dynamic_pointer_cast<cons>(exec_stack.front().code);
                 shared_ptr<lispobj> next_statement = c->car();
                 exec_stack.front().code = c->cdr();
