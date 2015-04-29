@@ -1,6 +1,8 @@
 #include <memory>
 #include <string>
+#include <istream>
 #include <iostream>
+#include <fstream>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -17,6 +19,25 @@ void read_eval_print(const string& lispstr, shared_ptr<environment> env) {
     cout << "(print (eval (read \"" << lispstr << "\"))) => ";
     print(eval(read(lispstr), env->get_scope(), env));
     cout << endl;
+}
+
+vector< shared_ptr<lispobj> > read_file(string filename) {
+    std::ifstream infile(filename);
+    string file_contents;
+    vector< shared_ptr<lispobj> > ret;
+    if(!infile) {
+        cout << "Couldn't open " << filename << endl;
+        return ret;
+    }
+
+    infile.seekg(0, std::ios::end);
+    file_contents.resize(infile.tellg());
+    infile.seekg(0, std::ios::beg);
+    infile.read(&file_contents[0], file_contents.size());
+
+    ret = readall(file_contents);
+
+    return ret;
 }
 
 void usage() {
@@ -75,6 +96,10 @@ int main(int argc, char** argv)
 
     modules_to_load = find_modules(module_path);
     for(auto mod_file : modules_to_load) {
-        cout << mod_file << endl;
+        if(mod_file.substr(mod_file.size() - 4) == ".dvs") {
+            cout << "Read " << mod_file << endl;
+            vector< shared_ptr<lispobj> > v = read_file(mod_file);
+            printall(v);
+        }
     }
 }

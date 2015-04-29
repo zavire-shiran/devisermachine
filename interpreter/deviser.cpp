@@ -278,6 +278,13 @@ void print(shared_ptr<lispobj> obj) {
     };
 }
 
+void printall(vector< shared_ptr<lispobj> > objs) {
+    for(auto obj : objs) {
+        print(obj);
+        cout << endl;
+    }
+}
+
 shared_ptr<lispobj> make_list(const vector<shared_ptr<lispobj> >& list_values) {
     shared_ptr<lispobj> ret(new nil());
 
