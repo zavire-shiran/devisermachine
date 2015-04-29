@@ -152,6 +152,7 @@ shared_ptr<lispobj> make_list(const vector<shared_ptr<lispobj> >& list_values);
 
 void print(shared_ptr<lispobj> obj);
 shared_ptr<lispobj> read(string str);
+vector< shared_ptr<lispobj> > readall(string str);
 
 shared_ptr<lispobj> eval(shared_ptr<lispobj> code,
                          shared_ptr<lexicalscope> tls,

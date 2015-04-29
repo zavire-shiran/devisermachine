@@ -337,6 +337,19 @@ shared_ptr<lispobj> read(string str) {
     return _read(str);
 }
 
+vector< shared_ptr<lispobj> > readall(string str) {
+    vector< shared_ptr<lispobj> > ret;
+
+    while(!str.empty()) {
+        shared_ptr<lispobj> lobj = _read(str);
+        if(lobj) {
+            ret.push_back(lobj);
+        }
+    }
+
+    return ret;
+}
+
 environment::environment() :
     scope(nullptr)
 {
