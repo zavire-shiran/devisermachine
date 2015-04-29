@@ -99,7 +99,9 @@ int main(int argc, char** argv)
         if(mod_file.substr(mod_file.size() - 4) == ".dvs") {
             cout << "Read " << mod_file << endl;
             vector< shared_ptr<lispobj> > v = read_file(mod_file);
-            printall(v);
+            shared_ptr<lispobj> code(new cons(std::make_shared<symbol>("begin"),
+                                              make_list(v)));
+            eval(code, env->get_scope(), env);
         }
     }
 }

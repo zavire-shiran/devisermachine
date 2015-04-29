@@ -1,3 +1,8 @@
-(def a 1)
-(def b 2)
-(def c 3)
+(module a
+  (define a 1)
+  (define b 2)
+  (define c 3))
+
+(module b
+  (define d 4)
+  (define e 5))
