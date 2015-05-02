@@ -460,7 +460,7 @@ shared_ptr<lispobj> lexicalscope::get(string name) {
         if(parent) {
             return parent->get(name);
         } else {
-            //XXX: should probably be undefined or error
+            //XXX: should be undefined so eval loop can error
             return std::make_shared<nil>();
         }
     }
@@ -578,6 +578,8 @@ bool is_special_form(shared_ptr<lispobj> form) {
         } else if(sym->name() == "import") {
             return true;
         } else if(sym->name() == "begin") {
+            return true;
+        } else if(sym->name() == "define") {
             return true;
         }
     }
@@ -799,6 +801,47 @@ int eval_special_form(string name,
         exec_stack.front().scope->add_import(m);
     } else if(name == "begin") {
         exec_stack.front().mark = applying;
+    } else if(name == "define") {
+        if(exec_stack.front().evaled_args.size() == 1) {
+            //verify syntax and push new frame to evaluate value
+            shared_ptr<lispobj> lobj = exec_stack.front().code;
+            if(lobj->objtype() != CONS_TYPE) {
+                cout << "define needs more arguments" << endl;
+                return 1;
+            }
+
+            shared_ptr<cons> c = std::dynamic_pointer_cast<cons>(lobj);
+            if(c->car()->objtype() != SYMBOL_TYPE) {
+                cout << "define: first argument must be symbol, instead got: ";
+                print(c->car());
+                cout << endl;
+                return 1;
+            }
+            exec_stack.front().evaled_args.push_back(c->car());
+            if(c->cdr()->objtype() != CONS_TYPE) {
+                cout << "define: not enough arguments" << endl;
+                return 1;
+            }
+
+            shared_ptr<cons> c2 = std::dynamic_pointer_cast<cons>(c->cdr());
+            if(c2->cdr()->objtype() != NIL_TYPE) {
+                cout << "define: too many arguments: ";
+                print(c2->cdr());
+                cout << endl;
+                return 1;
+            }
+
+            exec_stack.push_front(stackframe(exec_stack.front().scope,
+                                             evaluating,
+                                             c2->car()));
+        } else {
+            //define variable using evaled value
+            shared_ptr<lispobj> lobj = exec_stack.front().evaled_args[1];
+            shared_ptr<lispobj> value = exec_stack.front().evaled_args[2];
+            shared_ptr<symbol> s = std::dynamic_pointer_cast<symbol>(lobj);
+            exec_stack.front().scope->define(s->name(), value);
+            exec_stack.pop_front();
+        }
     }
     return 0;
 }

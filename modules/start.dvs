@@ -1,3 +1,5 @@
+(define asdf 101)
+
 (module a
   (define a 1)
   (define b 2)
