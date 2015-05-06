@@ -760,6 +760,51 @@ int eval_if_special_form(std::deque<stackframe>& exec_stack) {
     return 0;
 }
 
+int eval_define_special_form(std::deque<stackframe>& exec_stack) {
+    if(exec_stack.front().evaled_args.size() == 1) {
+        //verify syntax and push new frame to evaluate value
+        shared_ptr<lispobj> lobj = exec_stack.front().code;
+        if(lobj->objtype() != CONS_TYPE) {
+            cout << "define needs more arguments" << endl;
+            return 1;
+        }
+
+        shared_ptr<cons> c = dynamic_pointer_cast<cons>(lobj);
+        if(c->car()->objtype() != SYMBOL_TYPE) {
+            cout << "define: first argument must be symbol, instead got: ";
+            print(c->car());
+            cout << endl;
+            return 1;
+        }
+        exec_stack.front().evaled_args.push_back(c->car());
+        if(c->cdr()->objtype() != CONS_TYPE) {
+            cout << "define: not enough arguments" << endl;
+            return 1;
+        }
+
+        shared_ptr<cons> c2 = dynamic_pointer_cast<cons>(c->cdr());
+        if(c2->cdr()->objtype() != NIL_TYPE) {
+            cout << "define: too many arguments: ";
+            print(c2->cdr());
+            cout << endl;
+            return 1;
+        }
+
+        exec_stack.push_front(stackframe(exec_stack.front().scope,
+                                         evaluating,
+                                         c2->car()));
+    } else {
+        //define variable using evaled value
+        shared_ptr<lispobj> lobj = exec_stack.front().evaled_args[1];
+        shared_ptr<lispobj> value = exec_stack.front().evaled_args[2];
+        shared_ptr<symbol> s = dynamic_pointer_cast<symbol>(lobj);
+        exec_stack.front().scope->define(s->name(), value);
+        exec_stack.pop_front();
+    }
+
+    return 0;
+}
+
 int eval_special_form(string name,
                       std::deque<stackframe>& exec_stack,
                       shared_ptr<environment> env) {
@@ -799,46 +844,7 @@ int eval_special_form(string name,
     } else if(name == "begin") {
         exec_stack.front().mark = applying;
     } else if(name == "define") {
-        if(exec_stack.front().evaled_args.size() == 1) {
-            //verify syntax and push new frame to evaluate value
-            shared_ptr<lispobj> lobj = exec_stack.front().code;
-            if(lobj->objtype() != CONS_TYPE) {
-                cout << "define needs more arguments" << endl;
-                return 1;
-            }
-
-            shared_ptr<cons> c = dynamic_pointer_cast<cons>(lobj);
-            if(c->car()->objtype() != SYMBOL_TYPE) {
-                cout << "define: first argument must be symbol, instead got: ";
-                print(c->car());
-                cout << endl;
-                return 1;
-            }
-            exec_stack.front().evaled_args.push_back(c->car());
-            if(c->cdr()->objtype() != CONS_TYPE) {
-                cout << "define: not enough arguments" << endl;
-                return 1;
-            }
-
-            shared_ptr<cons> c2 = dynamic_pointer_cast<cons>(c->cdr());
-            if(c2->cdr()->objtype() != NIL_TYPE) {
-                cout << "define: too many arguments: ";
-                print(c2->cdr());
-                cout << endl;
-                return 1;
-            }
-
-            exec_stack.push_front(stackframe(exec_stack.front().scope,
-                                             evaluating,
-                                             c2->car()));
-        } else {
-            //define variable using evaled value
-            shared_ptr<lispobj> lobj = exec_stack.front().evaled_args[1];
-            shared_ptr<lispobj> value = exec_stack.front().evaled_args[2];
-            shared_ptr<symbol> s = dynamic_pointer_cast<symbol>(lobj);
-            exec_stack.front().scope->define(s->name(), value);
-            exec_stack.pop_front();
-        }
+        eval_define_special_form(exec_stack);
     }
     return 0;
 }
