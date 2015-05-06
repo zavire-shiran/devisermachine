@@ -733,12 +733,13 @@ int eval_if_special_form(std::deque<stackframe>& exec_stack) {
                                          evaluating,
                                          c->car()));
     } else if(exec_stack.front().evaled_args.size() == 2) {
+        if(exec_stack.front().code->objtype() != CONS_TYPE) {
+            cout << "if has no true branch" << endl;
+            return 1;
+        }
+        shared_ptr<cons> c = dynamic_pointer_cast<cons>(exec_stack.front().code);
+
         if(exec_stack.front().evaled_args[1]->objtype() == NIL_TYPE) {
-            if(exec_stack.front().code->objtype() != CONS_TYPE) {
-                cout << "if has no true branch" << endl;
-                return 1;
-            }
-            shared_ptr<cons> c = dynamic_pointer_cast<cons>(exec_stack.front().code);
             if(c->cdr()->objtype() != CONS_TYPE) {
                 exec_stack.front().mark = evaled;
                 exec_stack.front().code = std::make_shared<nil>();
@@ -750,11 +751,6 @@ int eval_if_special_form(std::deque<stackframe>& exec_stack) {
                 exec_stack.front().evaled_args.clear();
             }
         } else {
-            if(exec_stack.front().code->objtype() != CONS_TYPE) {
-                cout << "if has no true branch" << endl;
-                return 1;
-            }
-            shared_ptr<cons> c = dynamic_pointer_cast<cons>(exec_stack.front().code);
             exec_stack.front().mark = evaluating;
             exec_stack.front().code = c->car();
             exec_stack.front().evaled_args.clear();
