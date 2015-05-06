@@ -1004,7 +1004,7 @@ shared_ptr<lispobj> multiply(vector<shared_ptr<lispobj> > args) {
     int product = 1;
     for(auto obj : args) {
         if(obj->objtype() != NUMBER_TYPE) {
-            cout << "plus requires numbers" << endl;
+            cout << "multiply requires numbers" << endl;
             return nullptr;
         }
         shared_ptr<number> n = dynamic_pointer_cast<number>(obj);
