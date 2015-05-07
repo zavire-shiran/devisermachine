@@ -8,3 +8,6 @@
 (module b
   (define d 4)
   (define e 5))
+
+(print (quote hi))
+(newline)

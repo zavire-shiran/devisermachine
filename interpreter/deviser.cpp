@@ -582,6 +582,8 @@ bool is_special_form(shared_ptr<lispobj> form) {
             return true;
         } else if(sym->name() == "define") {
             return true;
+        } else if(sym->name() == "quote") { 
+            return true;
         }
     }
     return false;
@@ -845,6 +847,21 @@ int eval_special_form(string name,
         exec_stack.front().mark = applying;
     } else if(name == "define") {
         eval_define_special_form(exec_stack);
+    } else if(name == "quote") {
+        shared_ptr<lispobj> lobj = exec_stack.front().code;
+        if(lobj->objtype() != CONS_TYPE) {
+            cout << "quote needs more arguments" << endl;
+            return 1;
+        }
+
+        shared_ptr<cons> c = dynamic_pointer_cast<cons>(lobj);
+        if(c->cdr()->objtype() != NIL_TYPE) {
+            cout << "quote has too many args" << endl;
+            return 1;
+        }
+
+        exec_stack.front().code = c->car();
+        exec_stack.front().mark = evaled;
     }
     return 0;
 }
@@ -1044,12 +1061,27 @@ shared_ptr<lispobj> divide(vector<shared_ptr<lispobj> > args) {
     }
 }
 
+shared_ptr<lispobj> print_lfunc(vector< shared_ptr<lispobj> > args) {
+    for(shared_ptr<lispobj> lobj : args) {
+        print(lobj);
+    }
+
+    return std::make_shared<nil>();
+}
+
+shared_ptr<lispobj> newline(vector< shared_ptr<lispobj> > /*args*/) {
+    cout << endl;
+    return std::make_shared<nil>();
+}
+
 shared_ptr<environment> make_standard_env() {
     shared_ptr<environment> env(new environment());
     env->set_scope(std::make_shared<lexicalscope>(env));
-    env->get_scope()->define("+", std::make_shared<cfunc>(cfunc(plus)));
-    env->get_scope()->define("-", std::make_shared<cfunc>(cfunc(minus)));
-    env->get_scope()->define("*", std::make_shared<cfunc>(cfunc(multiply)));
-    env->get_scope()->define("/", std::make_shared<cfunc>(cfunc(divide)));
+    env->get_scope()->define("+", std::make_shared<cfunc>(plus));
+    env->get_scope()->define("-", std::make_shared<cfunc>(minus));
+    env->get_scope()->define("*", std::make_shared<cfunc>(multiply));
+    env->get_scope()->define("/", std::make_shared<cfunc>(divide));
+    env->get_scope()->define("print", std::make_shared<cfunc>(print_lfunc));
+    env->get_scope()->define("newline", std::make_shared<cfunc>(newline));
     return env;
 }
