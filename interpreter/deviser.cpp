@@ -1061,7 +1061,7 @@ shared_ptr<lispobj> divide(vector<shared_ptr<lispobj> > args) {
     }
 }
 
-shared_ptr<lispobj> print_lfunc(vector< shared_ptr<lispobj> > args) {
+shared_ptr<lispobj> print_cfunc(vector< shared_ptr<lispobj> > args) {
     for(shared_ptr<lispobj> lobj : args) {
         print(lobj);
     }
@@ -1074,6 +1074,10 @@ shared_ptr<lispobj> newline(vector< shared_ptr<lispobj> > /*args*/) {
     return std::make_shared<nil>();
 }
 
+shared_ptr<lispobj> list_cfunc(vector< shared_ptr<lispobj> > args) {
+    return make_list(args);
+}
+
 shared_ptr<environment> make_standard_env() {
     shared_ptr<environment> env(new environment());
     env->set_scope(std::make_shared<lexicalscope>(env));
@@ -1081,7 +1085,8 @@ shared_ptr<environment> make_standard_env() {
     env->get_scope()->define("-", std::make_shared<cfunc>(minus));
     env->get_scope()->define("*", std::make_shared<cfunc>(multiply));
     env->get_scope()->define("/", std::make_shared<cfunc>(divide));
-    env->get_scope()->define("print", std::make_shared<cfunc>(print_lfunc));
+    env->get_scope()->define("print", std::make_shared<cfunc>(print_cfunc));
     env->get_scope()->define("newline", std::make_shared<cfunc>(newline));
+    env->get_scope()->define("list", std::make_shared<cfunc>(list_cfunc));
     return env;
 }

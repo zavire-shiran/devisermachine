@@ -9,5 +9,5 @@
   (define d 4)
   (define e 5))
 
-(print (quote hi))
+(print (list (quote hello) (quote world)))
 (newline)
