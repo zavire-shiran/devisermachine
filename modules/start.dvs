@@ -3,11 +3,14 @@
 (module a
   (define a 1)
   (define b 2)
-  (define c 3))
+  (define c 3)
+  (export b))
 
 (module b
   (define d 4)
   (define e 5))
 
-(print (list (quote hello) (quote world)))
+(import a)
+
+(print (list (quote hello) (quote world) b))
 (newline)

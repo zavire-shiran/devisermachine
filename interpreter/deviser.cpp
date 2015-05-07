@@ -715,6 +715,8 @@ int eval_module_special_form(std::deque<stackframe>& exec_stack,
         lobj = c->cdr();
     }
 
+    env->add_module_def(m);
+
     exec_stack.front().mark = evaled;
     exec_stack.front().code = m;
 
@@ -843,6 +845,8 @@ int eval_special_form(string name,
             return 1;
         }
         exec_stack.front().scope->add_import(m);
+        exec_stack.front().mark = evaled;
+        exec_stack.front().code = std::make_shared<nil>();
     } else if(name == "begin") {
         exec_stack.front().mark = applying;
     } else if(name == "define") {
