@@ -9,8 +9,3 @@
 (module b
   (define d 4)
   (define e 5))
-
-(import a)
-
-(print (list (quote hello) (quote world) b))
-(newline)

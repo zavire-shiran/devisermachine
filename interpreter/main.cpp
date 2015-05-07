@@ -91,6 +91,8 @@ int main(int argc, char** argv)
             return 1;
         }
     }
+    argc -= optind;
+    argv += optind;
 
     shared_ptr<environment> env = make_standard_env();
 
@@ -103,5 +105,13 @@ int main(int argc, char** argv)
                                               make_list(v)));
             eval(code, env->get_scope(), env);
         }
+    }
+
+    for(int i = 0; i < argc; ++i) {
+        cout << "Read " << argv[i] << endl;
+        vector< shared_ptr<lispobj> > v = read_file(argv[i]);
+        shared_ptr<lispobj> code(new cons(std::make_shared<symbol>("begin"),
+                                          make_list(v)));
+        eval(code, env->get_scope(), env);
     }
 }
