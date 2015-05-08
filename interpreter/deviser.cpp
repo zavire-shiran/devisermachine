@@ -100,9 +100,10 @@ void module::define(string name, shared_ptr<lispobj> value) {
     scope->define(name, value);
 }
 
-void module::define_and_export(shared_ptr<symbol> sym, shared_ptr<lispobj> value) {
-    define(sym->name(), value);
-    add_export(sym);
+void module::define_and_export(string symname, shared_ptr<lispobj> value) {
+    shared_ptr<symbol> name(new symbol(symname));
+    define(symname, value);
+    add_export(name);
 }
 
 void module::add_init(shared_ptr<lispobj> initblock) {
@@ -1094,13 +1095,13 @@ shared_ptr<environment> make_standard_env() {
 
     shared_ptr<lispobj> module_name(new cons(make_shared<symbol>("builtins"), make_shared<nil>()));
     shared_ptr<module> builtins_module(new module(module_name, std_env));
-    builtins_module->define_and_export(make_shared<symbol>("+"), make_shared<cfunc>(plus));
-    builtins_module->define_and_export(make_shared<symbol>("-"), make_shared<cfunc>(minus));
-    builtins_module->define_and_export(make_shared<symbol>("*"), make_shared<cfunc>(multiply));
-    builtins_module->define_and_export(make_shared<symbol>("/"), make_shared<cfunc>(divide));
-    builtins_module->define_and_export(make_shared<symbol>("print"), make_shared<cfunc>(print_cfunc));
-    builtins_module->define_and_export(make_shared<symbol>("newline"), make_shared<cfunc>(newline));
-    builtins_module->define_and_export(make_shared<symbol>("list"), make_shared<cfunc>(list_cfunc));
+    builtins_module->define_and_export("+", make_shared<cfunc>(plus));
+    builtins_module->define_and_export("-", make_shared<cfunc>(minus));
+    builtins_module->define_and_export("*", make_shared<cfunc>(multiply));
+    builtins_module->define_and_export("/", make_shared<cfunc>(divide));
+    builtins_module->define_and_export("print", make_shared<cfunc>(print_cfunc));
+    builtins_module->define_and_export("newline", make_shared<cfunc>(newline));
+    builtins_module->define_and_export("list", make_shared<cfunc>(list_cfunc));
 
     std_env->add_module_def(builtins_module);
     return std_env;
