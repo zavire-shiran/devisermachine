@@ -398,9 +398,6 @@ bool prefix_match(shared_ptr<lispobj> name, shared_ptr<lispobj> prefix) {
             prefix_match(name_cons->cdr(), prefix_cons->cdr());
     }
 
-    cout << "Invalid type in module name: ";
-    print(name);
-    cout << endl;
     return false;
 }
 
@@ -847,7 +844,10 @@ int eval_special_form(string name,
 
         shared_ptr<cons> c = dynamic_pointer_cast<cons>(lobj);
         shared_ptr<module> m = env->get_module_by_prefix(c->car());
-        if(!(m->init(env))) {
+        if(!m || !(m->init(env))) {
+            cout << "Module ";
+            print(c->car());
+            cout << " init failed." << endl;
             return 1;
         }
         exec_stack.front().scope->add_import(m);
