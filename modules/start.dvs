@@ -1,11 +1,11 @@
 (define asdf 101)
 
-(module a
+(module (a)
   (define a 1)
   (define b 2)
   (define c 3)
   (export b))
 
-(module b
+(module (b)
   (define d 4)
   (define e 5))

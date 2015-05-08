@@ -5,6 +5,7 @@
 using std::cout;
 using std::endl;
 using std::dynamic_pointer_cast;
+using std::make_shared;
 
 lispobj::lispobj() {}
 
@@ -99,6 +100,11 @@ void module::define(string name, shared_ptr<lispobj> value) {
     scope->define(name, value);
 }
 
+void module::define_and_export(shared_ptr<symbol> sym, shared_ptr<lispobj> value) {
+    define(sym->name(), value);
+    add_export(sym);
+}
+
 void module::add_init(shared_ptr<lispobj> initblock) {
     initblocks.push_back(initblock);
 }
@@ -130,7 +136,7 @@ bool module::init(shared_ptr<environment> env) {
     // but that's ~*~hard~*~, and this is easy
     for(auto initblock : initblocks) {
         shared_ptr<lexicalscope> initscope(new lexicalscope(env, scope));
-        if(eval(std::make_shared<cons>(std::make_shared<symbol>("begin"), initblock),
+        if(eval(make_shared<cons>(make_shared<symbol>("begin"), initblock),
                 initscope, env) == nullptr) {
             return false;
         }
@@ -328,7 +334,7 @@ shared_ptr<lispobj> _read(string& str) {
         size_t pos = 0;
         int n = std::stoi(str, &pos);
         str.erase(0, pos);
-        return std::make_shared<number>(n);
+        return make_shared<number>(n);
     } else { //symbol
         int n = 1;
         while(!isspace(str[n]) && str[n] != '(' && str[n] != ')') {
@@ -337,7 +343,7 @@ shared_ptr<lispobj> _read(string& str) {
 
         string sym_name = str.substr(0, n);
         str.erase(0, n);
-        return std::make_shared<symbol>(sym_name);
+        return make_shared<symbol>(sym_name);
     }
 }
 
@@ -462,7 +468,7 @@ shared_ptr<lispobj> lexicalscope::get(string name) {
             return parent->get(name);
         } else {
             //XXX: should be undefined so eval loop can error
-            return std::make_shared<nil>();
+            return make_shared<nil>();
         }
     }
 }
@@ -746,7 +752,7 @@ int eval_if_special_form(std::deque<stackframe>& exec_stack) {
         if(exec_stack.front().evaled_args[1]->objtype() == NIL_TYPE) {
             if(c->cdr()->objtype() != CONS_TYPE) {
                 exec_stack.front().mark = evaled;
-                exec_stack.front().code = std::make_shared<nil>();
+                exec_stack.front().code = make_shared<nil>();
                 exec_stack.front().evaled_args.clear();
             } else {
                 shared_ptr<cons> c2 = dynamic_pointer_cast<cons>(c->cdr());
@@ -846,7 +852,7 @@ int eval_special_form(string name,
         }
         exec_stack.front().scope->add_import(m);
         exec_stack.front().mark = evaled;
-        exec_stack.front().code = std::make_shared<nil>();
+        exec_stack.front().code = make_shared<nil>();
     } else if(name == "begin") {
         exec_stack.front().mark = applying;
     } else if(name == "define") {
@@ -991,7 +997,7 @@ shared_ptr<lispobj> plus(vector<shared_ptr<lispobj> > args) {
         shared_ptr<number> n = dynamic_pointer_cast<number>(obj);
         sum += n->value();
     }
-    return std::make_shared<number>(sum);
+    return make_shared<number>(sum);
 }
 
 shared_ptr<lispobj> minus(vector<shared_ptr<lispobj> > args) {
@@ -1012,14 +1018,14 @@ shared_ptr<lispobj> minus(vector<shared_ptr<lispobj> > args) {
             shared_ptr<number> n = dynamic_pointer_cast<number>(obj);
             diff -= n->value();
         }
-        return std::make_shared<number>(diff);
+        return make_shared<number>(diff);
     } else {
         shared_ptr<lispobj> obj(args[0]);
         if(obj->objtype() != NUMBER_TYPE) {
             cout << "minus requires numbers" << endl;
         }
         shared_ptr<number> n = dynamic_pointer_cast<number>(obj);
-        return std::make_shared<number>(-(n->value()));
+        return make_shared<number>(-(n->value()));
     }
 }
 
@@ -1033,7 +1039,7 @@ shared_ptr<lispobj> multiply(vector<shared_ptr<lispobj> > args) {
         shared_ptr<number> n = dynamic_pointer_cast<number>(obj);
         product *= n->value();
     }
-    return std::make_shared<number>(product);
+    return make_shared<number>(product);
 }
 
 shared_ptr<lispobj> divide(vector<shared_ptr<lispobj> > args) {
@@ -1054,14 +1060,14 @@ shared_ptr<lispobj> divide(vector<shared_ptr<lispobj> > args) {
             shared_ptr<number> n = dynamic_pointer_cast<number>(obj);
             quotient /= n->value();
         }
-        return std::make_shared<number>(quotient);
+        return make_shared<number>(quotient);
     } else {
         shared_ptr<lispobj> obj(args[0]);
         if(obj->objtype() != NUMBER_TYPE) {
             cout << "divide requires numbers" << endl;
         }
         shared_ptr<number> n = dynamic_pointer_cast<number>(obj);
-        return std::make_shared<number>(n->value());
+        return make_shared<number>(n->value());
     }
 }
 
@@ -1070,12 +1076,12 @@ shared_ptr<lispobj> print_cfunc(vector< shared_ptr<lispobj> > args) {
         print(lobj);
     }
 
-    return std::make_shared<nil>();
+    return make_shared<nil>();
 }
 
 shared_ptr<lispobj> newline(vector< shared_ptr<lispobj> > /*args*/) {
     cout << endl;
-    return std::make_shared<nil>();
+    return make_shared<nil>();
 }
 
 shared_ptr<lispobj> list_cfunc(vector< shared_ptr<lispobj> > args) {
@@ -1083,14 +1089,19 @@ shared_ptr<lispobj> list_cfunc(vector< shared_ptr<lispobj> > args) {
 }
 
 shared_ptr<environment> make_standard_env() {
-    shared_ptr<environment> env(new environment());
-    env->set_scope(std::make_shared<lexicalscope>(env));
-    env->get_scope()->define("+", std::make_shared<cfunc>(plus));
-    env->get_scope()->define("-", std::make_shared<cfunc>(minus));
-    env->get_scope()->define("*", std::make_shared<cfunc>(multiply));
-    env->get_scope()->define("/", std::make_shared<cfunc>(divide));
-    env->get_scope()->define("print", std::make_shared<cfunc>(print_cfunc));
-    env->get_scope()->define("newline", std::make_shared<cfunc>(newline));
-    env->get_scope()->define("list", std::make_shared<cfunc>(list_cfunc));
-    return env;
+    shared_ptr<environment> std_env(new environment());
+    std_env->set_scope(make_shared<lexicalscope>(std_env));
+
+    shared_ptr<lispobj> module_name(new cons(make_shared<symbol>("builtins"), make_shared<nil>()));
+    shared_ptr<module> builtins_module(new module(module_name, std_env));
+    builtins_module->define_and_export(make_shared<symbol>("+"), make_shared<cfunc>(plus));
+    builtins_module->define_and_export(make_shared<symbol>("-"), make_shared<cfunc>(minus));
+    builtins_module->define_and_export(make_shared<symbol>("*"), make_shared<cfunc>(multiply));
+    builtins_module->define_and_export(make_shared<symbol>("/"), make_shared<cfunc>(divide));
+    builtins_module->define_and_export(make_shared<symbol>("print"), make_shared<cfunc>(print_cfunc));
+    builtins_module->define_and_export(make_shared<symbol>("newline"), make_shared<cfunc>(newline));
+    builtins_module->define_and_export(make_shared<symbol>("list"), make_shared<cfunc>(list_cfunc));
+
+    std_env->add_module_def(builtins_module);
+    return std_env;
 }

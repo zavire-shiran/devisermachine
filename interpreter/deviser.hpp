@@ -122,6 +122,7 @@ public:
     void add_import(shared_ptr<lispobj> modname);
     void add_export(shared_ptr<symbol> sym);
     void define(string name, shared_ptr<lispobj> value);
+    void define_and_export(shared_ptr<symbol> sym, shared_ptr<lispobj> value);
     void add_init(shared_ptr<lispobj> initblock);
     shared_ptr<lispobj> get_name() const;
     shared_ptr<lexicalscope> get_bindings() const;
