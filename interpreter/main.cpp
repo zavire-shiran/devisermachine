@@ -70,6 +70,13 @@ vector<string> find_modules(string module_path) {
     return ret;
 }
 
+shared_ptr<lispobj> eval_file(string filename, shared_ptr<environment> env) {
+    vector< shared_ptr<lispobj> > v = read_file(filename);
+    shared_ptr<lispobj> code(new cons(std::make_shared<symbol>("begin"),
+                                      make_list(v)));
+    return eval(code, env->get_scope(), env);
+}
+
 int main(int argc, char** argv)
 {
     int ch;
@@ -100,18 +107,12 @@ int main(int argc, char** argv)
     for(auto mod_file : modules_to_load) {
         if(mod_file.substr(mod_file.size() - 4) == ".dvs") {
             cout << "Read " << mod_file << endl;
-            vector< shared_ptr<lispobj> > v = read_file(mod_file);
-            shared_ptr<lispobj> code(new cons(std::make_shared<symbol>("begin"),
-                                              make_list(v)));
-            eval(code, env->get_scope(), env);
+            eval_file(mod_file, env);
         }
     }
 
     for(int i = 0; i < argc; ++i) {
         cout << "Read " << argv[i] << endl;
-        vector< shared_ptr<lispobj> > v = read_file(argv[i]);
-        shared_ptr<lispobj> code(new cons(std::make_shared<symbol>("begin"),
-                                          make_list(v)));
-        eval(code, env->get_scope(), env);
+        eval_file(argv[i], env);
     }
 }
