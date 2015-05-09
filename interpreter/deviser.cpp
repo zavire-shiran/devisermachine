@@ -813,27 +813,34 @@ int eval_define_special_form(std::deque<stackframe>& exec_stack) {
     return 0;
 }
 
+int eval_lambda_special_form(std::deque<stackframe>& exec_stack) {
+    shared_ptr<lispobj> lobj = exec_stack.front().code;
+    if(lobj->objtype() != CONS_TYPE) {
+        cout << "lambda needs more arguments" << endl;
+        return 1;
+    }
+
+    shared_ptr<cons> c = dynamic_pointer_cast<cons>(lobj);
+    if(c->cdr()->objtype() != CONS_TYPE) {
+        cout << "lambda needs more arguments" << endl;
+        return 1;
+    }
+
+    shared_ptr<cons> c2 = dynamic_pointer_cast<cons>(c->cdr());
+    shared_ptr<lispfunc> lfunc(new lispfunc(c->car(), exec_stack.front().scope, c2));
+    exec_stack.front().mark = evaled;
+    exec_stack.front().code = lfunc;
+
+    return 0;
+}
+
 int eval_special_form(string name,
                       std::deque<stackframe>& exec_stack,
                       shared_ptr<environment> env) {
     if(name == "if") {
         return eval_if_special_form(exec_stack);
     } else if(name == "lambda") {
-        shared_ptr<lispobj> lobj = exec_stack.front().code;
-        if(lobj->objtype() != CONS_TYPE) {
-            cout << "lambda needs more arguments" << endl;
-            return 1;
-        }
-
-        shared_ptr<cons> c = dynamic_pointer_cast<cons>(lobj);
-        if(c->cdr()->objtype() != CONS_TYPE) {
-            cout << "lambda needs more arguments" << endl;
-            return 1;
-        }
-        shared_ptr<cons> c2 = dynamic_pointer_cast<cons>(c->cdr());
-        shared_ptr<lispfunc> lfunc(new lispfunc(c->car(), exec_stack.front().scope, c2));
-        exec_stack.front().mark = evaled;
-        exec_stack.front().code = lfunc;
+        return eval_lambda_special_form(exec_stack);
     } else if(name == "module") {
         return eval_module_special_form(exec_stack, env);
     } else if(name == "import") {

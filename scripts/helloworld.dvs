@@ -7,3 +7,6 @@
 (print (list (quote (eq 1 1)) (eq 1 1))) (newline)
 (print (list (quote (eq (quote asdf) (quote asdf))) (eq (quote asdf) (quote asdf)))) (newline)
 (print (list (quote (eq 1 2)) (eq 1 2))) (newline)
+(newline)
+
+(print (list (quote (lambda () 1)) (quote =>) ((lambda () 1)))) (newline)

@@ -60,6 +60,7 @@ vector<string> find_modules(string module_path) {
     }
 
     while((file_ent = fts_read(module_dir)) != NULL) {
+        // this switch should probably do some error detection
         switch(file_ent->fts_info) {
         case FTS_F:
             ret.push_back(file_ent->fts_path);
