@@ -947,6 +947,9 @@ shared_ptr<lispobj> eval(shared_ptr<lispobj> code,
                     shared_ptr<cfunc> func = dynamic_pointer_cast<cfunc>(evaled_args.front());
                     evaled_args.erase(evaled_args.begin());
                     shared_ptr<lispobj> ret = func->func(evaled_args);
+                    if(!ret) {
+                        return nullptr;
+                    }
                     exec_stack.front().mark = evaled;
                     exec_stack.front().code = ret;
                     exec_stack.front().evaled_args.clear();
@@ -1089,6 +1092,54 @@ shared_ptr<lispobj> list_cfunc(vector< shared_ptr<lispobj> > args) {
     return make_list(args);
 }
 
+shared_ptr<lispobj> eq_cfunc(vector< shared_ptr<lispobj> > args) {
+    if(args.size() != 2) {
+        cout << "ERROR eq wants 2 args" << endl;
+        return nullptr;
+    }
+
+    if(eq(args[0], args[1])) {
+        return make_shared<symbol>("t");
+    } else {
+        return make_shared<nil>();
+    }
+}
+
+shared_ptr<lispobj> eqv_cfunc(vector< shared_ptr<lispobj> > args) {
+    if(args.size() != 2) {
+        cout << "ERROR eqv wants 2 args" << endl;
+        return nullptr;
+    }
+
+    if(eqv(args[0], args[1])) {
+        return make_shared<symbol>("t");
+    } else {
+        return make_shared<nil>();
+    }
+}
+
+shared_ptr<lispobj> equal_cfunc(vector< shared_ptr<lispobj> > args) {
+    if(args.size() != 2) {
+        cout << "ERROR equal wants 2 args" << endl;
+        return nullptr;
+    }
+
+    if(equal(args[0], args[1])) {
+        return make_shared<symbol>("t");
+    } else {
+        return make_shared<nil>();
+    }
+}
+
+shared_ptr<lispobj> cons_cfunc(vector< shared_ptr<lispobj> > args) {
+    if(args.size() != 2) {
+        cout << "ERROR cons wants 2 args" << endl;
+        return nullptr;
+    }
+
+    return make_shared<cons>(args[0], args[1]);
+}
+
 shared_ptr<environment> make_standard_env() {
     shared_ptr<environment> std_env(new environment());
     std_env->set_scope(make_shared<lexicalscope>(std_env));
@@ -1102,6 +1153,10 @@ shared_ptr<environment> make_standard_env() {
     builtins_module->define_and_export("print", make_shared<cfunc>(print_cfunc));
     builtins_module->define_and_export("newline", make_shared<cfunc>(newline));
     builtins_module->define_and_export("list", make_shared<cfunc>(list_cfunc));
+    builtins_module->define_and_export("eq", make_shared<cfunc>(eq_cfunc));
+    builtins_module->define_and_export("eqv", make_shared<cfunc>(eqv_cfunc));
+    builtins_module->define_and_export("equal", make_shared<cfunc>(equal_cfunc));
+    builtins_module->define_and_export("cons", make_shared<cfunc>(cons_cfunc));
 
     std_env->add_module_def(builtins_module);
     return std_env;
