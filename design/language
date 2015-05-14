@@ -1,12 +1,21 @@
 compilation is a caching operation
 compilation is an optimization, since it is equivalent to interpreting
+
 all software is distributed by code. there is *NO* support for loading binaries
-  (except kernel)
+  (except kernel, and that's weird)
+
 modules are the atomic unit of completed compilations
+  because it's big enough to do significant optimization on
+    but small enough that it's not ridiculous
   most compilation steps are also cached
   perhaps you can tell that caching is big in this
   therefore, everything must be in a module
-  should modules be implicit then? inferred from the structure of the code in the file system
+    this includes what gets input at the repl
+  modules are dynamic
+    can be editted on the fly
+    can be saved to disk and restored
+    can be re-initialized if the state gets ultra wonky
+
 all stages of compilation can be inspected
   cached compilation steps are objects that can be inspected
 
@@ -19,6 +28,9 @@ all hardware must be exposed in the language
 
 since our kernel will have to be pre-compiled, the gc will be in there
   which means our language has to have primitives for carving memory into values
-    each variable is a pointer (or other primitive type? int, etc?) on the stack    
+    each local variable is a pointer (or other primitive type? int, etc?) on the stack    
 
-only explicitly sized types. i.e. no generic "int"
+if size is a factor, only explicitly sized types
+  i.e. no generic "int", but bigint by default is ok
+
+with complex enough syntax objects, any definition can show the full code path to recreate it
