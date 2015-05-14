@@ -811,7 +811,9 @@ int eval_define_special_form(std::deque<stackframe>& exec_stack) {
         shared_ptr<lispobj> value = exec_stack.front().evaled_args[2];
         shared_ptr<symbol> s = dynamic_pointer_cast<symbol>(lobj);
         exec_stack.front().scope->define(s->name(), value);
-        exec_stack.pop_front();
+        exec_stack.front().evaled_args.clear();
+        exec_stack.front().mark = evaled;
+        exec_stack.front().code = make_shared<nil>();
     }
 
     return 0;
@@ -868,7 +870,7 @@ int eval_special_form(string name,
     } else if(name == "begin") {
         exec_stack.front().mark = applying;
     } else if(name == "define") {
-        eval_define_special_form(exec_stack);
+        return eval_define_special_form(exec_stack);
     } else if(name == "quote") {
         shared_ptr<lispobj> lobj = exec_stack.front().code;
         if(lobj->objtype() != CONS_TYPE) {
@@ -896,7 +898,7 @@ shared_ptr<lispobj> eval(shared_ptr<lispobj> code,
 
     exec_stack.push_front(stackframe(tls, evaluating, code));
 
-    while(exec_stack.size() > 1 || exec_stack.front().mark != evaled) {
+    while(exec_stack.size() != 0 && (exec_stack.size() > 1 || exec_stack.front().mark != evaled)) {
         //print_stack(exec_stack);
         if(exec_stack.front().mark == evaled) {
             shared_ptr<lispobj> c = exec_stack.front().code;

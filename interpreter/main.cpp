@@ -17,7 +17,7 @@ using std::cout;
 using std::endl;
 
 void read_eval_print(const string& lispstr, shared_ptr<environment> env) {
-    cout << "(print (eval (read \"" << lispstr << "\"))) => ";
+    //cout << "(print (eval (read \"" << lispstr << "\"))) => ";
     print(eval(read(lispstr), env->get_scope(), env));
     cout << endl;
 }
@@ -103,7 +103,7 @@ int main(int argc, char** argv)
     LineEditor ledit("deviser");
     string input = ledit.getLine();
     while(!ledit.isEndOfFile()) {
-        cout << input;
+        read_eval_print(input, env);
         input = ledit.getLine();
     }
     cout << endl;
