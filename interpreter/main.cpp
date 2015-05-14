@@ -9,6 +9,7 @@
 #include <fts.h>
 #include <unistd.h>
 
+#include "lineeditor.hpp"
 #include "deviser.hpp"
 
 using std::shared_ptr;
@@ -81,17 +82,12 @@ shared_ptr<lispobj> eval_file(string filename, shared_ptr<environment> env) {
 int main(int argc, char** argv)
 {
     int ch;
-    string module_path = "../modules";
-    string execute;
-    vector<string> modules_to_load;
+    string filesystem = ".";
 
-    while((ch = getopt(argc, argv, "he:m:")) != -1) {
+    while((ch = getopt(argc, argv, "hf:")) != -1) {
         switch(ch) {
-        case 'e':
-            execute = optarg;
-            break;
-        case 'm':
-            module_path = optarg;
+        case 'f':
+            filesystem = optarg;
             break;
         case 'h':
         default:
@@ -104,16 +100,7 @@ int main(int argc, char** argv)
 
     shared_ptr<environment> env = make_standard_env();
 
-    modules_to_load = find_modules(module_path);
-    for(auto mod_file : modules_to_load) {
-        if(mod_file.substr(mod_file.size() - 4) == ".dvs") {
-            cout << "Read " << mod_file << endl;
-            eval_file(mod_file, env);
-        }
-    }
-
-    for(int i = 0; i < argc; ++i) {
-        cout << "Read " << argv[i] << endl;
-        eval_file(argv[i], env);
-    }
+    LineEditor ledit("deviser");
+    string input = ledit.getLine();
+    cout << input;
 }

@@ -119,12 +119,15 @@ public:
 class module : public lispobj {
 public:
     module(shared_ptr<lispobj> _name, shared_ptr<environment> env);
+
     void add_import(shared_ptr<lispobj> modname);
     void add_export(shared_ptr<symbol> sym);
     void define(string name, shared_ptr<lispobj> value);
     void define_and_export(string symname, shared_ptr<lispobj> value);
     void add_init(shared_ptr<lispobj> initblock);
+
     shared_ptr<lispobj> get_name() const;
+    void set_name(shared_ptr<lispobj> newname);
     shared_ptr<lexicalscope> get_bindings() const;
     bool init(shared_ptr<environment> env);
 

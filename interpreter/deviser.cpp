@@ -114,6 +114,10 @@ shared_ptr<lispobj> module::get_name() const {
     return name;
 }
 
+void module::set_name(shared_ptr<lispobj> newname) {
+    name = newname;
+}
+
 shared_ptr<lexicalscope> module::get_bindings() const {
     return scope;
 }
