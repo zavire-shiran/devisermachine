@@ -14,8 +14,10 @@ public:
 
     std::string getLine();
     void setError();
+    bool isEndOfFile() const;
 
 private:
-    std::unique_ptr<EditLine, void (*)(EditLine*)> editState;
-    bool isError;
+    std::unique_ptr<EditLine, void (*)(EditLine*)> editstate;
+    bool iserror;
+    bool endoffile;
 };

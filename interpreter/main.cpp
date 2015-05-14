@@ -102,5 +102,9 @@ int main(int argc, char** argv)
 
     LineEditor ledit("deviser");
     string input = ledit.getLine();
-    cout << input;
+    while(!ledit.isEndOfFile()) {
+        cout << input;
+        input = ledit.getLine();
+    }
+    cout << endl;
 }
