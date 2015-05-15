@@ -259,6 +259,16 @@ void print(shared_ptr<lispobj> obj) {
     case CFUNC_TYPE:
         cout << "CFUNC";
         break;
+    case FUNC_TYPE:
+    {
+        shared_ptr<lispfunc> lfunc = dynamic_pointer_cast<lispfunc>(obj);
+        cout << "(lambda ";
+        print(lfunc->args);
+        cout << " ";
+        print(lfunc->code);
+        cout << ")";
+        break;
+    }
     case MODULE_TYPE:
     {
         shared_ptr<module> mod = dynamic_pointer_cast<module>(obj);
