@@ -868,7 +868,12 @@ int eval_special_form(string name,
 
         shared_ptr<cons> c = dynamic_pointer_cast<cons>(lobj);
         shared_ptr<module> m = env->get_module_by_prefix(c->car());
-        if(!m || !(m->init(env))) {
+        if(!m) {
+            cout << "Module ";
+            print(c->car());
+            cout << " not found." << endl;
+            return 1;
+        } else if(!(m->init(env))) {
             cout << "Module ";
             print(c->car());
             cout << " init failed." << endl;
