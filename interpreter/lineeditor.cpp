@@ -3,12 +3,18 @@
 
 using std::string;
 
+const char* promptForEditLine(EditLine*)
+{
+    return "> ";
+}
+
 LineEditor::LineEditor(std::string progname) :
     editstate(el_init(progname.c_str(), stdin, stdout, stderr),
               [](EditLine* el) { el_end(el); }),
     iserror(false),
     endoffile(false)
 {
+    el_set(editstate.get(), EL_PROMPT, &promptForEditLine);
 }
 
 string LineEditor::getLine() {
@@ -21,7 +27,6 @@ string LineEditor::getLine() {
     }
 
     string line(line_read);
-
 
     if(count == -1) {
         setError();
