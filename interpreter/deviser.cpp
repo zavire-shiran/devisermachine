@@ -106,6 +106,7 @@ shared_ptr<lispobj> module::eval(shared_ptr<lispobj> command) {
     string command_name = get_command_name(command);
 
     if(command_name == "define") {
+        defines.push_back(command);
         return ::eval(command, scope);
     } else if(command_name == "undefine") {
 
@@ -160,16 +161,16 @@ shared_ptr<lispobj> module::eval(shared_ptr<lispobj> command) {
             cout << endl;
             cout << "  ";
             print(make_shared<cons>(make_shared<symbol>("import"),
-                                    make_list(imports.begin(),
-                                              imports.end())));
+                                    make_reverse_list(imports.rbegin(),
+                                                      imports.rend())));
         }
 
         if(exports.size() > 0) {
             cout << endl;
             cout << "  ";
             print(make_shared<cons>(make_shared<symbol>("export"),
-                                    make_list(exports.begin(),
-                                              exports.end())));
+                                    make_reverse_list(exports.rbegin(),
+                                                      exports.rend())));
         }
 
         for(auto define : defines) {
@@ -410,18 +411,6 @@ void printall(vector< shared_ptr<lispobj> > objs) {
     }
 }
 
-template<typename input_iterator>
-shared_ptr<lispobj> make_list(input_iterator begin,
-                              input_iterator end) {
-    shared_ptr<lispobj> ret(new nil());
-
-    for(auto it = begin; it != end; ++it) {
-        ret.reset(new cons(*it, ret));
-    }
-
-    return ret;
-}
-
 shared_ptr<lispobj> _read(string& str) {
     // remove leading whitespace, could be faster, but wevs
     while(isspace(str[0])) {
@@ -449,7 +438,7 @@ shared_ptr<lispobj> _read(string& str) {
         }
 
         str.erase(0, 1);
-        return make_list(list_values.begin(), list_values.end());
+        return make_reverse_list(list_values.rbegin(), list_values.rend());
     } else if (isdigit(str[0])) { // number ('.' too, once we have non-integers)
         size_t pos = 0;
         int n = std::stoi(str, &pos);
@@ -989,7 +978,7 @@ shared_ptr<lispobj> eval(shared_ptr<lispobj> code,
     exec_stack.push_front(stackframe(tls, evaluating, code));
 
     while(exec_stack.size() != 0 && (exec_stack.size() > 1 || exec_stack.front().mark != evaled)) {
-        //print_stack(exec_stack);
+        print_stack(exec_stack);
         if(exec_stack.front().mark == evaled) {
             shared_ptr<lispobj> c = exec_stack.front().code;
             exec_stack.pop_front();
@@ -1192,7 +1181,7 @@ shared_ptr<lispobj> newline(vector< shared_ptr<lispobj> > /*args*/) {
 }
 
 shared_ptr<lispobj> list_cfunc(vector< shared_ptr<lispobj> > args) {
-    return make_list(args.begin(), args.end());
+    return make_reverse_list(args.rbegin(), args.rend());
 }
 
 shared_ptr<lispobj> eq_cfunc(vector< shared_ptr<lispobj> > args) {

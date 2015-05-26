@@ -144,8 +144,16 @@ bool eqv(shared_ptr<lispobj> left, shared_ptr<lispobj> right);
 bool equal(shared_ptr<lispobj> left, shared_ptr<lispobj> right);
 
 template<typename input_iterator>
-shared_ptr<lispobj> make_list(input_iterator begin,
-                              input_iterator end);
+shared_ptr<lispobj> make_reverse_list(input_iterator begin,
+                                      input_iterator end) {
+    shared_ptr<lispobj> ret(new nil());
+
+    for(auto it = begin; it != end; ++it) {
+        ret.reset(new cons(*it, ret));
+    }
+
+    return ret;
+}
 
 void print(shared_ptr<lispobj> obj);
 void printall(vector< shared_ptr<lispobj> > objs);

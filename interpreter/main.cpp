@@ -39,6 +39,7 @@ bool ismodulecommand(shared_ptr<lispobj> lobj) {
 void read_eval_print(const string& lispstr, shared_ptr<module> mod) {
     //cout << "(print (eval (read \"" << lispstr << "\"))) => ";
     auto lobj = read(lispstr);
+    print(lobj); cout << endl;
     auto retlobj = mod->eval(lobj);
     print(retlobj);
     cout << endl;
@@ -97,7 +98,7 @@ vector<string> find_modules(string module_path) {
 shared_ptr<lispobj> eval_file(string filename, shared_ptr<module> mod) {
     vector< shared_ptr<lispobj> > v = read_file(filename);
     shared_ptr<lispobj> code(new cons(std::make_shared<symbol>("begin"),
-                                      make_list(v.begin(), v.end())));
+                                      make_reverse_list(v.rbegin(), v.rend())));
     return eval(code, mod->get_bindings());
 }
 
