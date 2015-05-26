@@ -25,26 +25,13 @@ public:
 };
 
 class module;
-class lexicalscope;
-
-class environment {
-public:
-    environment();
-    shared_ptr<lexicalscope> get_scope();
-    void set_scope(shared_ptr<lexicalscope> s);
-    void add_module_def(shared_ptr<module> m);
-    shared_ptr<module> get_module_by_prefix(shared_ptr<lispobj> prefix);
-
-private:
-    shared_ptr<lexicalscope> scope;
-    vector< shared_ptr<module> > modules;
-};
 
 class lexicalscope {
 public:
-    lexicalscope(shared_ptr<environment> e);
-    lexicalscope(shared_ptr<environment> e, shared_ptr<lexicalscope> p);
+    lexicalscope();
+    lexicalscope(shared_ptr<lexicalscope> p);
     void define(string name, shared_ptr<lispobj> value);
+    void undefine(string name);
     void set(string name, shared_ptr<lispobj> value);
     shared_ptr<lispobj> get(string name);
     void add_import(shared_ptr<module> mod);
@@ -55,7 +42,6 @@ private:
     std::map<string, shared_ptr<lispobj> > bindings;
     std::shared_ptr<lexicalscope> parent;
     std::vector< shared_ptr<module> > imports;
-    std::weak_ptr<environment> env;
 };
 
 class nil : public lispobj {
@@ -118,7 +104,9 @@ public:
 
 class module : public lispobj {
 public:
-    module(shared_ptr<lispobj> _name, shared_ptr<environment> env);
+    module(shared_ptr<lispobj> _name);
+
+    shared_ptr<lispobj> eval(shared_ptr<lispobj> command);
 
     void add_import(shared_ptr<lispobj> modname);
     void add_export(shared_ptr<symbol> sym);
@@ -129,7 +117,7 @@ public:
     shared_ptr<lispobj> get_name() const;
     void set_name(shared_ptr<lispobj> newname);
     shared_ptr<lexicalscope> get_bindings() const;
-    bool init(shared_ptr<environment> env);
+    bool init();
 
     const vector< shared_ptr<lispobj> >& get_imports() const;
     const vector< shared_ptr<symbol> >& get_exports() const;
@@ -138,12 +126,15 @@ public:
     virtual int objtype() const;
 
 private:
+    bool ismodulecommand(shared_ptr<lispobj> command);
+
     // we actually want a map from symbol to module that we get it from
     // but that's hard because of import all...
     shared_ptr<lispobj> name;
     vector< shared_ptr<symbol> > exports;
     vector< shared_ptr<lispobj> > imports;
     shared_ptr<lexicalscope> scope;
+    vector< shared_ptr<lispobj> > defines;
     vector< shared_ptr<lispobj> > initblocks;
     bool inited;
 };
@@ -152,7 +143,9 @@ bool eq(shared_ptr<lispobj> left, shared_ptr<lispobj> right);
 bool eqv(shared_ptr<lispobj> left, shared_ptr<lispobj> right);
 bool equal(shared_ptr<lispobj> left, shared_ptr<lispobj> right);
 
-shared_ptr<lispobj> make_list(const vector<shared_ptr<lispobj> >& list_values);
+template<typename input_iterator>
+shared_ptr<lispobj> make_list(input_iterator begin,
+                              input_iterator end);
 
 void print(shared_ptr<lispobj> obj);
 void printall(vector< shared_ptr<lispobj> > objs);
@@ -160,6 +153,5 @@ shared_ptr<lispobj> read(string str);
 vector< shared_ptr<lispobj> > readall(string str);
 
 shared_ptr<lispobj> eval(shared_ptr<lispobj> code,
-                         shared_ptr<lexicalscope> tls,
-                         shared_ptr<environment> env);
-shared_ptr<environment> make_standard_env();
+                         shared_ptr<lexicalscope> tls);
+shared_ptr<module> make_builtins_module();

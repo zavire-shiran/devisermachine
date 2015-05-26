@@ -15,10 +15,32 @@
 using std::shared_ptr;
 using std::cout;
 using std::endl;
+using std::dynamic_pointer_cast;
+using std::make_shared;
 
-void read_eval_print(const string& lispstr, shared_ptr<environment> env) {
+bool ismodulecommand(shared_ptr<lispobj> lobj) {
+    if(lobj->objtype() != CONS_TYPE) {
+        return false;
+    }
+
+    shared_ptr<cons> c = dynamic_pointer_cast<cons>(lobj);
+    if(c->car()->objtype() != SYMBOL_TYPE) {
+        return false;
+    }
+
+    shared_ptr<symbol> sym = dynamic_pointer_cast<symbol>(c->car());
+    string formname = sym->name();
+    return formname == "define" || formname == "import" ||
+        formname == "export" || formname == "init" ||
+        formname == "undefine" || formname == "unimport" ||
+        formname == "unexport";
+}
+
+void read_eval_print(const string& lispstr, shared_ptr<module> mod) {
     //cout << "(print (eval (read \"" << lispstr << "\"))) => ";
-    print(eval(read(lispstr), env->get_scope(), env));
+    auto lobj = read(lispstr);
+    auto retlobj = mod->eval(lobj);
+    print(retlobj);
     cout << endl;
 }
 
@@ -72,11 +94,11 @@ vector<string> find_modules(string module_path) {
     return ret;
 }
 
-shared_ptr<lispobj> eval_file(string filename, shared_ptr<environment> env) {
+shared_ptr<lispobj> eval_file(string filename, shared_ptr<module> mod) {
     vector< shared_ptr<lispobj> > v = read_file(filename);
     shared_ptr<lispobj> code(new cons(std::make_shared<symbol>("begin"),
-                                      make_list(v)));
-    return eval(code, env->get_scope(), env);
+                                      make_list(v.begin(), v.end())));
+    return eval(code, mod->get_bindings());
 }
 
 int main(int argc, char** argv)
@@ -98,12 +120,15 @@ int main(int argc, char** argv)
     argc -= optind;
     argv += optind;
 
-    shared_ptr<environment> env = make_standard_env();
+    shared_ptr<module> builtins_module = make_builtins_module();
+    shared_ptr<module> user_module(new module(make_shared<cons>(make_shared<symbol>("user"),
+                                                                make_shared<nil>())));
+    user_module->add_import(builtins_module->get_name());
 
     LineEditor ledit("deviser");
     string input = ledit.getLine();
     while(!ledit.isEndOfFile()) {
-        read_eval_print(input, env);
+        read_eval_print(input, user_module);
         input = ledit.getLine();
     }
     cout << endl;

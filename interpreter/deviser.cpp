@@ -80,12 +80,115 @@ int cfunc::objtype() const {
     return CFUNC_TYPE;
 }
 
-module::module(shared_ptr<lispobj> _name, shared_ptr<environment> env) :
+module::module(shared_ptr<lispobj> _name) :
     name(_name),
-    scope(new lexicalscope(env)),
+    scope(new lexicalscope()),
     inited(false)
 {
 
+}
+
+string get_command_name(shared_ptr<lispobj> command) {
+    if(command->objtype() != CONS_TYPE) {
+        return "";
+    }
+
+    shared_ptr<cons> c = dynamic_pointer_cast<cons>(command);
+    if(c->car()->objtype() != SYMBOL_TYPE) {
+        return "";
+    }
+
+    shared_ptr<symbol> sym = dynamic_pointer_cast<symbol>(c->car());
+    return sym->name();
+}
+
+shared_ptr<lispobj> module::eval(shared_ptr<lispobj> command) {
+    string command_name = get_command_name(command);
+
+    if(command_name == "define") {
+        return ::eval(command, scope);
+    } else if(command_name == "undefine") {
+
+    } else if(command_name == "export") {
+        shared_ptr<cons> command_cons = dynamic_pointer_cast<cons>(command);
+        shared_ptr<lispobj> exportdecl = command_cons->cdr();
+
+        if(exportdecl->objtype() != CONS_TYPE) {
+            cout << "nothing to export" << endl;
+            return make_shared<nil>();
+        }
+
+        while(exportdecl->objtype() == CONS_TYPE) {
+            shared_ptr<cons> c = dynamic_pointer_cast<cons>(exportdecl);
+            if(c->car()->objtype() != SYMBOL_TYPE) {
+                cout << "non-symbol in export list" << endl;
+                return make_shared<nil>();
+            }
+
+            add_export(dynamic_pointer_cast<symbol>(c->car()));
+
+            exportdecl = c->cdr();
+        }
+        return command_cons->cdr();
+    } else if(command_name == "unexport") {
+
+    } else if(command_name == "import") {
+        shared_ptr<cons> command_cons = dynamic_pointer_cast<cons>(command);
+        shared_ptr<lispobj> importdecl = command_cons->cdr();
+
+        if(importdecl->objtype() != CONS_TYPE) {
+            return make_shared<nil>();
+        }
+
+        shared_ptr<cons> c = dynamic_pointer_cast<cons>(importdecl);
+        if(c->cdr()->objtype() != NIL_TYPE) {
+            cout << "too many arguments to import" << endl;
+            return make_shared<nil>();
+        }
+
+        add_import(c->car());
+        return c->car();
+    } else if(command_name == "unimport") {
+
+    } else if(command_name == "init") {
+
+    } else if(command_name == "dump") {
+        cout << "(module ";
+        print(name);
+
+        if(imports.size() > 0) {
+            cout << endl;
+            cout << "  ";
+            print(make_shared<cons>(make_shared<symbol>("import"),
+                                    make_list(imports.begin(),
+                                              imports.end())));
+        }
+
+        if(exports.size() > 0) {
+            cout << endl;
+            cout << "  ";
+            print(make_shared<cons>(make_shared<symbol>("export"),
+                                    make_list(exports.begin(),
+                                              exports.end())));
+        }
+
+        for(auto define : defines) {
+            cout << endl;
+            cout << "  ";
+            print(define);
+        }
+
+        for(auto initblock : initblocks) {
+            cout << endl;
+            cout << "  ";
+            print(initblock);
+        }
+
+        cout << ")" << endl;
+        return make_shared<nil>();
+    } else {
+        return ::eval(command, scope);
+    }
 }
 
 void module::add_import(shared_ptr<lispobj> modname) {
@@ -126,23 +229,23 @@ int module::objtype() const {
     return MODULE_TYPE;
 }
 
-bool module::init(shared_ptr<environment> env) {
+bool module::init() {
     if(inited) {
         return true;;
     }
 
     for(auto imp : imports) {
-        shared_ptr<module> mod = env->get_module_by_prefix(imp);
-        mod->init(env);
+        shared_ptr<module> mod = nullptr; //env->get_module_by_prefix(imp);
+        mod->init();
         scope->add_import(mod);
     }
 
     // it would be good if this could go on the stack of the currently running eval
     // but that's ~*~hard~*~, and this is easy
     for(auto initblock : initblocks) {
-        shared_ptr<lexicalscope> initscope(new lexicalscope(env, scope));
-        if(eval(make_shared<cons>(make_shared<symbol>("begin"), initblock),
-                initscope, env) == nullptr) {
+        shared_ptr<lexicalscope> initscope(new lexicalscope(scope));
+        if(::eval(make_shared<cons>(make_shared<symbol>("begin"), initblock),
+                  initscope) == nullptr) {
             return false;
         }
     }
@@ -307,10 +410,12 @@ void printall(vector< shared_ptr<lispobj> > objs) {
     }
 }
 
-shared_ptr<lispobj> make_list(const vector<shared_ptr<lispobj> >& list_values) {
+template<typename input_iterator>
+shared_ptr<lispobj> make_list(input_iterator begin,
+                              input_iterator end) {
     shared_ptr<lispobj> ret(new nil());
 
-    for(auto it = list_values.rbegin(); it != list_values.rend(); ++it) {
+    for(auto it = begin; it != end; ++it) {
         ret.reset(new cons(*it, ret));
     }
 
@@ -344,7 +449,7 @@ shared_ptr<lispobj> _read(string& str) {
         }
 
         str.erase(0, 1);
-        return make_list(list_values);
+        return make_list(list_values.begin(), list_values.end());
     } else if (isdigit(str[0])) { // number ('.' too, once we have non-integers)
         size_t pos = 0;
         int n = std::stoi(str, &pos);
@@ -379,24 +484,6 @@ vector< shared_ptr<lispobj> > readall(string str) {
     return ret;
 }
 
-environment::environment() :
-    scope(nullptr)
-{
-
-}
-
-shared_ptr<lexicalscope> environment::get_scope() {
-    return scope;
-}
-
-void environment::set_scope(shared_ptr<lexicalscope> s) {
-    scope = s;
-}
-
-void environment::add_module_def(shared_ptr<module> m) {
-    modules.push_back(m);
-}
-
 bool prefix_match(shared_ptr<lispobj> name, shared_ptr<lispobj> prefix) {
     if(prefix->objtype() == NIL_TYPE || eqv(name, prefix)) {
         return true;
@@ -416,26 +503,14 @@ bool prefix_match(shared_ptr<lispobj> name, shared_ptr<lispobj> prefix) {
     return false;
 }
 
-shared_ptr<module> environment::get_module_by_prefix(shared_ptr<lispobj> prefix) {
-    for(auto mod : modules) {
-        if(prefix_match(mod->get_name(), prefix)) {
-            return mod;
-        }
-    }
-
-    return nullptr;
-}
-
-lexicalscope::lexicalscope(shared_ptr<environment> e) :
-    parent(nullptr),
-    env(e)
+lexicalscope::lexicalscope() :
+    parent(nullptr)
 {
 
 }
 
-lexicalscope::lexicalscope(shared_ptr<environment> e, shared_ptr<lexicalscope> p) :
-    parent(p),
-    env(e)
+lexicalscope::lexicalscope(shared_ptr<lexicalscope> p) :
+    parent(p)
 {
 
 }
@@ -444,6 +519,10 @@ void lexicalscope::define(string name, shared_ptr<lispobj> value) {
     // shadow any bindings in parent scopes, but don't modify them.
     // maybe should error when name already exists
     bindings[name] = value;
+}
+
+void lexicalscope::undefine(string name) {
+    bindings.erase(name);
 }
 
 void lexicalscope::set(string name, shared_ptr<lispobj> value) {
@@ -542,11 +621,11 @@ void print_stack(const std::deque<stackframe> exec_stack) {
     }
 }
 
-int apply_lispfunc(std::deque<stackframe>& exec_stack, shared_ptr<environment> env) {
+int apply_lispfunc(std::deque<stackframe>& exec_stack) {
     auto evaled_args = exec_stack.front().evaled_args;
     shared_ptr<lispfunc> func = dynamic_pointer_cast<lispfunc>(evaled_args.front());
     evaled_args.erase(evaled_args.begin());
-    shared_ptr<lexicalscope> scope(new lexicalscope(env, func->closure));
+    shared_ptr<lexicalscope> scope(new lexicalscope(func->closure));
 
     auto arg_value_iter = evaled_args.begin();
     shared_ptr<lispobj> arg_names = func->args;
@@ -645,8 +724,7 @@ int add_export_to_module(shared_ptr<module> mod, shared_ptr<lispobj> exportdecl)
 
 int add_define_to_module(shared_ptr<module> mod,
                          shared_ptr<lispobj> definedecl,
-                         shared_ptr<lexicalscope> scope,
-                         shared_ptr<environment> env) {
+                         shared_ptr<lexicalscope> scope) {
     if(definedecl->objtype() != CONS_TYPE) {
         return 1;
     }
@@ -663,7 +741,7 @@ int add_define_to_module(shared_ptr<module> mod,
     }
 
     c = dynamic_pointer_cast<cons>(c->cdr());
-    shared_ptr<lispobj> val = eval(c->car(), scope, env);
+    shared_ptr<lispobj> val = eval(c->car(), scope);
     if(val) {
         mod->define(defname->name(), val);
     } else {
@@ -674,15 +752,14 @@ int add_define_to_module(shared_ptr<module> mod,
     return 0;
 }
 
-int eval_module_special_form(std::deque<stackframe>& exec_stack,
-                             shared_ptr<environment> env) {
+int eval_module_special_form(std::deque<stackframe>& exec_stack) {
     if(exec_stack.front().code->objtype() != CONS_TYPE) {
         cout << "module does not have name" << endl;
         return 1;
     }
     shared_ptr<lispobj> lobj;
     shared_ptr<cons> c = dynamic_pointer_cast<cons>(exec_stack.front().code);
-    shared_ptr<module> m(new module(c->car(), env));
+    shared_ptr<module> m(new module(c->car()));
 
     lobj = c->cdr();
     while(lobj->objtype() == CONS_TYPE) {
@@ -720,7 +797,7 @@ int eval_module_special_form(std::deque<stackframe>& exec_stack,
                 return 1;
             }
         } else if(s->name() == "define") {
-            if(add_define_to_module(m, decl->cdr(), exec_stack.front().scope, env)) {
+            if(add_define_to_module(m, decl->cdr(), exec_stack.front().scope)) {
                 cout << "invalid define declaration: ";
                 print (decl);
                 cout << endl;
@@ -733,7 +810,7 @@ int eval_module_special_form(std::deque<stackframe>& exec_stack,
         lobj = c->cdr();
     }
 
-    env->add_module_def(m);
+    //env->add_module_def(m);
 
     exec_stack.front().mark = evaled;
     exec_stack.front().code = m;
@@ -851,14 +928,13 @@ int eval_lambda_special_form(std::deque<stackframe>& exec_stack) {
 }
 
 int eval_special_form(string name,
-                      std::deque<stackframe>& exec_stack,
-                      shared_ptr<environment> env) {
+                      std::deque<stackframe>& exec_stack) {
     if(name == "if") {
         return eval_if_special_form(exec_stack);
     } else if(name == "lambda") {
         return eval_lambda_special_form(exec_stack);
     } else if(name == "module") {
-        return eval_module_special_form(exec_stack, env);
+        return eval_module_special_form(exec_stack);
     } else if(name == "import") {
         shared_ptr<lispobj> lobj = exec_stack.front().code;
         if(lobj->objtype() != CONS_TYPE) {
@@ -867,13 +943,13 @@ int eval_special_form(string name,
         }
 
         shared_ptr<cons> c = dynamic_pointer_cast<cons>(lobj);
-        shared_ptr<module> m = env->get_module_by_prefix(c->car());
+        shared_ptr<module> m = nullptr; //env->get_module_by_prefix(c->car());
         if(!m) {
             cout << "Module ";
             print(c->car());
             cout << " not found." << endl;
             return 1;
-        } else if(!(m->init(env))) {
+        } else if(!(m->init())) {
             cout << "Module ";
             print(c->car());
             cout << " init failed." << endl;
@@ -906,8 +982,7 @@ int eval_special_form(string name,
 }
 
 shared_ptr<lispobj> eval(shared_ptr<lispobj> code,
-                         shared_ptr<lexicalscope> tls,
-                         shared_ptr<environment> env) {
+                         shared_ptr<lexicalscope> tls) {
     std::deque<stackframe> exec_stack;
     shared_ptr<lispobj> nil_obj(new nil());
 
@@ -968,7 +1043,7 @@ shared_ptr<lispobj> eval(shared_ptr<lispobj> code,
                     cout << "ERROR: empty function application" << endl;
                     return nullptr;
                 } else if(evaled_args.front()->objtype() == FUNC_TYPE) {
-                    if(apply_lispfunc(exec_stack, env) != 0) {
+                    if(apply_lispfunc(exec_stack) != 0) {
                         return nullptr;
                     }
                 } else if(evaled_args.front()->objtype() == CFUNC_TYPE) {
@@ -1007,7 +1082,7 @@ shared_ptr<lispobj> eval(shared_ptr<lispobj> code,
                 return nullptr;
             }
             shared_ptr<symbol> sym = dynamic_pointer_cast<symbol>(list_head);
-            if(eval_special_form(sym->name(), exec_stack, env) != 0) {
+            if(eval_special_form(sym->name(), exec_stack) != 0) {
                 return nullptr;
             }
         } else {
@@ -1117,7 +1192,7 @@ shared_ptr<lispobj> newline(vector< shared_ptr<lispobj> > /*args*/) {
 }
 
 shared_ptr<lispobj> list_cfunc(vector< shared_ptr<lispobj> > args) {
-    return make_list(args);
+    return make_list(args.begin(), args.end());
 }
 
 shared_ptr<lispobj> eq_cfunc(vector< shared_ptr<lispobj> > args) {
@@ -1168,12 +1243,9 @@ shared_ptr<lispobj> cons_cfunc(vector< shared_ptr<lispobj> > args) {
     return make_shared<cons>(args[0], args[1]);
 }
 
-shared_ptr<environment> make_standard_env() {
-    shared_ptr<environment> std_env(new environment());
-    std_env->set_scope(make_shared<lexicalscope>(std_env));
-
+shared_ptr<module> make_builtins_module() {
     shared_ptr<lispobj> module_name(new cons(make_shared<symbol>("builtins"), make_shared<nil>()));
-    shared_ptr<module> builtins_module(new module(module_name, std_env));
+    shared_ptr<module> builtins_module(new module(module_name));
     builtins_module->define_and_export("+", make_shared<cfunc>(plus));
     builtins_module->define_and_export("-", make_shared<cfunc>(minus));
     builtins_module->define_and_export("*", make_shared<cfunc>(multiply));
@@ -1186,6 +1258,5 @@ shared_ptr<environment> make_standard_env() {
     builtins_module->define_and_export("equal", make_shared<cfunc>(equal_cfunc));
     builtins_module->define_and_export("cons", make_shared<cfunc>(cons_cfunc));
 
-    std_env->add_module_def(builtins_module);
-    return std_env;
+    return builtins_module;
 }
