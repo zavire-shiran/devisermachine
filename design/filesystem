@@ -1,10 +1,12 @@
 (of course, all of this relies on hardware support for disks/mmc)
 main file system
-database-like, key-value store
-  keys are symbols (at least logically, probably strings on disk)
-  values are arbitrary objects
+object database
+  can iterate over all of a type in the database
+    should be a standard way to filter the results
+  should also be a link between nodes (but that's harder)
 everything is in it: code, text documents, spreadsheets, images, videos (eww), pdfs (ewwwww)
-serialization is transparent and generic
+serialization is transparent and generic (once you include the mix-in)
+  should saving be explicit? there are arguments both ways
 
 there must be a way to interface with at least fat filesystems, others would be nice, too
   it might actually be better to do FAT first, because then we can modify the uboot partition
