@@ -17,6 +17,7 @@ const int NUMBER_TYPE = 4;
 const int FUNC_TYPE = 5;
 const int CFUNC_TYPE = 6;
 const int MODULE_TYPE = 7;
+const int CLASS_TYPE = 8;
 
 class lispobj {
 public:
@@ -30,16 +31,21 @@ class lexicalscope {
 public:
     lexicalscope();
     lexicalscope(shared_ptr<lexicalscope> p);
-    void define(string name, shared_ptr<lispobj> value);
-    void undefine(string name);
-    void set(string name, shared_ptr<lispobj> value);
-    shared_ptr<lispobj> get(string name);
+    void defval(string name, shared_ptr<lispobj> value);
+    void defun(string name, shared_ptr<lispobj> value);
+    void undefval(string name);
+    void undefun(string name);
+    void setval(string name, shared_ptr<lispobj> value);
+    void setfun(string name, shared_ptr<lispobj> value);
+    shared_ptr<lispobj> getval(string name);
+    shared_ptr<lispobj> getfun(string name);
     void add_import(shared_ptr<module> mod);
     const vector< shared_ptr<module> >& get_imports() const;
     void dump();
 
 private:
-    std::map<string, shared_ptr<lispobj> > bindings;
+    std::map<string, shared_ptr<lispobj> > valbindings;
+    std::map<string, shared_ptr<lispobj> > funbindings;
     std::shared_ptr<lexicalscope> parent;
     std::vector< shared_ptr<module> > imports;
 };
@@ -108,10 +114,12 @@ public:
 
     shared_ptr<lispobj> eval(shared_ptr<lispobj> command);
 
-    void add_import(shared_ptr<lispobj> modname);
+    void add_import(shared_ptr<module> mod);
     void add_export(shared_ptr<symbol> sym);
-    void define(string name, shared_ptr<lispobj> value);
-    void define_and_export(string symname, shared_ptr<lispobj> value);
+    void defval(string name, shared_ptr<lispobj> value);
+    void defun(string name, shared_ptr<lispobj> value);
+    void defval_and_export(string symname, shared_ptr<lispobj> value);
+    void defun_and_export(string symname, shared_ptr<lispobj> value);
     void add_init(shared_ptr<lispobj> initblock);
 
     shared_ptr<lispobj> get_name() const;
@@ -128,8 +136,6 @@ public:
 private:
     bool ismodulecommand(shared_ptr<lispobj> command);
 
-    // we actually want a map from symbol to module that we get it from
-    // but that's hard because of import all...
     shared_ptr<lispobj> name;
     vector< shared_ptr<symbol> > exports;
     vector< shared_ptr<lispobj> > imports;

@@ -124,7 +124,7 @@ int main(int argc, char** argv)
     shared_ptr<module> builtins_module = make_builtins_module();
     shared_ptr<module> user_module(new module(make_shared<cons>(make_shared<symbol>("user"),
                                                                 make_shared<nil>())));
-    user_module->add_import(builtins_module->get_name());
+    user_module->add_import(builtins_module);
 
     LineEditor ledit("deviser");
     string input = ledit.getLine();

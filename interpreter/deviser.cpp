@@ -147,12 +147,13 @@ shared_ptr<lispobj> module::eval(shared_ptr<lispobj> command) {
             return make_shared<nil>();
         }
 
-        add_import(c->car());
+//        add_import(c->car());
         return c->car();
     } else if(command_name == "unimport") {
 
     } else if(command_name == "init") {
-
+        shared_ptr<cons> command_cons = dynamic_pointer_cast<cons>(command);
+        initblocks.push_back(command_cons->cdr());
     } else if(command_name == "dump") {
         cout << "(module ";
         print(name);
@@ -182,31 +183,43 @@ shared_ptr<lispobj> module::eval(shared_ptr<lispobj> command) {
         for(auto initblock : initblocks) {
             cout << endl;
             cout << "  ";
-            print(initblock);
+            print(make_shared<cons>(make_shared<symbol>("init"), initblock));
         }
 
         cout << ")" << endl;
-        return make_shared<nil>();
     } else {
         return ::eval(command, scope);
     }
+
+    return make_shared<nil>();
 }
 
-void module::add_import(shared_ptr<lispobj> modname) {
-    imports.push_back(modname);
+void module::add_import(shared_ptr<module> mod) {
+    imports.push_back(mod->get_name());
+    scope->add_import(mod);
 }
 
 void module::add_export(shared_ptr<symbol> sym) {
     exports.push_back(sym);
 }
 
-void module::define(string name, shared_ptr<lispobj> value) {
-    scope->define(name, value);
+void module::defval(string name, shared_ptr<lispobj> value) {
+    scope->defval(name, value);
 }
 
-void module::define_and_export(string symname, shared_ptr<lispobj> value) {
+void module::defun(string name, shared_ptr<lispobj> value) {
+    scope->defun(name, value);
+}
+
+void module::defval_and_export(string symname, shared_ptr<lispobj> value) {
     shared_ptr<symbol> name(new symbol(symname));
-    define(symname, value);
+    defval(symname, value);
+    add_export(name);
+}
+
+void module::defun_and_export(string symname, shared_ptr<lispobj> value) {
+    shared_ptr<symbol> name(new symbol(symname));
+    defun(symname, value);
     add_export(name);
 }
 
@@ -504,23 +517,29 @@ lexicalscope::lexicalscope(shared_ptr<lexicalscope> p) :
 
 }
 
-void lexicalscope::define(string name, shared_ptr<lispobj> value) {
-    // shadow any bindings in parent scopes, but don't modify them.
-    // maybe should error when name already exists
-    bindings[name] = value;
+void lexicalscope::defval(string name, shared_ptr<lispobj> value) {
+    valbindings[name] = value;
 }
 
-void lexicalscope::undefine(string name) {
-    bindings.erase(name);
+void lexicalscope::defun(string name, shared_ptr<lispobj> value) {
+    funbindings[name] = value;
 }
 
-void lexicalscope::set(string name, shared_ptr<lispobj> value) {
+void lexicalscope::undefval(string name) {
+    valbindings.erase(name);
+}
+
+void lexicalscope::undefun(string name) {
+    funbindings.erase(name);
+}
+
+void lexicalscope::setval(string name, shared_ptr<lispobj> value) {
     // try to find a variable binding. if it already exists,
     // set it in the same lexicalscope that we found it
     shared_ptr<lexicalscope> scope = shared_ptr<lexicalscope>(this);
     while(scope != nullptr) {
-        auto iter = scope->bindings.find(name);
-        if(iter != scope->bindings.end()) {
+        auto iter = scope->valbindings.find(name);
+        if(iter != scope->valbindings.end()) {
             iter->second = value;
             return;
         }
@@ -528,26 +547,67 @@ void lexicalscope::set(string name, shared_ptr<lispobj> value) {
     }
 
     // it has not been set yet, so set it in the current frame
-    bindings[name] = value;
+    valbindings[name] = value;
 }
 
-shared_ptr<lispobj> lexicalscope::get(string name) {
-    auto it = bindings.find(name);
-    if(it != bindings.end()) {
+void lexicalscope::setfun(string name, shared_ptr<lispobj> value) {
+    // try to find a variable binding. if it already exists,
+    // set it in the same lexicalscope that we found it
+    cout << "Setting fun " << name << endl;
+    shared_ptr<lexicalscope> scope = shared_ptr<lexicalscope>(this);
+    while(scope != nullptr) {
+        auto iter = scope->funbindings.find(name);
+        if(iter != scope->funbindings.end()) {
+            iter->second = value;
+            return;
+        }
+        scope = scope->parent;
+    }
+
+    // it has not been set yet, so set it in the current frame
+    funbindings[name] = value;
+}
+
+shared_ptr<lispobj> lexicalscope::getval(string name) {
+    auto it = valbindings.find(name);
+    if(it != valbindings.end()) {
         return it->second;
     } else {
         for(shared_ptr<module> mod : imports) {
             for(shared_ptr<symbol> sym : mod->get_exports()) {
                 if(sym->name() == name) {
-                    return mod->get_bindings()->get(name);
+                    return mod->get_bindings()->getval(name);
                 }
             }
         }
 
         if(parent) {
-            return parent->get(name);
+            return parent->getval(name);
         } else {
             //XXX: should be undefined so eval loop can error
+            return make_shared<nil>();
+        }
+    }
+}
+
+shared_ptr<lispobj> lexicalscope::getfun(string name) {
+    auto it = funbindings.find(name);
+    if(it != funbindings.end()) {
+        return it->second;
+    } else {
+        for(shared_ptr<module> mod : imports) {
+            for(shared_ptr<symbol> sym : mod->get_exports()) {
+                if(sym->name() == name) {
+                    return mod->get_bindings()->getfun(name);
+                }
+            }
+        }
+
+        if(parent) {
+            return parent->getfun(name);
+        } else {
+            //XXX: should be undefined so eval loop can error
+            cout << "couldn't find fun " << name << endl;
             return make_shared<nil>();
         }
     }
@@ -562,8 +622,14 @@ const vector< shared_ptr<module> >& lexicalscope::get_imports() const {
 }
 
 void lexicalscope::dump() {
-    for(auto it = bindings.begin(); it != bindings.end(); ++it) {
+    for(auto it = valbindings.begin(); it != valbindings.end(); ++it) {
         cout << it->first << ": ";
+        print(it->second);
+        cout<< endl;
+    }
+
+    for(auto it = funbindings.begin(); it != funbindings.end(); ++it) {
+        cout << "(function " << it->first << "): ";
         print(it->second);
         cout<< endl;
     }
@@ -624,7 +690,7 @@ int apply_lispfunc(std::deque<stackframe>& exec_stack) {
         shared_ptr<lispobj> name = c->car();
         if(name->objtype() == SYMBOL_TYPE) {
             shared_ptr<symbol> s = dynamic_pointer_cast<symbol>(name);
-            scope->define(s->name(), *arg_value_iter);
+            scope->defval(s->name(), *arg_value_iter);
         } else {
             cout << "ERROR: arguments must be symbols" << endl;
             return 1;
@@ -666,7 +732,7 @@ bool is_special_form(shared_ptr<lispobj> form) {
             return true;
         } else if(sym->name() == "begin") {
             return true;
-        } else if(sym->name() == "define") {
+        } else if(sym->name() == "defun") {
             return true;
         } else if(sym->name() == "quote") { 
             return true;
@@ -686,7 +752,7 @@ int add_import_to_module(shared_ptr<module> mod, shared_ptr<lispobj> importdecl)
         return 1;
     }
 
-    mod->add_import(c->car());
+//    mod->add_import(c->car());
     return 0;
 }
 
@@ -711,7 +777,7 @@ int add_export_to_module(shared_ptr<module> mod, shared_ptr<lispobj> exportdecl)
     return 0;
 }
 
-int add_define_to_module(shared_ptr<module> mod,
+int add_defun_to_module(shared_ptr<module> mod,
                          shared_ptr<lispobj> definedecl,
                          shared_ptr<lexicalscope> scope) {
     if(definedecl->objtype() != CONS_TYPE) {
@@ -732,7 +798,7 @@ int add_define_to_module(shared_ptr<module> mod,
     c = dynamic_pointer_cast<cons>(c->cdr());
     shared_ptr<lispobj> val = eval(c->car(), scope);
     if(val) {
-        mod->define(defname->name(), val);
+        mod->defun(defname->name(), val);
     } else {
         cout << "error evaluating define for module" << endl;
         return 1;
@@ -785,8 +851,8 @@ int eval_module_special_form(std::deque<stackframe>& exec_stack) {
                 cout << endl;
                 return 1;
             }
-        } else if(s->name() == "define") {
-            if(add_define_to_module(m, decl->cdr(), exec_stack.front().scope)) {
+        } else if(s->name() == "defun") {
+            if(add_defun_to_module(m, decl->cdr(), exec_stack.front().scope)) {
                 cout << "invalid define declaration: ";
                 print (decl);
                 cout << endl;
@@ -848,7 +914,7 @@ int eval_if_special_form(std::deque<stackframe>& exec_stack) {
     return 0;
 }
 
-int eval_define_special_form(std::deque<stackframe>& exec_stack) {
+int eval_defun_special_form(std::deque<stackframe>& exec_stack) {
     if(exec_stack.front().evaled_args.size() == 1) {
         //verify syntax and push new frame to evaluate value
         shared_ptr<lispobj> lobj = exec_stack.front().code;
@@ -886,7 +952,7 @@ int eval_define_special_form(std::deque<stackframe>& exec_stack) {
         shared_ptr<lispobj> lobj = exec_stack.front().evaled_args[1];
         shared_ptr<lispobj> value = exec_stack.front().evaled_args[2];
         shared_ptr<symbol> s = dynamic_pointer_cast<symbol>(lobj);
-        exec_stack.front().scope->define(s->name(), value);
+        exec_stack.front().scope->defun(s->name(), value);
         exec_stack.front().evaled_args.clear();
         exec_stack.front().mark = evaled;
         exec_stack.front().code = make_shared<nil>();
@@ -949,8 +1015,8 @@ int eval_special_form(string name,
         exec_stack.front().code = make_shared<nil>();
     } else if(name == "begin") {
         exec_stack.front().mark = applying;
-    } else if(name == "define") {
-        return eval_define_special_form(exec_stack);
+    } else if(name == "defun") {
+        return eval_defun_special_form(exec_stack);
     } else if(name == "quote") {
         shared_ptr<lispobj> lobj = exec_stack.front().code;
         if(lobj->objtype() != CONS_TYPE) {
@@ -1053,10 +1119,16 @@ shared_ptr<lispobj> eval(shared_ptr<lispobj> code,
                 //variable lookup
                 exec_stack.front().mark = evaled;
                 shared_ptr<symbol> s = dynamic_pointer_cast<symbol>(exec_stack.front().code);
+
                 if(s->name() == "nil") {
                     exec_stack.front().code = nil_obj;
+                } else if(exec_stack.size() > 1 &&
+                          exec_stack[1].mark == evaluating &&
+                          exec_stack[1].evaled_args.size() == 0) {
+                    // first element of a call, so look up a function
+                    exec_stack.front().code = exec_stack.front().scope->getfun(s->name());
                 } else {
-                    exec_stack.front().code = exec_stack.front().scope->get(s->name());
+                    exec_stack.front().code = exec_stack.front().scope->getval(s->name());
                 }
                 //cout << "getting var " << s->name() << ": ";
                 //print(exec_stack.front().code); cout << endl;
@@ -1235,17 +1307,17 @@ shared_ptr<lispobj> cons_cfunc(vector< shared_ptr<lispobj> > args) {
 shared_ptr<module> make_builtins_module() {
     shared_ptr<lispobj> module_name(new cons(make_shared<symbol>("builtins"), make_shared<nil>()));
     shared_ptr<module> builtins_module(new module(module_name));
-    builtins_module->define_and_export("+", make_shared<cfunc>(plus));
-    builtins_module->define_and_export("-", make_shared<cfunc>(minus));
-    builtins_module->define_and_export("*", make_shared<cfunc>(multiply));
-    builtins_module->define_and_export("/", make_shared<cfunc>(divide));
-    builtins_module->define_and_export("print", make_shared<cfunc>(print_cfunc));
-    builtins_module->define_and_export("newline", make_shared<cfunc>(newline));
-    builtins_module->define_and_export("list", make_shared<cfunc>(list_cfunc));
-    builtins_module->define_and_export("eq", make_shared<cfunc>(eq_cfunc));
-    builtins_module->define_and_export("eqv", make_shared<cfunc>(eqv_cfunc));
-    builtins_module->define_and_export("equal", make_shared<cfunc>(equal_cfunc));
-    builtins_module->define_and_export("cons", make_shared<cfunc>(cons_cfunc));
+    builtins_module->defun_and_export("+", make_shared<cfunc>(plus));
+    builtins_module->defun_and_export("-", make_shared<cfunc>(minus));
+    builtins_module->defun_and_export("*", make_shared<cfunc>(multiply));
+    builtins_module->defun_and_export("/", make_shared<cfunc>(divide));
+    builtins_module->defun_and_export("print", make_shared<cfunc>(print_cfunc));
+    builtins_module->defun_and_export("newline", make_shared<cfunc>(newline));
+    builtins_module->defun_and_export("list", make_shared<cfunc>(list_cfunc));
+    builtins_module->defun_and_export("eq", make_shared<cfunc>(eq_cfunc));
+    builtins_module->defun_and_export("eqv", make_shared<cfunc>(eqv_cfunc));
+    builtins_module->defun_and_export("equal", make_shared<cfunc>(equal_cfunc));
+    builtins_module->defun_and_export("cons", make_shared<cfunc>(cons_cfunc));
 
     return builtins_module;
 }
