@@ -1,3 +1,4 @@
+#include <istream>
 #include <iostream>
 #include <stack>
 #include "deviser.hpp"
@@ -158,6 +159,42 @@ int cfunc::objtype() const {
 void cfunc::print() {
     cout << "CFUNC";
 }
+
+fileinputport::fileinputport(string fname) :
+    filename(fname),
+    instream(filename)
+{
+
+}
+
+shared_ptr<lispobj> fileinputport::read() {
+    char buf[256];
+    instream.get(buf, 256);
+    if(instream) {
+        return make_shared<lispstring>(buf);
+    } else {
+        return make_shared<lispstring>();
+    }
+}
+
+shared_ptr<lispobj> fileinputport::readchar() {
+    char buf;
+    instream.get(buf);
+    if(instream) {
+        return make_shared<lispstring>(string(&buf, 1));
+    } else {
+        return make_shared<lispstring>();
+    }
+}
+
+int fileinputport::objtype() const {
+    return FILEINPUTPORT_TYPE;
+}
+
+void fileinputport::print() {
+    cout << "<fileinputport: " << filename << ">";
+}
+
 
 module::module(shared_ptr<lispobj> _name) :
     name(_name),
@@ -1352,6 +1389,26 @@ shared_ptr<lispobj> append_cfunc(vector< shared_ptr<lispobj> > args) {
     return lstr;
 }
 
+shared_ptr<lispobj> open_file_cfunc(vector< shared_ptr<lispobj> > args) {
+    if(args.size() != 1 && !dynamic_pointer_cast<lispstring>(args[0])) {
+        cout << "ERROR open-file wants one string" << endl;
+        return nullptr;
+    }
+
+    shared_ptr<lispstring> filename = dynamic_pointer_cast<lispstring>(args[0]);
+    return make_shared<fileinputport>(filename->get_contents());
+}
+
+shared_ptr<lispobj> read_cfunc(vector< shared_ptr<lispobj> > args) {
+    if(args.size() != 1 && !dynamic_pointer_cast<fileinputport>(args[0])) {
+        cout << "ERROR read wants on input-port" << endl;
+        return nullptr;
+    }
+
+    shared_ptr<fileinputport> port = dynamic_pointer_cast<fileinputport>(args[0]);
+    return port->read();
+}
+
 shared_ptr<module> make_builtins_module() {
     shared_ptr<lispobj> module_name(new cons(make_shared<symbol>("builtins"), make_shared<nil>()));
     shared_ptr<module> builtins_module(new module(module_name));
@@ -1367,6 +1424,8 @@ shared_ptr<module> make_builtins_module() {
     builtins_module->defun_and_export("equal", make_shared<cfunc>(equal_cfunc));
     builtins_module->defun_and_export("cons", make_shared<cfunc>(cons_cfunc));
     builtins_module->defun_and_export("append", make_shared<cfunc>(append_cfunc));
+    builtins_module->defun_and_export("open-file", make_shared<cfunc>(open_file_cfunc));
+    builtins_module->defun_and_export("read", make_shared<cfunc>(read_cfunc));
 
     return builtins_module;
 }

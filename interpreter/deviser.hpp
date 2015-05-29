@@ -1,5 +1,6 @@
 #pragma once
 
+#include <fstream>
 #include <map>
 #include <memory>
 #include <string>
@@ -18,6 +19,7 @@ const int FUNC_TYPE = 5;
 const int CFUNC_TYPE = 6;
 const int MODULE_TYPE = 7;
 const int STRING_TYPE = 8;
+const int FILEINPUTPORT_TYPE = 9;
 
 class lispobj {
 public:
@@ -135,6 +137,21 @@ public:
     virtual void print();
 
     std::function<shared_ptr<lispobj>(vector<shared_ptr<lispobj> >)> func;
+};
+
+class fileinputport : public lispobj {
+public:
+    fileinputport(string fname);
+
+    shared_ptr<lispobj> read();
+    shared_ptr<lispobj> readchar();
+
+    virtual int objtype() const;
+    virtual void print();
+
+private:
+    string filename;
+    std::ifstream instream;
 };
 
 class module : public lispobj {
