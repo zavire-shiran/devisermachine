@@ -99,12 +99,16 @@ lispstring::lispstring(const string& str) :
 
 }
 
+void lispstring::append(shared_ptr<lispstring> lstr) {
+    contents.append(lstr->contents);
+}
+
 const string& lispstring::get_contents() const {
     return contents;
 }
 
 int lispstring::objtype() const {
-    return BINARY_TYPE;
+    return STRING_TYPE;
 }
 
 void lispstring::print() {
@@ -1332,6 +1336,22 @@ shared_ptr<lispobj> cons_cfunc(vector< shared_ptr<lispobj> > args) {
     return make_shared<cons>(args[0], args[1]);
 }
 
+shared_ptr<lispobj> append_cfunc(vector< shared_ptr<lispobj> > args) {
+    shared_ptr<lispstring> lstr(new lispstring());
+
+    for(auto it = args.begin(); it != args.end(); ++it) {
+        shared_ptr<lispstring> arg = dynamic_pointer_cast<lispstring>(*it);
+        if(!arg) {
+            cout << "ERROR append wants only strings" << endl;
+            return nullptr;
+        }
+
+        lstr->append(arg);
+    }
+
+    return lstr;
+}
+
 shared_ptr<module> make_builtins_module() {
     shared_ptr<lispobj> module_name(new cons(make_shared<symbol>("builtins"), make_shared<nil>()));
     shared_ptr<module> builtins_module(new module(module_name));
@@ -1346,6 +1366,7 @@ shared_ptr<module> make_builtins_module() {
     builtins_module->defun_and_export("eqv", make_shared<cfunc>(eqv_cfunc));
     builtins_module->defun_and_export("equal", make_shared<cfunc>(equal_cfunc));
     builtins_module->defun_and_export("cons", make_shared<cfunc>(cons_cfunc));
+    builtins_module->defun_and_export("append", make_shared<cfunc>(append_cfunc));
 
     return builtins_module;
 }

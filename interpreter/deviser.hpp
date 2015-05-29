@@ -17,7 +17,7 @@ const int NUMBER_TYPE = 4;
 const int FUNC_TYPE = 5;
 const int CFUNC_TYPE = 6;
 const int MODULE_TYPE = 7;
-const int BINARY_TYPE = 8;
+const int STRING_TYPE = 8;
 
 class lispobj {
 public:
@@ -100,6 +100,8 @@ class lispstring : public lispobj {
 public:
     lispstring();
     explicit lispstring(const string& str);
+
+    void append(shared_ptr<lispstring> lstr);
 
     const string& get_contents() const;
 
