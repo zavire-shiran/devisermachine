@@ -61,7 +61,7 @@ void cons::print() {
     while(obj->objtype() == CONS_TYPE) {
         c = dynamic_pointer_cast<cons>(obj);
         cout << ' ';
-        c->print();
+        c->car()->print();
         obj = c->cdr();
     }
 
@@ -115,10 +115,22 @@ int lispstring::objtype() const {
 void lispstring::print() {
     cout << "\"";
     for(auto it = contents.begin(); it != contents.end(); ++it) {
-        if(*it == '"') {
+        switch(*it) {
+        case '"':
             cout << "\\\"";
-        } else {
+            break;
+        case '\\':
+            cout << "\\\\";
+            break;
+        case '\n':
+            cout << "\\n";
+            break;
+        case '\t':
+            cout << "\\t";
+            break;
+        default:
             cout << *it;
+            break;
         }
     }
     cout << "\"";
@@ -169,7 +181,7 @@ fileinputport::fileinputport(string fname) :
 
 shared_ptr<lispobj> fileinputport::read() {
     char buf[256];
-    instream.get(buf, 256);
+    instream.read(buf, 256);
     if(instream) {
         return make_shared<lispstring>(buf);
     } else {
@@ -1113,7 +1125,7 @@ shared_ptr<lispobj> eval(shared_ptr<lispobj> code,
     exec_stack.push_front(stackframe(tls, evaluating, code));
 
     while(exec_stack.size() != 0 && (exec_stack.size() > 1 || exec_stack.front().mark != evaled)) {
-        print_stack(exec_stack);
+        //print_stack(exec_stack);
         if(exec_stack.front().mark == evaled) {
             shared_ptr<lispobj> c = exec_stack.front().code;
             exec_stack.pop_front();
