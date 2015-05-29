@@ -96,6 +96,21 @@ private:
     int num;
 };
 
+class lispstring : public lispobj {
+public:
+    lispstring();
+    explicit lispstring(const string& str);
+
+    const string& get_contents() const;
+
+    virtual int objtype() const;
+
+    virtual void print();
+
+private:
+    string contents;
+};
+
 class lispfunc : public lispobj {
 public:
     lispfunc(shared_ptr<lispobj> _args,
@@ -157,18 +172,6 @@ private:
     vector< shared_ptr<lispobj> > defines;
     vector< shared_ptr<lispobj> > initblocks;
     bool inited;
-};
-
-class binarystring : public lispobj {
-public:
-    binarystring();
-    explicit binarystring(const string& bstring);
-
-    int objtype() const;
-
-    virtual void print();
-
-    string contents;
 };
 
 bool eq(shared_ptr<lispobj> left, shared_ptr<lispobj> right);

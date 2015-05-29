@@ -89,6 +89,36 @@ void number::print() {
     cout << value();
 }
 
+lispstring::lispstring() {
+
+}
+
+lispstring::lispstring(const string& str) :
+    contents(str)
+{
+
+}
+
+const string& lispstring::get_contents() const {
+    return contents;
+}
+
+int lispstring::objtype() const {
+    return BINARY_TYPE;
+}
+
+void lispstring::print() {
+    cout << "\"";
+    for(auto it = contents.begin(); it != contents.end(); ++it) {
+        if(*it == '"') {
+            cout << "\\\"";
+        } else {
+            cout << *it;
+        }
+    }
+    cout << "\"";
+}
+
 lispfunc::lispfunc(shared_ptr<lispobj> _args,
                    shared_ptr<lexicalscope> _closure,
                    shared_ptr<lispobj> _code) :
@@ -440,11 +470,26 @@ shared_ptr<lispobj> _read(string& str) {
 
         str.erase(0, 1);
         return make_reverse_list(list_values.rbegin(), list_values.rend());
-    } else if (isdigit(str[0])) { // number ('.' too, once we have non-integers)
+    } else if(isdigit(str[0])) { // number ('.' too, once we have non-integers)
         size_t pos = 0;
         int n = std::stoi(str, &pos);
         str.erase(0, pos);
         return make_shared<number>(n);
+    } else if(str[0] == '"') {
+        string contents;
+        int n = 1;
+        while(str[n] != '"') {
+            if(str[n] == '\\') {
+                contents.push_back(str[n+1]);
+                ++n;
+            } else {
+                contents.push_back(str[n]);
+            }
+            ++n;
+        }
+
+        str.erase(0,n+1);
+        return make_shared<lispstring>(contents);
     } else { //symbol
         int n = 1;
         while(!isspace(str[n]) && str[n] != '(' && str[n] != ')') {
