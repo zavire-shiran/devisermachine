@@ -15,6 +15,10 @@ int nil::objtype() const {
     return NIL_TYPE;
 }
 
+void nil::print() {
+    cout << "'()";
+}
+
 symbol::symbol(string sn) {
     symname = sn;
 }
@@ -25,6 +29,10 @@ int symbol::objtype() const {
 
 string symbol::name() const {
     return symname;
+}
+
+void symbol::print() {
+    cout << symname;
 }
 
 cons::cons(shared_ptr<lispobj> a, shared_ptr<lispobj> d) {
@@ -44,6 +52,27 @@ shared_ptr<lispobj> cons::cdr() const {
     return second;
 }
 
+void cons::print() {
+    cout << '(';
+    car()->print();
+    shared_ptr<cons> c;
+    shared_ptr<lispobj> obj = cdr();
+    while(obj->objtype() == CONS_TYPE) {
+        c = dynamic_pointer_cast<cons>(obj);
+        cout << ' ';
+        c->print();
+        obj = c->cdr();
+    }
+
+    if(obj->objtype() == NIL_TYPE) {
+        cout << ')';
+    } else {
+        cout << " . ";
+        obj->print();
+        cout << ')';
+    }
+}
+
 number::number(int n) {
     num = n;
 }
@@ -54,6 +83,10 @@ int number::objtype() const {
 
 int number::value() const {
     return num;
+}
+
+void number::print() {
+    cout << value();
 }
 
 lispfunc::lispfunc(shared_ptr<lispobj> _args,
@@ -70,6 +103,14 @@ int lispfunc::objtype() const {
     return FUNC_TYPE;
 }
 
+void lispfunc::print() {
+    cout << "(lambda ";
+    args->print();
+    cout << " ";
+    args->print();
+    cout << ")";
+}
+
 cfunc::cfunc(std::function<shared_ptr<lispobj>(vector<shared_ptr<lispobj> >)> f) :
     func(f)
 {
@@ -78,6 +119,10 @@ cfunc::cfunc(std::function<shared_ptr<lispobj>(vector<shared_ptr<lispobj> >)> f)
 
 int cfunc::objtype() const {
     return CFUNC_TYPE;
+}
+
+void cfunc::print() {
+    cout << "CFUNC";
 }
 
 module::module(shared_ptr<lispobj> _name) :
@@ -156,34 +201,34 @@ shared_ptr<lispobj> module::eval(shared_ptr<lispobj> command) {
         initblocks.push_back(command_cons->cdr());
     } else if(command_name == "dump") {
         cout << "(module ";
-        print(name);
+        name->print();
 
         if(imports.size() > 0) {
             cout << endl;
             cout << "  ";
-            print(make_shared<cons>(make_shared<symbol>("import"),
-                                    make_reverse_list(imports.rbegin(),
-                                                      imports.rend())));
+            make_shared<cons>(make_shared<symbol>("import"),
+                              make_reverse_list(imports.rbegin(),
+                                                imports.rend()))->print();
         }
 
         if(exports.size() > 0) {
             cout << endl;
             cout << "  ";
-            print(make_shared<cons>(make_shared<symbol>("export"),
-                                    make_reverse_list(exports.rbegin(),
-                                                      exports.rend())));
+            make_shared<cons>(make_shared<symbol>("export"),
+                              make_reverse_list(exports.rbegin(),
+                                                exports.rend()))->print();
         }
 
         for(auto define : defines) {
             cout << endl;
             cout << "  ";
-            print(define);
+            define->print();
         }
 
         for(auto initblock : initblocks) {
             cout << endl;
             cout << "  ";
-            print(make_shared<cons>(make_shared<symbol>("init"), initblock));
+            make_shared<cons>(make_shared<symbol>("init"), initblock)->print();
         }
 
         cout << ")" << endl;
@@ -280,6 +325,32 @@ const vector< shared_ptr<lispobj> >& module::get_initblocks() const {
     return initblocks;
 }
 
+void module::print() {
+    cout << "(module ";
+    get_name()->print();
+    cout << " (imports ";
+    auto imports = get_imports();
+    for(auto import : imports) {
+        import->print();
+        cout << " ";
+    }
+    cout << ") (exports ";
+    auto exports = get_exports();
+    for(auto exprt : exports) {
+        exprt->print();
+        cout << " ";
+    }
+    cout << ") (init ";
+    auto inits = get_initblocks();
+    for(auto init : inits) {
+        init->print();
+        cout  << " ";
+    }
+    cout << ") ";
+    get_bindings()->dump();
+    cout << ")";
+}
+
 bool eq(shared_ptr<lispobj> left, shared_ptr<lispobj> right) {
     if(left == right) return true;
     if(left->objtype() != right->objtype()) return false;
@@ -334,92 +405,9 @@ bool equal(shared_ptr<lispobj> left, shared_ptr<lispobj> right) {
     };
 }
 
-void print(shared_ptr<lispobj> obj) {
-    switch(obj->objtype()) {
-    case NUMBER_TYPE:
-    {
-        shared_ptr<number> n(dynamic_pointer_cast<number>(obj));
-        cout << n->value();
-        break;
-    }
-    case SYMBOL_TYPE:
-    {
-        shared_ptr<symbol> s(dynamic_pointer_cast<symbol>(obj));
-        cout << s->name();
-        break;
-    }
-    case CONS_TYPE:
-    {
-        shared_ptr<cons> c(dynamic_pointer_cast<cons>(obj));
-        cout << '(';
-        print(c->car());
-        obj = c->cdr();
-        while(obj->objtype() == CONS_TYPE) {
-            c = dynamic_pointer_cast<cons>(obj);
-            cout << ' ';
-            print(c->car());
-            obj = c->cdr();
-        }
-
-        if(obj->objtype() == NIL_TYPE) {
-            cout << ')';
-        } else {
-            cout << " . ";
-            print(obj);
-            cout << ')';
-        }
-        break;
-    }
-    case NIL_TYPE:
-        cout << "'()";
-        break;
-    case CFUNC_TYPE:
-        cout << "CFUNC";
-        break;
-    case FUNC_TYPE:
-    {
-        shared_ptr<lispfunc> lfunc = dynamic_pointer_cast<lispfunc>(obj);
-        cout << "(lambda ";
-        print(lfunc->args);
-        cout << " ";
-        print(lfunc->code);
-        cout << ")";
-        break;
-    }
-    case MODULE_TYPE:
-    {
-        shared_ptr<module> mod = dynamic_pointer_cast<module>(obj);
-        cout << "(module ";
-        print(mod->get_name());
-        cout << " (imports ";
-        auto imports = mod->get_imports();
-        for(auto import : imports) {
-            print(import) ;
-            cout << " ";
-        }
-        cout << ") (exports ";
-        auto exports = mod->get_exports();
-        for(auto exprt : exports) {
-            print(exprt);
-            cout << " ";
-        }
-        cout << ") (init ";
-        auto inits = mod->get_initblocks();
-        for(auto init : inits) {
-            print(init);
-            cout  << " ";
-        }
-        cout << ") ";
-        mod->get_bindings()->dump();
-        cout << ")";
-        break;
-    }
-    };
-}
-
 void printall(vector< shared_ptr<lispobj> > objs) {
     for(auto obj : objs) {
-        print(obj);
+        obj->print();
         cout << endl;
     }
 }
@@ -624,13 +612,13 @@ const vector< shared_ptr<module> >& lexicalscope::get_imports() const {
 void lexicalscope::dump() {
     for(auto it = valbindings.begin(); it != valbindings.end(); ++it) {
         cout << it->first << ": ";
-        print(it->second);
+        it->second->print();
         cout<< endl;
     }
 
     for(auto it = funbindings.begin(); it != funbindings.end(); ++it) {
         cout << "(function " << it->first << "): ";
-        print(it->second);
+        it->second->print();
         cout<< endl;
     }
 
@@ -665,12 +653,12 @@ void print_stack(const std::deque<stackframe> exec_stack) {
     for(auto frame : exec_stack) {
         cout << "frame " << frame.mark << endl;
         cout << "  code: ";
-        print(frame.code);
+        frame.code->print();
         cout << endl;
         cout << "  args:" << endl;
         for(auto arg: frame.evaled_args) {
             cout << "    ";
-            print(arg);
+            arg->print();
             cout << endl;
         }
     }
@@ -702,14 +690,14 @@ int apply_lispfunc(std::deque<stackframe>& exec_stack) {
     if(arg_names->objtype() != NIL_TYPE ||
        arg_value_iter != evaled_args.end()) {
         cout << "ERROR: function arity does not match call." << endl;
-        print(func->args); cout << endl;
+        func->args->print(); cout << endl;
         for(auto arg_value_iter = evaled_args.begin();
             arg_value_iter != evaled_args.end();
             ++arg_value_iter) {
-            print(*arg_value_iter); cout << " ";
+            (*arg_value_iter)->print(); cout << " ";
         }
         cout << endl;
-        print(arg_names); cout << endl;
+        arg_names->print(); cout << endl;
         return 1;
     }
 
@@ -822,7 +810,7 @@ int eval_module_special_form(std::deque<stackframe>& exec_stack) {
 
         if(c->car()->objtype() != CONS_TYPE) {
             cout << "invalid module declaration:";
-            print(c);
+            c->print();
             cout << endl;
             return 1;
         }
@@ -831,7 +819,7 @@ int eval_module_special_form(std::deque<stackframe>& exec_stack) {
 
         if(decl->car()->objtype() != SYMBOL_TYPE) {
             cout << "invalid module declaration:";
-            print(c);
+            c->print();
             cout << endl;
             return 1;
         }
@@ -840,21 +828,21 @@ int eval_module_special_form(std::deque<stackframe>& exec_stack) {
         if(s->name() == "import") {
             if(add_import_to_module(m, decl->cdr())) {
                 cout << "invalid import declaration: ";
-                print(decl);
+                decl->print();
                 cout << endl;
                 return 1;
             }
         } else if(s->name() == "export") {
             if(add_export_to_module(m, decl->cdr())) {
                 cout << "invalid export declaration: ";
-                print(decl);
+                decl->print();
                 cout << endl;
                 return 1;
             }
         } else if(s->name() == "defun") {
             if(add_defun_to_module(m, decl->cdr(), exec_stack.front().scope)) {
                 cout << "invalid define declaration: ";
-                print (decl);
+                decl->print ();
                 cout << endl;
                 return 1;
             }
@@ -877,7 +865,7 @@ int eval_if_special_form(std::deque<stackframe>& exec_stack) {
     if(exec_stack.front().evaled_args.size() == 1) {
         shared_ptr<lispobj> lobj = exec_stack.front().code;
         if(lobj->objtype() != CONS_TYPE) {
-            print(lobj);
+            lobj->print();
             cout << " if has no condition" << endl;
             return 1;
         }
@@ -924,7 +912,7 @@ int eval_defun_special_form(std::deque<stackframe>& exec_stack) {
     shared_ptr<cons> c = dynamic_pointer_cast<cons>(lobj);
     if(c->car()->objtype() != SYMBOL_TYPE) {
         cout << "defun: first argument must be symbol, instead got: ";
-        print(c->car());
+        c->car()->print();
         cout << endl;
         return 1;
     }
@@ -996,12 +984,12 @@ int eval_special_form(string name,
         shared_ptr<module> m = nullptr; //env->get_module_by_prefix(c->car());
         if(!m) {
             cout << "Module ";
-            print(c->car());
+            c->car()->print();
             cout << " not found." << endl;
             return 1;
         } else if(!(m->init())) {
             cout << "Module ";
-            print(c->car());
+            c->car()->print();
             cout << " init failed." << endl;
             return 1;
         }
@@ -1236,7 +1224,7 @@ shared_ptr<lispobj> divide(vector<shared_ptr<lispobj> > args) {
 
 shared_ptr<lispobj> print_cfunc(vector< shared_ptr<lispobj> > args) {
     for(shared_ptr<lispobj> lobj : args) {
-        print(lobj);
+        lobj->print();
     }
 
     return make_shared<nil>();

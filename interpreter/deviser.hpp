@@ -17,11 +17,13 @@ const int NUMBER_TYPE = 4;
 const int FUNC_TYPE = 5;
 const int CFUNC_TYPE = 6;
 const int MODULE_TYPE = 7;
-const int CLASS_TYPE = 8;
+const int BINARY_TYPE = 8;
 
 class lispobj {
 public:
     lispobj();
+
+    virtual void print() = 0;
     virtual int objtype() const = 0;
 };
 
@@ -54,6 +56,7 @@ class nil : public lispobj {
 public:
     nil();
     virtual int objtype() const;
+    virtual void print();
 };
 
 class symbol : public lispobj {
@@ -61,6 +64,7 @@ public:
     symbol(string sn);
     virtual int objtype() const;
     string name() const;
+    virtual void print();
 
 private:
     string symname;
@@ -73,6 +77,8 @@ public:
     shared_ptr<lispobj> car() const;
     shared_ptr<lispobj> cdr() const;
 
+    virtual void print();
+
 private:
     shared_ptr<lispobj> first;
     shared_ptr<lispobj> second;
@@ -83,6 +89,8 @@ public:
     number(int num);
     virtual int objtype() const;
     int value() const;
+
+    virtual void print();
 
 private:
     int num;
@@ -95,6 +103,8 @@ public:
              shared_ptr<lispobj> _code);
     virtual int objtype() const;
 
+    virtual void print();
+
     shared_ptr<lispobj> args;
     shared_ptr<lexicalscope> closure;
     shared_ptr<lispobj> code;
@@ -104,6 +114,8 @@ class cfunc : public lispobj {
 public:
     cfunc(std::function<shared_ptr<lispobj>(vector<shared_ptr<lispobj> >)> f);
     virtual int objtype() const;
+
+    virtual void print();
 
     std::function<shared_ptr<lispobj>(vector<shared_ptr<lispobj> >)> func;
 };
@@ -133,6 +145,8 @@ public:
 
     virtual int objtype() const;
 
+    virtual void print();
+
 private:
     bool ismodulecommand(shared_ptr<lispobj> command);
 
@@ -143,6 +157,18 @@ private:
     vector< shared_ptr<lispobj> > defines;
     vector< shared_ptr<lispobj> > initblocks;
     bool inited;
+};
+
+class binarystring : public lispobj {
+public:
+    binarystring();
+    explicit binarystring(const string& bstring);
+
+    int objtype() const;
+
+    virtual void print();
+
+    string contents;
 };
 
 bool eq(shared_ptr<lispobj> left, shared_ptr<lispobj> right);
@@ -161,7 +187,6 @@ shared_ptr<lispobj> make_reverse_list(input_iterator begin,
     return ret;
 }
 
-void print(shared_ptr<lispobj> obj);
 void printall(vector< shared_ptr<lispobj> > objs);
 shared_ptr<lispobj> read(string str);
 vector< shared_ptr<lispobj> > readall(string str);
