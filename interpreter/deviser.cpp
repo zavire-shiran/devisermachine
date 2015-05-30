@@ -1,6 +1,8 @@
 #include <istream>
 #include <iostream>
 #include <stack>
+#include <typeinfo>
+
 #include "deviser.hpp"
 
 using std::cout;
@@ -12,20 +14,12 @@ lispobj::lispobj() {}
 
 nil::nil() {}
 
-int nil::objtype() const {
-    return NIL_TYPE;
-}
-
 void nil::print() {
     cout << "'()";
 }
 
 symbol::symbol(string sn) {
     symname = sn;
-}
-
-int symbol::objtype() const {
-    return SYMBOL_TYPE;
 }
 
 string symbol::name() const {
@@ -41,10 +35,6 @@ cons::cons(shared_ptr<lispobj> a, shared_ptr<lispobj> d) {
     second = d;
 }
 
-int cons::objtype() const {
-    return CONS_TYPE;
-}
-
 shared_ptr<lispobj> cons::car() const {
     return first;
 }
@@ -58,14 +48,13 @@ void cons::print() {
     car()->print();
     shared_ptr<cons> c;
     shared_ptr<lispobj> obj = cdr();
-    while(obj->objtype() == CONS_TYPE) {
-        c = dynamic_pointer_cast<cons>(obj);
+    while((c = dynamic_pointer_cast<cons>(obj))) {
         cout << ' ';
         c->car()->print();
         obj = c->cdr();
     }
 
-    if(obj->objtype() == NIL_TYPE) {
+    if(typeid(*obj) == typeid(class nil)) {
         cout << ')';
     } else {
         cout << " . ";
@@ -76,10 +65,6 @@ void cons::print() {
 
 number::number(int n) {
     num = n;
-}
-
-int number::objtype() const {
-    return NUMBER_TYPE;
 }
 
 int number::value() const {
@@ -106,10 +91,6 @@ void lispstring::append(shared_ptr<lispstring> lstr) {
 
 const string& lispstring::get_contents() const {
     return contents;
-}
-
-int lispstring::objtype() const {
-    return STRING_TYPE;
 }
 
 void lispstring::print() {
@@ -146,15 +127,11 @@ lispfunc::lispfunc(shared_ptr<lispobj> _args,
 
 }
 
-int lispfunc::objtype() const {
-    return FUNC_TYPE;
-}
-
 void lispfunc::print() {
     cout << "(lambda ";
     args->print();
     cout << " ";
-    args->print();
+    code->print();
     cout << ")";
 }
 
@@ -162,10 +139,6 @@ cfunc::cfunc(std::function<shared_ptr<lispobj>(vector<shared_ptr<lispobj> >)> f)
     func(f)
 {
 
-}
-
-int cfunc::objtype() const {
-    return CFUNC_TYPE;
 }
 
 void cfunc::print() {
@@ -199,10 +172,6 @@ shared_ptr<lispobj> fileinputport::readchar() {
     }
 }
 
-int fileinputport::objtype() const {
-    return FILEINPUTPORT_TYPE;
-}
-
 void fileinputport::print() {
     cout << "<fileinputport: " << filename << ">";
 }
@@ -217,16 +186,16 @@ module::module(shared_ptr<lispobj> _name) :
 }
 
 string get_command_name(shared_ptr<lispobj> command) {
-    if(command->objtype() != CONS_TYPE) {
+    shared_ptr<cons> c;
+    if(!(c = dynamic_pointer_cast<cons>(command))) {
         return "";
     }
 
-    shared_ptr<cons> c = dynamic_pointer_cast<cons>(command);
-    if(c->car()->objtype() != SYMBOL_TYPE) {
+    shared_ptr<symbol> sym;
+    if(!(sym = dynamic_pointer_cast<symbol>(c->car()))) {
         return "";
     }
 
-    shared_ptr<symbol> sym = dynamic_pointer_cast<symbol>(c->car());
     return sym->name();
 }
 
@@ -242,21 +211,22 @@ shared_ptr<lispobj> module::eval(shared_ptr<lispobj> command) {
         shared_ptr<cons> command_cons = dynamic_pointer_cast<cons>(command);
         shared_ptr<lispobj> exportdecl = command_cons->cdr();
 
-        if(exportdecl->objtype() != CONS_TYPE) {
+        shared_ptr<cons> c = dynamic_pointer_cast<cons>(exportdecl);
+        if(!c) {
             cout << "nothing to export" << endl;
             return make_shared<nil>();
         }
 
-        while(exportdecl->objtype() == CONS_TYPE) {
-            shared_ptr<cons> c = dynamic_pointer_cast<cons>(exportdecl);
-            if(c->car()->objtype() != SYMBOL_TYPE) {
+        while(c) {
+            shared_ptr<symbol> exportname = dynamic_pointer_cast<symbol>(c->car());
+            if(!exportname) {
                 cout << "non-symbol in export list" << endl;
                 return make_shared<nil>();
             }
 
-            add_export(dynamic_pointer_cast<symbol>(c->car()));
+            add_export(exportname);
 
-            exportdecl = c->cdr();
+            c = dynamic_pointer_cast<cons>(c->cdr());
         }
         return command_cons->cdr();
     } else if(command_name == "unexport") {
@@ -265,12 +235,12 @@ shared_ptr<lispobj> module::eval(shared_ptr<lispobj> command) {
         shared_ptr<cons> command_cons = dynamic_pointer_cast<cons>(command);
         shared_ptr<lispobj> importdecl = command_cons->cdr();
 
-        if(importdecl->objtype() != CONS_TYPE) {
+        shared_ptr<cons> c = dynamic_pointer_cast<cons>(importdecl);
+        if(!c) {
             return make_shared<nil>();
         }
 
-        shared_ptr<cons> c = dynamic_pointer_cast<cons>(importdecl);
-        if(c->cdr()->objtype() != NIL_TYPE) {
+        if(!dynamic_pointer_cast<nil>(c->cdr())) {
             cout << "too many arguments to import" << endl;
             return make_shared<nil>();
         }
@@ -367,10 +337,6 @@ shared_ptr<lexicalscope> module::get_bindings() const {
     return scope;
 }
 
-int module::objtype() const {
-    return MODULE_TYPE;
-}
-
 bool module::init() {
     if(inited) {
         return true;;
@@ -436,54 +402,44 @@ void module::print() {
 
 bool eq(shared_ptr<lispobj> left, shared_ptr<lispobj> right) {
     if(left == right) return true;
-    if(left->objtype() != right->objtype()) return false;
+    const std::type_info& left_type = typeid(*left);
+    if(typeid(*left) != typeid(*right)) return false;
 
-    switch(left->objtype()) {
-    case SYMBOL_TYPE:
-    {
+    if(left_type == typeid(symbol)) {
         shared_ptr<symbol> ls(dynamic_pointer_cast<symbol>(left));
         shared_ptr<symbol> rs(dynamic_pointer_cast<symbol>(right));
         return ls->name() == rs->name();
-    }
-
-    case NIL_TYPE:
+    } else if(left_type == typeid(nil)) {
         return true;
-
-    default:
+    } else {
         return false;
-    };
+    }
 }
 
 bool eqv(shared_ptr<lispobj> left, shared_ptr<lispobj> right) {
     if(eq(left, right)) return true;
-    if(left->objtype() != right->objtype()) return false;
+    const std::type_info& left_type = typeid(*left);
+    if(typeid(*left) != typeid(*right)) return false;
 
-    switch(left->objtype()) {
-    case NUMBER_TYPE:
-    {
+    if(left_type == typeid(number)) {
         shared_ptr<number> ln(dynamic_pointer_cast<number>(left));
         shared_ptr<number> rn(dynamic_pointer_cast<number>(right));
         return ln->value() && rn->value();
-    }
-
-    default:
+    } else {
         return false;
     };
 }
 
 bool equal(shared_ptr<lispobj> left, shared_ptr<lispobj> right) {
     if(eqv(left, right)) return true;
-    if(left->objtype() != right->objtype()) return false;
+    const std::type_info& left_type = typeid(*left);
+    if(typeid(*left) != typeid(*right)) return false;
 
-    switch(left->objtype()) {
-    case CONS_TYPE:
-    {
+    if(left_type == typeid(cons)) {
         shared_ptr<cons> lc(dynamic_pointer_cast<cons>(left));
         shared_ptr<cons> rc(dynamic_pointer_cast<cons>(right));
         return equal(lc->car(), rc->car()) && equal(lc->cdr(), rc->cdr());
-    }
-    
-    default:
+    } else {
         return false;
     };
 }
@@ -573,17 +529,14 @@ vector< shared_ptr<lispobj> > readall(string str) {
 }
 
 bool prefix_match(shared_ptr<lispobj> name, shared_ptr<lispobj> prefix) {
-    if(prefix->objtype() == NIL_TYPE || eqv(name, prefix)) {
+    if(dynamic_pointer_cast<nil>(prefix) || eqv(name, prefix)) {
         return true;
     }
 
-    if(name->objtype() != prefix->objtype()) {
-        return false;
-    }
+    shared_ptr<cons> name_cons = dynamic_pointer_cast<cons>(name);
+    shared_ptr<cons> prefix_cons = dynamic_pointer_cast<cons>(prefix);
 
-    if(name->objtype() == CONS_TYPE) {
-        shared_ptr<cons> name_cons = dynamic_pointer_cast<cons>(name);
-        shared_ptr<cons> prefix_cons = dynamic_pointer_cast<cons>(prefix);
+    if(name_cons && prefix_cons) {
         return prefix_match(name_cons->car(), prefix_cons->car()) &&
             prefix_match(name_cons->cdr(), prefix_cons->cdr());
     }
@@ -765,37 +718,37 @@ void print_stack(const std::deque<stackframe> exec_stack) {
 int apply_lispfunc(std::deque<stackframe>& exec_stack) {
     auto evaled_args = exec_stack.front().evaled_args;
     shared_ptr<lispfunc> func = dynamic_pointer_cast<lispfunc>(evaled_args.front());
+    cout << "applying "; func->print(); cout << endl;
     evaled_args.erase(evaled_args.begin());
     shared_ptr<lexicalscope> scope(new lexicalscope(func->closure));
 
     auto arg_value_iter = evaled_args.begin();
     shared_ptr<lispobj> arg_names = func->args;
-    while(arg_value_iter != evaled_args.end() &&
-          arg_names->objtype() == CONS_TYPE) {
-        shared_ptr<cons> c = dynamic_pointer_cast<cons>(arg_names);
-        shared_ptr<lispobj> name = c->car();
-        if(name->objtype() == SYMBOL_TYPE) {
-            shared_ptr<symbol> s = dynamic_pointer_cast<symbol>(name);
-            scope->defval(s->name(), *arg_value_iter);
+    shared_ptr<cons> c = dynamic_pointer_cast<cons>(arg_names);
+    while(arg_value_iter != evaled_args.end() && c) {
+        shared_ptr<symbol> name = dynamic_pointer_cast<symbol>(c->car());
+        if(name) {
+            scope->defval(name->name(), *arg_value_iter);
         } else {
             cout << "ERROR: arguments must be symbols" << endl;
             return 1;
         }
         arg_names = c->cdr();
+        c = dynamic_pointer_cast<cons>(arg_names);
         ++arg_value_iter;
     }
 
-    if(arg_names->objtype() != NIL_TYPE ||
+    if(!dynamic_pointer_cast<nil>(arg_names) ||
        arg_value_iter != evaled_args.end()) {
         cout << "ERROR: function arity does not match call." << endl;
-        func->args->print(); cout << endl;
+        cout << "func args: "; func->args->print(); cout << endl;
+        cout << "evaled args: " << endl;
         for(auto arg_value_iter = evaled_args.begin();
             arg_value_iter != evaled_args.end();
             ++arg_value_iter) {
             (*arg_value_iter)->print(); cout << " ";
         }
         cout << endl;
-        arg_names->print(); cout << endl;
         return 1;
     }
 
@@ -806,8 +759,8 @@ int apply_lispfunc(std::deque<stackframe>& exec_stack) {
 }
 
 bool is_special_form(shared_ptr<lispobj> form) {
-    if(form->objtype() == SYMBOL_TYPE) {
-        shared_ptr<symbol> sym = dynamic_pointer_cast<symbol>(form);
+    shared_ptr<symbol> sym = dynamic_pointer_cast<symbol>(form);
+    if(sym) {
         if(sym->name() == "if") {
             return true;
         } else if(sym->name() == "lambda") {
@@ -828,12 +781,12 @@ bool is_special_form(shared_ptr<lispobj> form) {
 }
 
 int add_import_to_module(shared_ptr<module> mod, shared_ptr<lispobj> importdecl) {
-    if(importdecl->objtype() != CONS_TYPE) {
+    shared_ptr<cons> c = dynamic_pointer_cast<cons>(importdecl);
+    if(!c) {
         return 1;
     }
 
-    shared_ptr<cons> c = dynamic_pointer_cast<cons>(importdecl);
-    if(c->cdr()->objtype() != NIL_TYPE) {
+    if(typeid(*(c->cdr())) != typeid(nil)) {
         cout << "too many arguments to import" << endl;
         return 1;
     }
@@ -843,45 +796,47 @@ int add_import_to_module(shared_ptr<module> mod, shared_ptr<lispobj> importdecl)
 }
 
 int add_export_to_module(shared_ptr<module> mod, shared_ptr<lispobj> exportdecl) {
-    if(exportdecl->objtype() != CONS_TYPE) {
+    shared_ptr<cons> c = dynamic_pointer_cast<cons>(exportdecl);
+    if(!c) {
         cout << "nothing to export" << endl;
         return 1;
     }
 
-    while(exportdecl->objtype() == CONS_TYPE) {
-        shared_ptr<cons> c = dynamic_pointer_cast<cons>(exportdecl);
-        if(c->car()->objtype() != SYMBOL_TYPE) {
+    while(c) {
+        shared_ptr<symbol> exportname = dynamic_pointer_cast<symbol>(c->car());
+        if(!exportname) {
             cout << "non-symbol in export list" << endl;
             return 1;
         }
 
-        mod->add_export(dynamic_pointer_cast<symbol>(c->car()));
+        mod->add_export(exportname);
 
-        exportdecl = c->cdr();
+        c = dynamic_pointer_cast<cons>(c->cdr());
     }
 
     return 0;
 }
 
 int add_defun_to_module(shared_ptr<module> mod,
-                         shared_ptr<lispobj> definedecl,
+                         shared_ptr<lispobj> defundecl,
                          shared_ptr<lexicalscope> scope) {
-    if(definedecl->objtype() != CONS_TYPE) {
-        return 1;
-    }
-
-    shared_ptr<cons> c = dynamic_pointer_cast<cons>(definedecl);
-    if(c->car()->objtype() != SYMBOL_TYPE){
+    shared_ptr<cons> c = dynamic_pointer_cast<cons>(defundecl);
+    if(!c) {
         return 1;
     }
 
     shared_ptr<symbol> defname = dynamic_pointer_cast<symbol>(c->car());
 
-    if(c->cdr()->objtype() != CONS_TYPE) {
+    if(!defname) {
         return 1;
     }
 
     c = dynamic_pointer_cast<cons>(c->cdr());
+
+    if(!c) {
+        return 1;
+    }
+
     shared_ptr<lispobj> val = eval(c->car(), scope);
     if(val) {
         mod->defun(defname->name(), val);
@@ -894,35 +849,34 @@ int add_defun_to_module(shared_ptr<module> mod,
 }
 
 int eval_module_special_form(std::deque<stackframe>& exec_stack) {
-    if(exec_stack.front().code->objtype() != CONS_TYPE) {
+    shared_ptr<cons> c = dynamic_pointer_cast<cons>(exec_stack.front().code);
+    if(!c) {
         cout << "module does not have name" << endl;
         return 1;
     }
+
     shared_ptr<lispobj> lobj;
-    shared_ptr<cons> c = dynamic_pointer_cast<cons>(exec_stack.front().code);
     shared_ptr<module> m(new module(c->car()));
 
-    lobj = c->cdr();
-    while(lobj->objtype() == CONS_TYPE) {
-        c = dynamic_pointer_cast<cons>(lobj);
-
-        if(c->car()->objtype() != CONS_TYPE) {
-            cout << "invalid module declaration:";
-            c->print();
-            cout << endl;
-            return 1;
-        }
-
+    c = dynamic_pointer_cast<cons>(c->cdr());
+    while(c) {
         shared_ptr<cons> decl = dynamic_pointer_cast<cons>(c->car());
-
-        if(decl->car()->objtype() != SYMBOL_TYPE) {
+        if(!decl) {
             cout << "invalid module declaration:";
             c->print();
             cout << endl;
             return 1;
         }
+
 
         shared_ptr<symbol> s = dynamic_pointer_cast<symbol>(decl->car());
+        if(!s) {
+            cout << "invalid module declaration:";
+            c->print();
+            cout << endl;
+            return 1;
+        }
+
         if(s->name() == "import") {
             if(add_import_to_module(m, decl->cdr())) {
                 cout << "invalid import declaration: ";
@@ -948,7 +902,7 @@ int eval_module_special_form(std::deque<stackframe>& exec_stack) {
             m->add_init(decl->cdr());
         }
 
-        lobj = c->cdr();
+        c = dynamic_pointer_cast<cons>(c->cdr());
     }
 
     //env->add_module_def(m);
@@ -962,32 +916,32 @@ int eval_module_special_form(std::deque<stackframe>& exec_stack) {
 int eval_if_special_form(std::deque<stackframe>& exec_stack) {
     if(exec_stack.front().evaled_args.size() == 1) {
         shared_ptr<lispobj> lobj = exec_stack.front().code;
-        if(lobj->objtype() != CONS_TYPE) {
+        shared_ptr<cons> c = dynamic_pointer_cast<cons>(lobj);
+        if(!c) {
             lobj->print();
             cout << " if has no condition" << endl;
             return 1;
         }
-        shared_ptr<cons> c = dynamic_pointer_cast<cons>(lobj);
         exec_stack.front().code = c->cdr();
         exec_stack.push_front(stackframe(exec_stack.front().scope,
                                          evaluating,
                                          c->car()));
     } else if(exec_stack.front().evaled_args.size() == 2) {
-        if(exec_stack.front().code->objtype() != CONS_TYPE) {
+        shared_ptr<cons> c = dynamic_pointer_cast<cons>(exec_stack.front().code);
+        if(!c) {
             cout << "if has no true branch" << endl;
             return 1;
         }
-        shared_ptr<cons> c = dynamic_pointer_cast<cons>(exec_stack.front().code);
 
-        if(exec_stack.front().evaled_args[1]->objtype() == NIL_TYPE) {
-            if(c->cdr()->objtype() != CONS_TYPE) {
-                exec_stack.front().mark = evaled;
-                exec_stack.front().code = make_shared<nil>();
-                exec_stack.front().evaled_args.clear();
-            } else {
-                shared_ptr<cons> c2 = dynamic_pointer_cast<cons>(c->cdr());
+        if(!istrue(exec_stack.front().evaled_args[1])) {
+            shared_ptr<cons> c2 = dynamic_pointer_cast<cons>(c->cdr());
+            if(c2) {
                 exec_stack.front().mark = evaluating;
                 exec_stack.front().code = c2->car();
+                exec_stack.front().evaled_args.clear();
+            } else {
+                exec_stack.front().mark = evaled;
+                exec_stack.front().code = make_shared<nil>();
                 exec_stack.front().evaled_args.clear();
             }
         } else {
@@ -1002,34 +956,33 @@ int eval_if_special_form(std::deque<stackframe>& exec_stack) {
 
 int eval_defun_special_form(std::deque<stackframe>& exec_stack) {
     shared_ptr<lispobj> lobj = exec_stack.front().code;
-    if(lobj->objtype() != CONS_TYPE) {
+    shared_ptr<cons> c = dynamic_pointer_cast<cons>(lobj);
+    if(!c) {
         cout << "define needs more arguments" << endl;
         return 1;
     }
 
-    shared_ptr<cons> c = dynamic_pointer_cast<cons>(lobj);
-    if(c->car()->objtype() != SYMBOL_TYPE) {
+    shared_ptr<symbol> funcname = dynamic_pointer_cast<symbol>(c->car());
+    if(!funcname) {
         cout << "defun: first argument must be symbol, instead got: ";
         c->car()->print();
         cout << endl;
         return 1;
     }
 
-    shared_ptr<symbol> funcname = dynamic_pointer_cast<symbol>(c->car());
-
-    if(c->cdr()->objtype() != CONS_TYPE) {
+    shared_ptr<cons> c2 = dynamic_pointer_cast<cons>(c->cdr());
+    if(!c2) {
         cout << "defun: not enough arguments" << endl;
         return 1;
     }
 
-    shared_ptr<cons> c2 = dynamic_pointer_cast<cons>(c->cdr());
-    if(c2->car()->objtype() != CONS_TYPE &&
-       c2->car()->objtype() != NIL_TYPE) {
+    if(typeid(*(c2->car())) != typeid(cons) &&
+       typeid(*(c2->car())) != typeid(nil)) {
         cout << "defun: second argument not list" << endl;
         return 1;
     }
 
-    if(c2->cdr()->objtype() == NIL_TYPE) {
+    if(typeid(*(c2->cdr())) != typeid(nil)) {
         cout << "defun: " << funcname->name() << " has no function body" << endl;
     }
 
@@ -1044,18 +997,18 @@ int eval_defun_special_form(std::deque<stackframe>& exec_stack) {
 
 int eval_lambda_special_form(std::deque<stackframe>& exec_stack) {
     shared_ptr<lispobj> lobj = exec_stack.front().code;
-    if(lobj->objtype() != CONS_TYPE) {
-        cout << "lambda needs more arguments" << endl;
-        return 1;
-    }
-
     shared_ptr<cons> c = dynamic_pointer_cast<cons>(lobj);
-    if(c->cdr()->objtype() != CONS_TYPE) {
+    if(!c) {
         cout << "lambda needs more arguments" << endl;
         return 1;
     }
 
     shared_ptr<cons> c2 = dynamic_pointer_cast<cons>(c->cdr());
+    if(!c2) {
+        cout << "lambda needs more arguments" << endl;
+        return 1;
+    }
+
     shared_ptr<lispfunc> lfunc(new lispfunc(c->car(), exec_stack.front().scope, c2));
     exec_stack.front().mark = evaled;
     exec_stack.front().code = lfunc;
@@ -1072,13 +1025,12 @@ int eval_special_form(string name,
     } else if(name == "module") {
         return eval_module_special_form(exec_stack);
     } else if(name == "import") {
-        shared_ptr<lispobj> lobj = exec_stack.front().code;
-        if(lobj->objtype() != CONS_TYPE) {
+        shared_ptr<cons> c = dynamic_pointer_cast<cons>(exec_stack.front().code);
+        if(!c) {
             cout << "import needs more arguments" << endl;
             return 1;
         }
 
-        shared_ptr<cons> c = dynamic_pointer_cast<cons>(lobj);
         shared_ptr<module> m = nullptr; //env->get_module_by_prefix(c->car());
         if(!m) {
             cout << "Module ";
@@ -1099,14 +1051,13 @@ int eval_special_form(string name,
     } else if(name == "defun") {
         return eval_defun_special_form(exec_stack);
     } else if(name == "quote") {
-        shared_ptr<lispobj> lobj = exec_stack.front().code;
-        if(lobj->objtype() != CONS_TYPE) {
+        shared_ptr<cons> c = dynamic_pointer_cast<cons>(exec_stack.front().code);
+        if(!c) {
             cout << "quote needs more arguments" << endl;
             return 1;
         }
 
-        shared_ptr<cons> c = dynamic_pointer_cast<cons>(lobj);
-        if(c->cdr()->objtype() != NIL_TYPE) {
+        if(typeid(*(c->cdr())) != typeid(nil)) {
             cout << "quote has too many args" << endl;
             return 1;
         }
@@ -1125,12 +1076,12 @@ shared_ptr<lispobj> eval(shared_ptr<lispobj> code,
     exec_stack.push_front(stackframe(tls, evaluating, code));
 
     while(exec_stack.size() != 0 && (exec_stack.size() > 1 || exec_stack.front().mark != evaled)) {
-        //print_stack(exec_stack);
+        print_stack(exec_stack);
         if(exec_stack.front().mark == evaled) {
             shared_ptr<lispobj> c = exec_stack.front().code;
             exec_stack.pop_front();
             if(exec_stack.front().mark == applying) {
-                if(exec_stack.front().code->objtype() == NIL_TYPE) {
+                if(typeid(*(exec_stack.front().code)) == typeid(nil)) {
                     exec_stack.front().mark = evaled;
                     exec_stack.front().code = c;
                 } else {
@@ -1144,10 +1095,9 @@ shared_ptr<lispobj> eval(shared_ptr<lispobj> code,
                 return nullptr;
             }
         } else if(exec_stack.front().mark == applying) {
-            if(exec_stack.front().code->objtype() == NIL_TYPE) {
+            if(typeid(*(exec_stack.front().code)) == typeid(nil)) {
                 exec_stack.front().mark = evaled;
-            } else if(exec_stack.front().code->objtype() == CONS_TYPE) {
-                shared_ptr<cons> c = dynamic_pointer_cast<cons>(exec_stack.front().code);
+            } else if(shared_ptr<cons> c = dynamic_pointer_cast<cons>(exec_stack.front().code)) {
                 shared_ptr<lispobj> next_statement = c->car();
                 exec_stack.front().code = c->cdr();
                 exec_stack.push_front(stackframe(exec_stack.front().scope,
@@ -1158,9 +1108,9 @@ shared_ptr<lispobj> eval(shared_ptr<lispobj> code,
                 return nullptr;
             }
         } else if(exec_stack.front().mark == evaluating) {
-            if(exec_stack.front().code->objtype() == CONS_TYPE) {
+            shared_ptr<cons> c = dynamic_pointer_cast<cons>(exec_stack.front().code);
+            if(c) {
                 //evaluating arguments
-                shared_ptr<cons> c = dynamic_pointer_cast<cons>(exec_stack.front().code);
                 //special forms go here, rather than normal argument evaluation
                 if(exec_stack.front().evaled_args.size() == 0 &&
                    is_special_form(c->car())) {
@@ -1173,17 +1123,16 @@ shared_ptr<lispobj> eval(shared_ptr<lispobj> code,
                                                      evaluating,
                                                      c->car()));
                 }
-            } else if(exec_stack.front().code->objtype() == NIL_TYPE) {
+            } else if(typeid(*(exec_stack.front().code)) == typeid(nil)) {
                 auto evaled_args = exec_stack.front().evaled_args;
                 if(evaled_args.empty()) {
                     cout << "ERROR: empty function application" << endl;
                     return nullptr;
-                } else if(evaled_args.front()->objtype() == FUNC_TYPE) {
+                } else if(typeid(*(evaled_args.front())) == typeid(lispfunc)) {
                     if(apply_lispfunc(exec_stack) != 0) {
                         return nullptr;
                     }
-                } else if(evaled_args.front()->objtype() == CFUNC_TYPE) {
-                    shared_ptr<cfunc> func = dynamic_pointer_cast<cfunc>(evaled_args.front());
+                } else if(shared_ptr<cfunc> func = dynamic_pointer_cast<cfunc>(evaled_args.front())) {
                     evaled_args.erase(evaled_args.begin());
                     shared_ptr<lispobj> ret = func->func(evaled_args);
                     if(!ret) {
@@ -1196,10 +1145,9 @@ shared_ptr<lispobj> eval(shared_ptr<lispobj> code,
                     cout << "ERROR: trying to apply a non-function" << endl;
                     return nullptr;
                 }
-            } else if(exec_stack.front().code->objtype() == SYMBOL_TYPE) {
+            } else if(shared_ptr<symbol> s = dynamic_pointer_cast<symbol>(exec_stack.front().code)) {
                 //variable lookup
                 exec_stack.front().mark = evaled;
-                shared_ptr<symbol> s = dynamic_pointer_cast<symbol>(exec_stack.front().code);
 
                 if(s->name() == "nil") {
                     exec_stack.front().code = nil_obj;
@@ -1219,11 +1167,12 @@ shared_ptr<lispobj> eval(shared_ptr<lispobj> code,
             }
         } else if(exec_stack.front().mark == evalspecial) {
             shared_ptr<lispobj> list_head = exec_stack.front().evaled_args[0];
-            if(list_head->objtype() != SYMBOL_TYPE) {
+            shared_ptr<symbol> sym = dynamic_pointer_cast<symbol>(list_head);
+            if(!sym) {
                 cout << "non-special form given evalspecial mark." << endl;
                 return nullptr;
             }
-            shared_ptr<symbol> sym = dynamic_pointer_cast<symbol>(list_head);
+
             if(eval_special_form(sym->name(), exec_stack) != 0) {
                 return nullptr;
             }
@@ -1239,11 +1188,11 @@ shared_ptr<lispobj> eval(shared_ptr<lispobj> code,
 shared_ptr<lispobj> plus(vector<shared_ptr<lispobj> > args) {
     int sum = 0;
     for(auto obj : args) {
-        if(obj->objtype() != NUMBER_TYPE) {
+        shared_ptr<number> n = dynamic_pointer_cast<number>(obj);
+        if(!n) {
             cout << "plus requires numbers" << endl;
             return nullptr;
         }
-        shared_ptr<number> n = dynamic_pointer_cast<number>(obj);
         sum += n->value();
     }
     return make_shared<number>(sum);
@@ -1251,29 +1200,29 @@ shared_ptr<lispobj> plus(vector<shared_ptr<lispobj> > args) {
 
 shared_ptr<lispobj> minus(vector<shared_ptr<lispobj> > args) {
     if(args.size() > 1) {
-        if(args[0]->objtype() != NUMBER_TYPE) {
+        shared_ptr<number> n = dynamic_pointer_cast<number>(args[0]);
+        if(!n) {
             cout << "minus requires numbers" << endl;
             return nullptr;
         }
-        shared_ptr<number> n = dynamic_pointer_cast<number>(args[0]);
         int diff = n->value();
         args.erase(args.begin());
 
         for(auto obj : args) {
-            if(obj->objtype() != NUMBER_TYPE) {
+            shared_ptr<number> n = dynamic_pointer_cast<number>(obj);
+            if(!n) {
                 cout << "minus requires numbers" << endl;
                 return nullptr;
             }
-            shared_ptr<number> n = dynamic_pointer_cast<number>(obj);
             diff -= n->value();
         }
         return make_shared<number>(diff);
     } else {
         shared_ptr<lispobj> obj(args[0]);
-        if(obj->objtype() != NUMBER_TYPE) {
+        shared_ptr<number> n = dynamic_pointer_cast<number>(obj);
+        if(!n) {
             cout << "minus requires numbers" << endl;
         }
-        shared_ptr<number> n = dynamic_pointer_cast<number>(obj);
         return make_shared<number>(-(n->value()));
     }
 }
@@ -1281,11 +1230,11 @@ shared_ptr<lispobj> minus(vector<shared_ptr<lispobj> > args) {
 shared_ptr<lispobj> multiply(vector<shared_ptr<lispobj> > args) {
     int product = 1;
     for(auto obj : args) {
-        if(obj->objtype() != NUMBER_TYPE) {
+        shared_ptr<number> n = dynamic_pointer_cast<number>(obj);
+        if(!n) {
             cout << "multiply requires numbers" << endl;
             return nullptr;
         }
-        shared_ptr<number> n = dynamic_pointer_cast<number>(obj);
         product *= n->value();
     }
     return make_shared<number>(product);
@@ -1293,29 +1242,29 @@ shared_ptr<lispobj> multiply(vector<shared_ptr<lispobj> > args) {
 
 shared_ptr<lispobj> divide(vector<shared_ptr<lispobj> > args) {
     if(args.size() > 1) {
-        if(args[0]->objtype() != NUMBER_TYPE) {
+        shared_ptr<number> n = dynamic_pointer_cast<number>(args[0]);
+        if(!n) {
             cout << "divide requires numbers" << endl;
             return nullptr;
         }
-        shared_ptr<number> n = dynamic_pointer_cast<number>(args[0]);
         int quotient = n->value();
         args.erase(args.begin());
 
         for(auto obj : args) {
-            if(obj->objtype() != NUMBER_TYPE) {
+            shared_ptr<number> n = dynamic_pointer_cast<number>(obj);
+            if(!n) {
                 cout << "divide requires numbers" << endl;
                 return nullptr;
             }
-            shared_ptr<number> n = dynamic_pointer_cast<number>(obj);
             quotient /= n->value();
         }
         return make_shared<number>(quotient);
     } else {
         shared_ptr<lispobj> obj(args[0]);
-        if(obj->objtype() != NUMBER_TYPE) {
+        shared_ptr<number> n = dynamic_pointer_cast<number>(obj);
+        if(!n) {
             cout << "divide requires numbers" << endl;
         }
-        shared_ptr<number> n = dynamic_pointer_cast<number>(obj);
         return make_shared<number>(n->value());
     }
 }
@@ -1402,7 +1351,7 @@ shared_ptr<lispobj> append_cfunc(vector< shared_ptr<lispobj> > args) {
 }
 
 shared_ptr<lispobj> open_file_cfunc(vector< shared_ptr<lispobj> > args) {
-    if(args.size() != 1 && !dynamic_pointer_cast<lispstring>(args[0])) {
+    if(args.size() != 1 || !dynamic_pointer_cast<lispstring>(args[0])) {
         cout << "ERROR open-file wants one string" << endl;
         return nullptr;
     }
@@ -1412,7 +1361,7 @@ shared_ptr<lispobj> open_file_cfunc(vector< shared_ptr<lispobj> > args) {
 }
 
 shared_ptr<lispobj> read_cfunc(vector< shared_ptr<lispobj> > args) {
-    if(args.size() != 1 && !dynamic_pointer_cast<fileinputport>(args[0])) {
+    if(args.size() != 1 || !dynamic_pointer_cast<fileinputport>(args[0])) {
         cout << "ERROR read wants on input-port" << endl;
         return nullptr;
     }
@@ -1440,4 +1389,8 @@ shared_ptr<module> make_builtins_module() {
     builtins_module->defun_and_export("read", make_shared<cfunc>(read_cfunc));
 
     return builtins_module;
+}
+
+bool istrue(shared_ptr<lispobj> lobj) {
+    return typeid(*lobj) != typeid(nil);
 }

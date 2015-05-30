@@ -19,16 +19,16 @@ using std::dynamic_pointer_cast;
 using std::make_shared;
 
 bool ismodulecommand(shared_ptr<lispobj> lobj) {
-    if(lobj->objtype() != CONS_TYPE) {
+    shared_ptr<cons> c;
+    if(!(c = dynamic_pointer_cast<cons>(lobj))) {
         return false;
     }
 
-    shared_ptr<cons> c = dynamic_pointer_cast<cons>(lobj);
-    if(c->car()->objtype() != SYMBOL_TYPE) {
+    shared_ptr<symbol> sym;
+    if(!(sym = dynamic_pointer_cast<symbol>(c->car()))) {
         return false;
     }
 
-    shared_ptr<symbol> sym = dynamic_pointer_cast<symbol>(c->car());
     string formname = sym->name();
     return formname == "define" || formname == "import" ||
         formname == "export" || formname == "init" ||

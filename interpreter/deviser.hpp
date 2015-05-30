@@ -26,7 +26,6 @@ public:
     lispobj();
 
     virtual void print() = 0;
-    virtual int objtype() const = 0;
 };
 
 class module;
@@ -57,14 +56,12 @@ private:
 class nil : public lispobj {
 public:
     nil();
-    virtual int objtype() const;
     virtual void print();
 };
 
 class symbol : public lispobj {
 public:
     symbol(string sn);
-    virtual int objtype() const;
     string name() const;
     virtual void print();
 
@@ -75,7 +72,6 @@ private:
 class cons : public lispobj {
 public:
     cons(shared_ptr<lispobj> a, shared_ptr<lispobj> d);
-    virtual int objtype() const;
     shared_ptr<lispobj> car() const;
     shared_ptr<lispobj> cdr() const;
 
@@ -89,7 +85,6 @@ private:
 class number : public lispobj {
 public:
     number(int num);
-    virtual int objtype() const;
     int value() const;
 
     virtual void print();
@@ -107,8 +102,6 @@ public:
 
     const string& get_contents() const;
 
-    virtual int objtype() const;
-
     virtual void print();
 
 private:
@@ -120,7 +113,6 @@ public:
     lispfunc(shared_ptr<lispobj> _args,
              shared_ptr<lexicalscope> _closure,
              shared_ptr<lispobj> _code);
-    virtual int objtype() const;
 
     virtual void print();
 
@@ -132,7 +124,6 @@ public:
 class cfunc : public lispobj {
 public:
     cfunc(std::function<shared_ptr<lispobj>(vector<shared_ptr<lispobj> >)> f);
-    virtual int objtype() const;
 
     virtual void print();
 
@@ -146,7 +137,6 @@ public:
     shared_ptr<lispobj> read();
     shared_ptr<lispobj> readchar();
 
-    virtual int objtype() const;
     virtual void print();
 
 private:
@@ -176,8 +166,6 @@ public:
     const vector< shared_ptr<lispobj> >& get_imports() const;
     const vector< shared_ptr<symbol> >& get_exports() const;
     const vector< shared_ptr<lispobj> >& get_initblocks() const;
-
-    virtual int objtype() const;
 
     virtual void print();
 
@@ -216,3 +204,4 @@ vector< shared_ptr<lispobj> > readall(string str);
 shared_ptr<lispobj> eval(shared_ptr<lispobj> code,
                          shared_ptr<lexicalscope> tls);
 shared_ptr<module> make_builtins_module();
+bool istrue(shared_ptr<lispobj> lobj);
