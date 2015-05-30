@@ -128,11 +128,8 @@ lispfunc::lispfunc(shared_ptr<lispobj> _args,
 }
 
 void lispfunc::print() {
-    cout << "(lambda ";
-    args->print();
-    cout << " ";
-    code->print();
-    cout << ")";
+    make_shared<cons>(make_shared<symbol>("lambda"),
+                      make_shared<cons>(args, code))->print();
 }
 
 cfunc::cfunc(std::function<shared_ptr<lispobj>(vector<shared_ptr<lispobj> >)> f) :
