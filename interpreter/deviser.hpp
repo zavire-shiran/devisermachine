@@ -121,6 +121,19 @@ public:
     shared_ptr<lispobj> code;
 };
 
+class macro : public lispobj {
+public:
+    macro(shared_ptr<lispobj> _args,
+          shared_ptr<lexicalscope> _closure,
+          shared_ptr<lispobj> _code);
+
+    virtual void print();
+
+    shared_ptr<lispobj> args;
+    shared_ptr<lexicalscope> closure;
+    shared_ptr<lispobj> code;
+};
+
 class cfunc : public lispobj {
 public:
     cfunc(std::function<shared_ptr<lispobj>(vector<shared_ptr<lispobj> >)> f);

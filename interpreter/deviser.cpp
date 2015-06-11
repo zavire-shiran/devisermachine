@@ -132,6 +132,21 @@ void lispfunc::print() {
                       make_shared<cons>(args, code))->print();
 }
 
+macro::macro(shared_ptr<lispobj> _args,
+             shared_ptr<lexicalscope> _closure,
+             shared_ptr<lispobj> _code) :
+    args(_args),
+    closure(_closure),
+    code(_code)
+{
+
+}
+
+void macro::print() {
+    make_shared<cons>(make_shared<symbol>("macro"),
+                      make_shared<cons>(args, code))->print();
+}
+
 cfunc::cfunc(std::function<shared_ptr<lispobj>(vector<shared_ptr<lispobj> >)> f) :
     func(f)
 {
@@ -199,7 +214,7 @@ string get_command_name(shared_ptr<lispobj> command) {
 shared_ptr<lispobj> module::eval(shared_ptr<lispobj> command) {
     string command_name = get_command_name(command);
 
-    if(command_name == "define") {
+    if(command_name == "defun" || command_name == "defmacro") {
         defines.push_back(command);
         return ::eval(command, scope);
     } else if(command_name == "undefine") {
@@ -694,6 +709,7 @@ const int evaluating = 0;
 const int applying = 1;
 const int evaled = 2;
 const int evalspecial = 3;
+const int evalmacro = 4;
 
 void print_stack(const std::deque<stackframe> exec_stack) {
     cout << "Stack size: " << exec_stack.size() << endl;
@@ -755,6 +771,44 @@ int apply_lispfunc(std::deque<stackframe>& exec_stack) {
     return 0;
 }
 
+int apply_macro(std::deque<stackframe>& exec_stack) {
+    auto evaled_args = exec_stack.front().evaled_args;
+    shared_ptr<macro> func = dynamic_pointer_cast<macro>(evaled_args.front());
+    cout << "applying "; func->print(); cout << endl;
+
+    shared_ptr<lexicalscope> scope(new lexicalscope(func->closure));
+
+    shared_ptr<lispobj> args = exec_stack.front().code;
+    shared_ptr<cons> args_cons = dynamic_pointer_cast<cons>(args);
+    shared_ptr<lispobj> param_names = func->args;
+    shared_ptr<cons> param_cons = dynamic_pointer_cast<cons>(param_names);
+    while(args_cons && param_cons) {
+        shared_ptr<symbol> param_name = dynamic_pointer_cast<symbol>(param_cons->car());
+        if(param_name) {
+            scope->defval(param_name->name(), args_cons->car());
+        } else {
+            cout << "ERROR: parameter names must be symbols" << endl;
+            return 1;
+        }
+        param_names = param_cons->cdr();
+        param_cons = dynamic_pointer_cast<cons>(param_names);
+        args = args_cons->cdr();
+        args_cons = dynamic_pointer_cast<cons>(args);
+    }
+
+    if(!dynamic_pointer_cast<nil>(param_names) ||
+       !dynamic_pointer_cast<nil>(args)) {
+        cout << "ERROR: function arity does not match call." << endl;
+        cout << "func args: "; func->args->print(); cout << endl;
+        cout << "evaled args: " << endl; exec_stack.front().code->print(); cout << endl;
+        return 1;
+    }
+
+    exec_stack.front().mark = evalmacro;
+    exec_stack.push_front(stackframe(scope, applying, func->code));
+    return 0;
+}
+
 bool is_special_form(shared_ptr<lispobj> form) {
     shared_ptr<symbol> sym = dynamic_pointer_cast<symbol>(form);
     if(sym) {
@@ -769,6 +823,8 @@ bool is_special_form(shared_ptr<lispobj> form) {
         } else if(sym->name() == "begin") {
             return true;
         } else if(sym->name() == "defun") {
+            return true;
+        } else if(sym->name() == "defmacro") {
             return true;
         } else if(sym->name() == "quote") { 
             return true;
@@ -992,6 +1048,47 @@ int eval_defun_special_form(std::deque<stackframe>& exec_stack) {
     return 0;
 }
 
+int eval_defmacro_special_form(std::deque<stackframe>& exec_stack) {
+    shared_ptr<lispobj> lobj = exec_stack.front().code;
+    shared_ptr<cons> c = dynamic_pointer_cast<cons>(lobj);
+    if(!c) {
+        cout << "defmacro needs more arguments" << endl;
+        return 1;
+    }
+
+    shared_ptr<symbol> macroname = dynamic_pointer_cast<symbol>(c->car());
+    if(!macroname) {
+        cout << "defmacro: first argument must be symbol, instead got: ";
+        c->car()->print();
+        cout << endl;
+        return 1;
+    }
+
+    shared_ptr<cons> c2 = dynamic_pointer_cast<cons>(c->cdr());
+    if(!c2) {
+        cout << "defmacro: not enough arguments" << endl;
+        return 1;
+    }
+
+    if(typeid(*(c2->car())) != typeid(cons) &&
+       typeid(*(c2->car())) != typeid(nil)) {
+        cout << "defmacro: second argument not list" << endl;
+        return 1;
+    }
+
+    if(typeid(*(c2->cdr())) == typeid(nil)) {
+        cout << "defmacro: " << macroname->name() << " has no function body" << endl;
+    }
+
+    shared_ptr<macro> mac(new macro(c2->car(), exec_stack.front().scope, c2->cdr()));
+
+    exec_stack.front().scope->defun(macroname->name(), mac);
+    exec_stack.front().evaled_args.clear();
+    exec_stack.front().mark = evaled;
+    exec_stack.front().code = macroname;
+    return 0;
+}
+
 int eval_lambda_special_form(std::deque<stackframe>& exec_stack) {
     shared_ptr<lispobj> lobj = exec_stack.front().code;
     shared_ptr<cons> c = dynamic_pointer_cast<cons>(lobj);
@@ -1047,6 +1144,8 @@ int eval_special_form(string name,
         exec_stack.front().mark = applying;
     } else if(name == "defun") {
         return eval_defun_special_form(exec_stack);
+    } else if(name == "defmacro") {
+        return eval_defmacro_special_form(exec_stack);
     } else if(name == "quote") {
         shared_ptr<cons> c = dynamic_pointer_cast<cons>(exec_stack.front().code);
         if(!c) {
@@ -1087,6 +1186,11 @@ shared_ptr<lispobj> eval(shared_ptr<lispobj> code,
             } else if(exec_stack.front().mark == evaluating ||
                       exec_stack.front().mark == evalspecial) {
                 exec_stack.front().evaled_args.push_back(c);
+            } else if(exec_stack.front().mark == evalmacro) {
+                //This is the return of the macro expansion, so evaluate it
+                exec_stack.front().mark = evaluating;
+                exec_stack.front().code = c;
+                exec_stack.front().evaled_args.clear();
             } else {
                 cout << "ERROR: bad stack" << endl;
                 return nullptr;
@@ -1108,12 +1212,19 @@ shared_ptr<lispobj> eval(shared_ptr<lispobj> code,
             shared_ptr<cons> c = dynamic_pointer_cast<cons>(exec_stack.front().code);
             if(c) {
                 //evaluating arguments
-                //special forms go here, rather than normal argument evaluation
+                shared_ptr<macro> macrofunc;
                 if(exec_stack.front().evaled_args.size() == 0 &&
                    is_special_form(c->car())) {
+                    //special forms go here, rather than normal argument evaluation
                     exec_stack.front().mark = evalspecial;
                     exec_stack.front().evaled_args.push_back(c->car());
                     exec_stack.front().code = c->cdr();
+                } else if(exec_stack.front().evaled_args.size() == 1 &&
+                          (macrofunc = dynamic_pointer_cast<macro>(exec_stack.front().evaled_args.front()))) {
+                    exec_stack.front().mark = evalmacro;
+                    if(apply_macro(exec_stack) != 0) {
+                        return nullptr;
+                    }
                 } else {
                     exec_stack.front().code = c->cdr();
                     exec_stack.push_front(stackframe(exec_stack.front().scope,
