@@ -103,6 +103,7 @@ public:
     const string& get_contents() const;
 
     virtual void print();
+    virtual void repr();
 
 private:
     string contents;

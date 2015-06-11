@@ -39,7 +39,7 @@ bool ismodulecommand(shared_ptr<lispobj> lobj) {
 void read_eval_print(const string& lispstr, shared_ptr<module> mod) {
     //cout << "(print (eval (read \"" << lispstr << "\"))) => ";
     auto lobj = read(lispstr);
-    lobj->print(); cout << endl;
+    //lobj->print(); cout << endl;
     auto retlobj = mod->eval(lobj);
     retlobj->print();
     cout << endl;

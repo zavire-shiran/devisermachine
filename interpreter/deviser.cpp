@@ -94,6 +94,10 @@ const string& lispstring::get_contents() const {
 }
 
 void lispstring::print() {
+    cout << contents;
+}
+
+void lispstring::repr() {
     cout << "\"";
     for(auto it = contents.begin(); it != contents.end(); ++it) {
         switch(*it) {
@@ -501,7 +505,11 @@ shared_ptr<lispobj> _read(string& str) {
         int n = 1;
         while(str[n] != '"') {
             if(str[n] == '\\') {
-                contents.push_back(str[n+1]);
+                if(str[n+1] == 'n') {
+                    contents.push_back('\n');
+                } else {
+                    contents.push_back(str[n+1]);
+                }
                 ++n;
             } else {
                 contents.push_back(str[n]);
@@ -1172,7 +1180,7 @@ shared_ptr<lispobj> eval(shared_ptr<lispobj> code,
     exec_stack.push_front(stackframe(tls, evaluating, code));
 
     while(exec_stack.size() != 0 && (exec_stack.size() > 1 || exec_stack.front().mark != evaled)) {
-        print_stack(exec_stack);
+        //print_stack(exec_stack);
         if(exec_stack.front().mark == evaled) {
             shared_ptr<lispobj> c = exec_stack.front().code;
             exec_stack.pop_front();
