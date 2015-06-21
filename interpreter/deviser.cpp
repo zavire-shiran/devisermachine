@@ -898,13 +898,38 @@ int add_defun_to_module(shared_ptr<module> mod,
         return 1;
     }
 
-    shared_ptr<lispobj> val = eval(c->car(), scope);
-    if(val) {
-        mod->defun(defname->name(), val);
-    } else {
-        cout << "error evaluating define for module" << endl;
+    shared_ptr<lispobj> arg_list = c->car();
+    shared_ptr<lispobj> code = c->cdr();
+    shared_ptr<lispfunc> lfunc(new lispfunc(arg_list, mod->get_bindings(), code));
+    mod->defun(defname->name(), lfunc);
+
+    return 0;
+}
+
+int add_defmacro_to_module(shared_ptr<module> mod,
+                         shared_ptr<lispobj> defundecl,
+                         shared_ptr<lexicalscope> scope) {
+    shared_ptr<cons> c = dynamic_pointer_cast<cons>(defundecl);
+    if(!c) {
         return 1;
     }
+
+    shared_ptr<symbol> defname = dynamic_pointer_cast<symbol>(c->car());
+
+    if(!defname) {
+        return 1;
+    }
+
+    c = dynamic_pointer_cast<cons>(c->cdr());
+
+    if(!c) {
+        return 1;
+    }
+
+    shared_ptr<lispobj> arg_list = c->car();
+    shared_ptr<lispobj> code = c->cdr();
+    shared_ptr<macro> mac(new macro(arg_list, mod->get_bindings(), code));
+    mod->defun(defname->name(), mac);
 
     return 0;
 }
@@ -954,8 +979,15 @@ int eval_module_special_form(std::deque<stackframe>& exec_stack) {
             }
         } else if(s->name() == "defun") {
             if(add_defun_to_module(m, decl->cdr(), exec_stack.front().scope)) {
-                cout << "invalid define declaration: ";
-                decl->print ();
+                cout << "invalid defun declaration: ";
+                decl->print();
+                cout << endl;
+                return 1;
+            }
+        } else if(s->name() == "defmacro") {
+            if(add_defmacro_to_module(m, decl->cdr(), exec_stack.front().scope)) {
+                cout << "invalid defmacro declaration: ";
+                decl->print();
                 cout << endl;
                 return 1;
             }

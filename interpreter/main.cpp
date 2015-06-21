@@ -101,11 +101,15 @@ vector<string> find_modules(string module_path) {
     return ret;
 }
 
-shared_ptr<lispobj> eval_file(string filename, shared_ptr<module> mod) {
-    vector< shared_ptr<lispobj> > v = read_file(filename);
-    shared_ptr<lispobj> code(new cons(std::make_shared<symbol>("begin"),
-                                      make_reverse_list(v.rbegin(), v.rend())));
-    return eval(code, mod->get_bindings());
+vector< shared_ptr<lispobj> > eval_file(string filename, shared_ptr<lexicalscope> scope) {
+    vector< shared_ptr<lispobj> > file_forms = read_file(filename);
+    vector< shared_ptr<lispobj> > return_values;
+
+    for(auto form : file_forms) {
+        return_values.push_back(eval(form, scope));
+    }
+
+    return return_values;
 }
 
 int main(int argc, char** argv)
@@ -128,6 +132,8 @@ int main(int argc, char** argv)
     argv += optind;
 
     vector<string> modules_to_load;
+    shared_ptr<lexicalscope> top_level_scope(new lexicalscope);
+
     modules_to_load = find_modules(kernelmodulesdir);
 
     shared_ptr<module> builtins_module = make_builtins_module();
@@ -136,7 +142,8 @@ int main(int argc, char** argv)
     user_module->add_import(builtins_module);
 
     for(auto module_file : modules_to_load) {
-        cout << module_file << endl;
+        cout << "loading " << module_file << endl;
+        eval_file(module_file, top_level_scope);
     }
 
     LineEditor ledit("deviser");
