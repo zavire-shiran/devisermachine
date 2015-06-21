@@ -193,9 +193,10 @@ void fileinputport::print() {
 }
 
 
-module::module(shared_ptr<lispobj> _name) :
+module::module(shared_ptr<lispobj> _name, shared_ptr<lexicalscope> enc_scope) :
     name(_name),
-    scope(new lexicalscope()),
+    module_scope(new lexicalscope()),
+    enclosing_scope(enc_scope),
     inited(false)
 {
 
@@ -220,7 +221,7 @@ shared_ptr<lispobj> module::eval(shared_ptr<lispobj> command) {
 
     if(command_name == "defun" || command_name == "defmacro") {
         defines.push_back(command);
-        return ::eval(command, scope);
+        return ::eval(command, module_scope);
     } else if(command_name == "undefine") {
 
     } else if(command_name == "export") {
@@ -302,7 +303,7 @@ shared_ptr<lispobj> module::eval(shared_ptr<lispobj> command) {
 
         cout << ")" << endl;
     } else {
-        return ::eval(command, scope);
+        return ::eval(command, module_scope);
     }
 
     return make_shared<nil>();
@@ -310,7 +311,7 @@ shared_ptr<lispobj> module::eval(shared_ptr<lispobj> command) {
 
 void module::add_import(shared_ptr<module> mod) {
     imports.push_back(mod->get_name());
-    scope->add_import(mod);
+    module_scope->add_import(mod);
 }
 
 void module::add_export(shared_ptr<symbol> sym) {
@@ -318,11 +319,11 @@ void module::add_export(shared_ptr<symbol> sym) {
 }
 
 void module::defval(string name, shared_ptr<lispobj> value) {
-    scope->defval(name, value);
+    module_scope->defval(name, value);
 }
 
 void module::defun(string name, shared_ptr<lispobj> value) {
-    scope->defun(name, value);
+    module_scope->defun(name, value);
 }
 
 void module::defval_and_export(string symname, shared_ptr<lispobj> value) {
@@ -350,7 +351,7 @@ void module::set_name(shared_ptr<lispobj> newname) {
 }
 
 shared_ptr<lexicalscope> module::get_bindings() const {
-    return scope;
+    return module_scope;
 }
 
 bool module::init() {
@@ -361,13 +362,13 @@ bool module::init() {
     for(auto imp : imports) {
         shared_ptr<module> mod = nullptr; //env->get_module_by_prefix(imp);
         mod->init();
-        scope->add_import(mod);
+        module_scope->add_import(mod);
     }
 
     // it would be good if this could go on the stack of the currently running eval
     // but that's ~*~hard~*~, and this is easy
     for(auto initblock : initblocks) {
-        shared_ptr<lexicalscope> initscope(new lexicalscope(scope));
+        shared_ptr<lexicalscope> initscope(new lexicalscope(module_scope));
         if(::eval(make_shared<cons>(make_shared<symbol>("begin"), initblock),
                   initscope) == nullptr) {
             return false;
@@ -942,7 +943,8 @@ int eval_module_special_form(std::deque<stackframe>& exec_stack) {
     }
 
     shared_ptr<lispobj> lobj;
-    shared_ptr<module> m(new module(c->car()));
+    shared_ptr<module> m(new module(c->car(),
+                                    exec_stack.front().scope));
 
     c = dynamic_pointer_cast<cons>(c->cdr());
     while(c) {
@@ -1518,9 +1520,9 @@ shared_ptr<lispobj> read_cfunc(vector< shared_ptr<lispobj> > args) {
     return port->read();
 }
 
-shared_ptr<module> make_builtins_module() {
+shared_ptr<module> make_builtins_module(shared_ptr<lexicalscope> top_level_scope) {
     shared_ptr<lispobj> module_name(new cons(make_shared<symbol>("builtins"), make_shared<nil>()));
-    shared_ptr<module> builtins_module(new module(module_name));
+    shared_ptr<module> builtins_module(new module(module_name, top_level_scope));
     builtins_module->defun_and_export("+", make_shared<cfunc>(plus));
     builtins_module->defun_and_export("-", make_shared<cfunc>(minus));
     builtins_module->defun_and_export("*", make_shared<cfunc>(multiply));

@@ -160,7 +160,7 @@ private:
 
 class module : public lispobj {
 public:
-    module(shared_ptr<lispobj> _name);
+    module(shared_ptr<lispobj> _name, shared_ptr<lexicalscope> enc_scope);
 
     shared_ptr<lispobj> eval(shared_ptr<lispobj> command);
 
@@ -189,9 +189,10 @@ private:
     shared_ptr<lispobj> name;
     vector< shared_ptr<symbol> > exports;
     vector< shared_ptr<lispobj> > imports;
-    shared_ptr<lexicalscope> scope;
+    shared_ptr<lexicalscope> module_scope;
     vector< shared_ptr<lispobj> > defines;
     vector< shared_ptr<lispobj> > initblocks;
+    shared_ptr<lexicalscope> enclosing_scope;
     bool inited;
 };
 
@@ -217,5 +218,5 @@ vector< shared_ptr<lispobj> > readall(string str);
 
 shared_ptr<lispobj> eval(shared_ptr<lispobj> code,
                          shared_ptr<lexicalscope> tls);
-shared_ptr<module> make_builtins_module();
+shared_ptr<module> make_builtins_module(shared_ptr<lexicalscope> top_level_scope);
 bool istrue(shared_ptr<lispobj> lobj);

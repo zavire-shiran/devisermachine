@@ -136,9 +136,10 @@ int main(int argc, char** argv)
 
     modules_to_load = find_modules(kernelmodulesdir);
 
-    shared_ptr<module> builtins_module = make_builtins_module();
+    shared_ptr<module> builtins_module = make_builtins_module(top_level_scope);
     shared_ptr<module> user_module(new module(make_shared<cons>(make_shared<symbol>("user"),
-                                                                make_shared<nil>())));
+                                                                make_shared<nil>()),
+                                              top_level_scope));
     user_module->add_import(builtins_module);
 
     for(auto module_file : modules_to_load) {
