@@ -998,7 +998,7 @@ int eval_module_special_form(std::deque<stackframe>& exec_stack) {
         c = dynamic_pointer_cast<cons>(c->cdr());
     }
 
-    //env->add_module_def(m);
+    exec_stack.front().scope->add_import(m);
 
     exec_stack.front().mark = evaled;
     exec_stack.front().code = m;
