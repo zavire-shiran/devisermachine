@@ -68,6 +68,10 @@ void usage() {
     cout << "usage message XD" << endl;
 }
 
+bool ends_with_tilde(const string s) {
+    return *(s.rbegin()) == '~';
+}
+
 vector<string> find_modules(string module_path) {
     vector<string> ret;
 
@@ -87,7 +91,9 @@ vector<string> find_modules(string module_path) {
         // this switch should probably do some error detection
         switch(file_ent->fts_info) {
         case FTS_F:
-            ret.push_back(file_ent->fts_path);
+            if(!ends_with_tilde(file_ent->fts_path)) {
+                ret.push_back(file_ent->fts_path);
+            }
             break;
         }
     }
@@ -105,12 +111,12 @@ shared_ptr<lispobj> eval_file(string filename, shared_ptr<module> mod) {
 int main(int argc, char** argv)
 {
     int ch;
-    string filesystem = ".";
+    string kernelmodulesdir = "../kernel-modules";
 
-    while((ch = getopt(argc, argv, "hf:")) != -1) {
+    while((ch = getopt(argc, argv, "hm:")) != -1) {
         switch(ch) {
-        case 'f':
-            filesystem = optarg;
+        case 'm':
+            kernelmodulesdir = optarg;
             break;
         case 'h':
         default:
@@ -121,10 +127,17 @@ int main(int argc, char** argv)
     argc -= optind;
     argv += optind;
 
+    vector<string> modules_to_load;
+    modules_to_load = find_modules(kernelmodulesdir);
+
     shared_ptr<module> builtins_module = make_builtins_module();
     shared_ptr<module> user_module(new module(make_shared<cons>(make_shared<symbol>("user"),
                                                                 make_shared<nil>())));
     user_module->add_import(builtins_module);
+
+    for(auto module_file : modules_to_load) {
+        cout << module_file << endl;
+    }
 
     LineEditor ledit("deviser");
     string input = ledit.getLine();
