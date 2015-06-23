@@ -1,0 +1,17 @@
+(module
+ (testsuite)
+ (defmacro testexp (test expression expected-result)
+   (list (quote if)
+         (list test expression expected-result)
+         (quote (quote t))
+         (list (quote begin)
+               (list (quote print) (list (quote quote) expression))
+               (list (quote print) " => ")
+               (list (quote print) expression)
+               (list (quote print) "   FAIL\n"))))
+
+ (defun testadd ()
+   (testexp eqv (+ 1 1) 2)
+   (testexp eqv (+ 2 3) 5)
+   (testexp eqv (+ 5 10) 15)
+   (testexp eqv (+ 0 1) 1)))
