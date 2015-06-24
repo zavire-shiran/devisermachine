@@ -24,6 +24,7 @@ const int FILEINPUTPORT_TYPE = 9;
 class lispobj {
 public:
     lispobj();
+    virtual ~lispobj();
 
     virtual void print() = 0;
 };
