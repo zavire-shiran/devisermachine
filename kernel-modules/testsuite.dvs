@@ -1,5 +1,9 @@
 (module
  (testsuite)
+
+ (import (builtins))
+ (export testadd)
+
  (defmacro testexp (test expression expected-result)
    (list (quote if)
          (list test expression expected-result)

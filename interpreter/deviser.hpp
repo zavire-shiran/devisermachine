@@ -35,16 +35,22 @@ class lexicalscope {
 public:
     lexicalscope();
     lexicalscope(shared_ptr<lexicalscope> p);
+
     void defval(string name, shared_ptr<lispobj> value);
     void defun(string name, shared_ptr<lispobj> value);
     void undefval(string name);
     void undefun(string name);
     void setval(string name, shared_ptr<lispobj> value);
     void setfun(string name, shared_ptr<lispobj> value);
+    void add_import(shared_ptr<module> mod);
+    // this is honestly kind of gross
+    void set_ismodulescope(bool ismodulescope);
+
     shared_ptr<lispobj> getval(string name);
     shared_ptr<lispobj> getfun(string name);
-    void add_import(shared_ptr<module> mod);
     const vector< shared_ptr<module> >& get_imports() const;
+    shared_ptr<module> find_module(shared_ptr<lispobj> module_prefix);
+
     void dump();
 
 private:
@@ -52,6 +58,9 @@ private:
     std::map<string, shared_ptr<lispobj> > funbindings;
     std::shared_ptr<lexicalscope> parent;
     std::vector< shared_ptr<module> > imports;
+
+    // this is honestly kind of gross
+    bool ismodulescope;
 };
 
 class nil : public lispobj {
@@ -193,7 +202,6 @@ private:
     shared_ptr<lexicalscope> module_scope;
     vector< shared_ptr<lispobj> > defines;
     vector< shared_ptr<lispobj> > initblocks;
-    shared_ptr<lexicalscope> enclosing_scope;
     bool inited;
 };
 

@@ -196,11 +196,10 @@ void fileinputport::print() {
 
 module::module(shared_ptr<lispobj> _name, shared_ptr<lexicalscope> enc_scope) :
     name(_name),
-    module_scope(new lexicalscope()),
-    enclosing_scope(enc_scope),
+    module_scope(new lexicalscope(enc_scope)),
     inited(false)
 {
-
+    module_scope->set_ismodulescope(true);
 }
 
 string get_command_name(shared_ptr<lispobj> command) {
@@ -263,8 +262,15 @@ shared_ptr<lispobj> module::eval(shared_ptr<lispobj> command) {
             return make_shared<nil>();
         }
 
-//        add_import(c->car());
-        return c->car();
+        shared_ptr<module> module_for_import(module_scope->find_module(c->car()));
+        if(module_for_import) {
+            add_import(module_for_import);
+            return c->car();
+        } else {
+            cout << "Couldn't find module: ";
+            c->car()->print();
+            cout << endl;
+        }
     } else if(command_name == "unimport") {
 
     } else if(command_name == "init") {
@@ -604,7 +610,12 @@ void lexicalscope::setval(string name, shared_ptr<lispobj> value) {
             iter->second = value;
             return;
         }
-        scope = scope->parent;
+
+        if(ismodulescope) {
+            scope = NULL;
+        } else {
+            scope = scope->parent;
+        }
     }
 
     // it has not been set yet, so set it in the current frame
@@ -629,6 +640,10 @@ void lexicalscope::setfun(string name, shared_ptr<lispobj> value) {
     funbindings[name] = value;
 }
 
+void lexicalscope::set_ismodulescope(bool ismodulescope) {
+    this->ismodulescope = ismodulescope;
+}
+
 shared_ptr<lispobj> lexicalscope::getval(string name) {
     auto it = valbindings.find(name);
     if(it != valbindings.end()) {
@@ -642,7 +657,7 @@ shared_ptr<lispobj> lexicalscope::getval(string name) {
             }
         }
 
-        if(parent) {
+        if(parent && !ismodulescope) {
             return parent->getval(name);
         } else {
             //XXX: should be undefined so eval loop can error
@@ -664,7 +679,7 @@ shared_ptr<lispobj> lexicalscope::getfun(string name) {
             }
         }
 
-        if(parent) {
+        if(parent && !ismodulescope) {
             return parent->getfun(name);
         } else {
             //XXX: should be undefined so eval loop can error
@@ -680,6 +695,20 @@ void lexicalscope::add_import(shared_ptr<module> mod) {
 
 const vector< shared_ptr<module> >& lexicalscope::get_imports() const {
     return imports;
+}
+
+shared_ptr<module> lexicalscope::find_module(shared_ptr<lispobj> module_prefix) {
+    for(auto module : imports) {
+        if(prefix_match(module->get_name(), module_prefix)) {
+            return module;
+        }
+    }
+
+    if(parent) {
+        return parent->find_module(module_prefix);
+    }
+
+    return nullptr;
 }
 
 void lexicalscope::dump() {
@@ -741,7 +770,7 @@ void print_stack(const std::deque<stackframe> exec_stack) {
 int apply_lispfunc(std::deque<stackframe>& exec_stack) {
     auto evaled_args = exec_stack.front().evaled_args;
     shared_ptr<lispfunc> func = dynamic_pointer_cast<lispfunc>(evaled_args.front());
-    cout << "applying "; func->print(); cout << endl;
+    //cout << "applying "; func->print(); cout << endl;
     evaled_args.erase(evaled_args.begin());
     shared_ptr<lexicalscope> scope(new lexicalscope(func->closure));
 
@@ -784,7 +813,7 @@ int apply_lispfunc(std::deque<stackframe>& exec_stack) {
 int apply_macro(std::deque<stackframe>& exec_stack) {
     auto evaled_args = exec_stack.front().evaled_args;
     shared_ptr<macro> func = dynamic_pointer_cast<macro>(evaled_args.front());
-    cout << "applying "; func->print(); cout << endl;
+    //cout << "applying "; func->print(); cout << endl;
 
     shared_ptr<lexicalscope> scope(new lexicalscope(func->closure));
 
@@ -854,8 +883,16 @@ int add_import_to_module(shared_ptr<module> mod, shared_ptr<lispobj> importdecl)
         return 1;
     }
 
-//    mod->add_import(c->car());
-    return 0;
+    shared_ptr<module> module_for_import = mod->get_bindings()->find_module(c->car());
+    if(module_for_import) {
+        mod->add_import(module_for_import);
+        return 0;
+    } else {
+        cout << "Cannot find module named: ";
+        c->car()->print();
+        cout << endl;
+        return 1;
+    }
 }
 
 int add_export_to_module(shared_ptr<module> mod, shared_ptr<lispobj> exportdecl) {
@@ -881,8 +918,7 @@ int add_export_to_module(shared_ptr<module> mod, shared_ptr<lispobj> exportdecl)
 }
 
 int add_defun_to_module(shared_ptr<module> mod,
-                         shared_ptr<lispobj> defundecl,
-                         shared_ptr<lexicalscope> scope) {
+                        shared_ptr<lispobj> defundecl) {
     shared_ptr<cons> c = dynamic_pointer_cast<cons>(defundecl);
     if(!c) {
         return 1;
@@ -909,8 +945,7 @@ int add_defun_to_module(shared_ptr<module> mod,
 }
 
 int add_defmacro_to_module(shared_ptr<module> mod,
-                         shared_ptr<lispobj> defundecl,
-                         shared_ptr<lexicalscope> scope) {
+                           shared_ptr<lispobj> defundecl) {
     shared_ptr<cons> c = dynamic_pointer_cast<cons>(defundecl);
     if(!c) {
         return 1;
@@ -981,14 +1016,14 @@ int eval_module_special_form(std::deque<stackframe>& exec_stack) {
                 return 1;
             }
         } else if(s->name() == "defun") {
-            if(add_defun_to_module(m, decl->cdr(), exec_stack.front().scope)) {
+            if(add_defun_to_module(m, decl->cdr())) {
                 cout << "invalid defun declaration: ";
                 decl->print();
                 cout << endl;
                 return 1;
             }
         } else if(s->name() == "defmacro") {
-            if(add_defmacro_to_module(m, decl->cdr(), exec_stack.front().scope)) {
+            if(add_defmacro_to_module(m, decl->cdr())) {
                 cout << "invalid defmacro declaration: ";
                 decl->print();
                 cout << endl;
