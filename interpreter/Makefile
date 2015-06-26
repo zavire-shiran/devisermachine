@@ -2,6 +2,9 @@ CC := g++ -g -Wall -Wextra
 CCFLAGS := -std=c++0x
 LD := g++
 LDFLAGS := -ledit
+TESTLDFLAGS :=
+
+all: deviser interpretertests
 
 deviser: main.o deviser.o lineeditor.o
 	$(LD) -o $@ $^ $(LDFLAGS)
@@ -15,6 +18,12 @@ deviser.o: deviser.cpp deviser.hpp
 lineeditor.o: lineeditor.cpp lineeditor.hpp
 	$(CC) -c $(CCFLAGS) -o $@ $<
 
+interpretertests: deviser.o tests/test.o
+	$(LD) -o $@ $^ ../gmock-1.7.0/make/gmock_main.a $(TESTLDFLAGS) 
+
+tests/test.o: tests/test.cpp deviser.hpp
+	$(CC) -c $(CCFLAGS) -I../gmock-1.7.0/gtest/include -o $@ $<
+
 .PHONY: clean
 clean:
-	rm -f *.o deviser
+	rm -f *.o tests/*.o deviser interpretertests
