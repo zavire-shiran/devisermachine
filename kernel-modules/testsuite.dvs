@@ -26,6 +26,15 @@
    (testexp eqv (- 5 10) (- 5))
    (testexp eqv (- 2 1) 1))
 
+ (defun testmul ()
+   (testexp eqv (* 1 1) 1)
+   (testexp eqv (* 1 0) 0)
+   (testexp eqv (* 0 0) 0)
+   (testexp eqv (* 5 5) 25)
+   (testexp eqv (* 1 2) 2)
+   (testexp eqv (* 2 1) 2))
+
  (defun test ()
+   (testmul)
    (testsub)
    (testadd)))
