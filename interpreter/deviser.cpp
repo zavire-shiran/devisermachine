@@ -448,7 +448,7 @@ bool eqv(shared_ptr<lispobj> left, shared_ptr<lispobj> right) {
     if(left_type == typeid(number)) {
         shared_ptr<number> ln(dynamic_pointer_cast<number>(left));
         shared_ptr<number> rn(dynamic_pointer_cast<number>(right));
-        return ln->value() && rn->value();
+        return ln->value() == rn->value();
     } else {
         return false;
     };

@@ -2,7 +2,7 @@
  (testsuite)
 
  (import (builtins))
- (export testadd)
+ (export test)
 
  (defmacro testexp (test expression expected-result)
    (list (quote if)
@@ -18,4 +18,14 @@
    (testexp eqv (+ 1 1) 2)
    (testexp eqv (+ 2 3) 5)
    (testexp eqv (+ 5 10) 15)
-   (testexp eqv (+ 0 1) 1)))
+   (testexp eqv (+ 0 1) 1))
+
+ (defun testsub ()
+   (testexp eqv (- 1 1) 0)
+   (testexp eqv (- 10 6) 4)
+   (testexp eqv (- 5 10) (- 5))
+   (testexp eqv (- 2 1) 1))
+
+ (defun test ()
+   (testsub)
+   (testadd)))
