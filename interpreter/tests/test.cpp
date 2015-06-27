@@ -78,3 +78,13 @@ TEST(lexicalscope, get_valDefined) {
 
     ASSERT_EQ(scope->getval("testvar"), zero);
 }
+
+TEST(lexicalscope, get_valFromParent) {
+    shared_ptr<lexicalscope> parentscope(new lexicalscope);
+    shared_ptr<lexicalscope> childscope(new lexicalscope(parentscope));
+    shared_ptr<lispobj> zero (new number(0));
+
+    parentscope->defval("testvar", zero);
+
+    ASSERT_EQ(zero, childscope->getval("testvar"));
+}
