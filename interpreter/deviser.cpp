@@ -644,16 +644,26 @@ void lexicalscope::set_ismodulescope(bool ismodulescope) {
     this->ismodulescope = ismodulescope;
 }
 
+shared_ptr<lispobj> find_val_in_module(shared_ptr<module> mod, string name) {
+    for(shared_ptr<symbol> sym : mod->get_exports()) {
+        if(sym->name() == name) {
+            return mod->get_bindings()->getval(name);
+        }
+    }
+
+    return nullptr;
+}
+
 shared_ptr<lispobj> lexicalscope::getval(string name) {
     auto it = valbindings.find(name);
     if(it != valbindings.end()) {
         return it->second;
     } else {
         for(shared_ptr<module> mod : imports) {
-            for(shared_ptr<symbol> sym : mod->get_exports()) {
-                if(sym->name() == name) {
-                    return mod->get_bindings()->getval(name);
-                }
+            shared_ptr<lispobj> ret = find_val_in_module(mod, name);
+
+            if(ret) {
+                return ret;
             }
         }
 
@@ -666,16 +676,26 @@ shared_ptr<lispobj> lexicalscope::getval(string name) {
     }
 }
 
+shared_ptr<lispobj> find_fun_in_module(shared_ptr<module> mod, string name) {
+    for(shared_ptr<symbol> sym : mod->get_exports()) {
+        if(sym->name() == name) {
+            return mod->get_bindings()->getfun(name);
+        }
+    }
+
+    return nullptr;
+}
+
 shared_ptr<lispobj> lexicalscope::getfun(string name) {
     auto it = funbindings.find(name);
     if(it != funbindings.end()) {
         return it->second;
     } else {
         for(shared_ptr<module> mod : imports) {
-            for(shared_ptr<symbol> sym : mod->get_exports()) {
-                if(sym->name() == name) {
-                    return mod->get_bindings()->getfun(name);
-                }
+            shared_ptr<lispobj> ret = find_fun_in_module(mod, name);
+
+            if(ret) {
+                return ret;
             }
         }
 
