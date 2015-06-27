@@ -573,13 +573,15 @@ bool prefix_match(shared_ptr<lispobj> name, shared_ptr<lispobj> prefix) {
 }
 
 lexicalscope::lexicalscope() :
-    parent(nullptr)
+    parent(nullptr),
+    ismodulescope(false)
 {
 
 }
 
 lexicalscope::lexicalscope(shared_ptr<lexicalscope> p) :
-    parent(p)
+    parent(p),
+    ismodulescope(false)
 {
 
 }
