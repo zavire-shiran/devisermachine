@@ -63,3 +63,18 @@ TEST(DeviserEval, NumberTest) {
     ASSERT_EQ(eval(one, scope), one);
     ASSERT_EQ(eval(two, scope), two);
 }
+
+TEST(lexicalscope, get_valUndefined) {
+    shared_ptr<lexicalscope> scope(new lexicalscope);
+
+    ASSERT_TRUE(eq(scope->getval("undefinevariable"), std::make_shared<nil>()));
+}
+
+TEST(lexicalscope, get_valDefined) {
+    shared_ptr<lexicalscope> scope(new lexicalscope);
+    shared_ptr<number> zero(new number(0));
+
+    scope->defval("testvar", zero);
+
+    ASSERT_EQ(scope->getval("testvar"), zero);
+}
