@@ -705,7 +705,6 @@ shared_ptr<lispobj> lexicalscope::getfun(string name) {
             return parent->getfun(name);
         } else {
             //XXX: should be undefined so eval loop can error
-            cout << "couldn't find fun " << name << endl;
             return make_shared<nil>();
         }
     }

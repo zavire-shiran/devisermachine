@@ -53,33 +53,33 @@ TEST(DeviserBase, NumEqvTest) {
     ASSERT_FALSE(eqv(one, zero));
 }
 
-TEST(DeviserEval, NumberTest) {
+TEST(DeviserEval, NumberConstantTest) {
     shared_ptr<lispobj> zero(new number(0));
     shared_ptr<lispobj> one(new number(1));
     shared_ptr<lispobj> two(new number(2));
     shared_ptr<lexicalscope> scope(new lexicalscope);
 
-    ASSERT_EQ(eval(zero, scope), zero);
-    ASSERT_EQ(eval(one, scope), one);
-    ASSERT_EQ(eval(two, scope), two);
+    ASSERT_EQ(zero, eval(zero, scope));
+    ASSERT_EQ(one, eval(one, scope));
+    ASSERT_EQ(two, eval(two, scope));
 }
 
-TEST(lexicalscope, get_valUndefined) {
+TEST(lexicalscope, getvalUndefined) {
     shared_ptr<lexicalscope> scope(new lexicalscope);
 
-    ASSERT_TRUE(eq(scope->getval("undefinevariable"), std::make_shared<nil>()));
+    ASSERT_TRUE(eq(scope->getval("undefinedvariable"), std::make_shared<nil>()));
 }
 
-TEST(lexicalscope, get_valDefined) {
+TEST(lexicalscope, getvalDefined) {
     shared_ptr<lexicalscope> scope(new lexicalscope);
     shared_ptr<number> zero(new number(0));
 
     scope->defval("testvar", zero);
 
-    ASSERT_EQ(scope->getval("testvar"), zero);
+    ASSERT_EQ(zero, scope->getval("testvar"));
 }
 
-TEST(lexicalscope, get_valFromParent) {
+TEST(lexicalscope, getvalFromParent) {
     shared_ptr<lexicalscope> parentscope(new lexicalscope);
     shared_ptr<lexicalscope> childscope(new lexicalscope(parentscope));
     shared_ptr<lispobj> zero (new number(0));
@@ -87,4 +87,29 @@ TEST(lexicalscope, get_valFromParent) {
     parentscope->defval("testvar", zero);
 
     ASSERT_EQ(zero, childscope->getval("testvar"));
+}
+
+TEST(lexicalscope, getfunUndefined) {
+    shared_ptr<lexicalscope> scope(new lexicalscope);
+
+    ASSERT_TRUE(eq(scope->getfun("undefinedfunction"), std::make_shared<nil>()));
+}
+
+TEST(lexicalscope, getfunDefined) {
+    shared_ptr<lexicalscope> scope(new lexicalscope);
+    shared_ptr<lispobj> zero(new number(0));
+
+    scope->defun("testfun", zero);
+
+    ASSERT_EQ(zero, scope->getfun("testfun"));
+}
+
+TEST(lexicalscope, getfunFromParent) {
+    shared_ptr<lexicalscope> parent(new lexicalscope);
+    shared_ptr<lexicalscope> child(new lexicalscope(parent));
+    shared_ptr<lispobj> zero(new number(0));
+
+    parent->defun("testfun", zero);
+
+    ASSERT_EQ(zero, child->getfun("testfun"));
 }
