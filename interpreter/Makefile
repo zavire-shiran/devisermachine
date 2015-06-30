@@ -1,8 +1,8 @@
-CC := g++ -g -Wall -Wextra
-CCFLAGS := -std=c++0x
+CC := g++
+CCFLAGS := -g -O0 -Wall -Wextra -std=c++0x -fprofile-arcs -ftest-coverage
 LD := g++
-LDFLAGS := -ledit
-TESTLDFLAGS :=
+LDFLAGS := -ledit -fprofile-arcs -ftest-coverage
+TESTLDFLAGS := -fprofile-arcs -ftest-coverage
 
 all: deviser interpretertests
 
@@ -23,6 +23,12 @@ interpretertests: deviser.o tests/test.o
 
 tests/test.o: tests/test.cpp deviser.hpp
 	$(CC) -c $(CCFLAGS) -I../gmock-1.7.0/gtest/include -o $@ $<
+
+runtests: interpretertests
+	./interpretertests
+	mkdir -p testout
+	lcov --directory . --capture --output-file testout/interpretertest.out
+	(cd testout; genhtml interpretertest.out)
 
 .PHONY: clean
 clean:
