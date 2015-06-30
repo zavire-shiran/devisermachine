@@ -113,3 +113,21 @@ TEST(lexicalscope, getfunFromParent) {
 
     ASSERT_EQ(zero, child->getfun("testfun"));
 }
+
+shared_ptr<lispobj> find_fun_in_module(shared_ptr<module> mod, string name);
+
+TEST(lexicalscope, find_fun_in_moduleFailure) {
+    shared_ptr<lexicalscope> scope(new lexicalscope);
+    shared_ptr<module> mod(new module(std::make_shared<symbol>("testmod"), scope));
+
+    ASSERT_EQ(nullptr, find_fun_in_module(mod, "undefinedfun"));
+}
+
+TEST(lexicalscope, find_fun_in_moduleSuccess) {
+    shared_ptr<lexicalscope> scope(new lexicalscope);
+    shared_ptr<module> mod(new module(std::make_shared<symbol>("testmod"), scope));
+
+    mod->add_export(std::make_shared<symbol>("testfun"));
+
+    ASSERT_TRUE(eq(std::make_shared<nil>(), find_fun_in_module(mod, "testfun")));
+}
