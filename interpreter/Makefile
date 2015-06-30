@@ -33,3 +33,6 @@ runtests: interpretertests
 .PHONY: clean
 clean:
 	rm -f *.o tests/*.o deviser interpretertests
+	find . -iname \*.gcno -delete
+	find . -iname \*.gcda -delete
+	rm -rf testout
