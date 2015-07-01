@@ -131,3 +131,27 @@ TEST(lexicalscope, find_fun_in_moduleSuccess) {
 
     ASSERT_TRUE(eq(std::make_shared<nil>(), find_fun_in_module(mod, "testfun")));
 }
+
+TEST(lexicalscope, getvalFromModule) {
+    shared_ptr<lexicalscope> scope(new lexicalscope);
+    shared_ptr<module> mod(new module(std::make_shared<symbol>("testmod"), scope));
+    shared_ptr<lispobj> zero(new number(0));
+
+    scope->add_import(mod);
+
+    mod->defval_and_export("testval", zero);
+
+    ASSERT_EQ(zero, scope->getval("testval"));
+}
+
+TEST(lexicalscope, getfunFromModule) {
+    shared_ptr<lexicalscope> scope(new lexicalscope);
+    shared_ptr<module> mod(new module(std::make_shared<symbol>("testmod"), scope));
+    shared_ptr<lispobj> zero(new number(0));
+
+    scope->add_import(mod);
+
+    mod->defun_and_export("testfun", zero);
+
+    ASSERT_EQ(zero, scope->getfun("testfun"));
+}
