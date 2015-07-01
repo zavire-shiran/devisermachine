@@ -71,6 +71,16 @@ TEST(DeviserEval, StringConstant) {
     ASSERT_EQ(str, eval(str, scope));
 }
 
+TEST(DeviserEval, VariableLookup) {
+    shared_ptr<lispobj> val(new number(0));
+    shared_ptr<lexicalscope> scope(new lexicalscope);
+    shared_ptr<symbol> varname(new symbol("testval"));
+
+    scope->defval("testval", val);
+
+    ASSERT_EQ(val, eval(varname, scope));
+}
+
 TEST(lexicalscope, getvalUndefined) {
     shared_ptr<lexicalscope> scope(new lexicalscope);
 
