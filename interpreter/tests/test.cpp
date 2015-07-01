@@ -64,6 +64,13 @@ TEST(DeviserEval, NumberConstantTest) {
     ASSERT_EQ(two, eval(two, scope));
 }
 
+TEST(DeviserEval, StringConstantTest) {
+    shared_ptr<lispobj> str(new lispstring("This is a string"));
+    shared_ptr<lexicalscope> scope(new lexicalscope);
+
+    ASSERT_EQ(str, eval(str, scope));
+}
+
 TEST(lexicalscope, getvalUndefined) {
     shared_ptr<lexicalscope> scope(new lexicalscope);
 
