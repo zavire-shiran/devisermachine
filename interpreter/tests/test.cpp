@@ -1,13 +1,13 @@
 #include "../deviser.hpp"
 #include "gtest/gtest.h"
 
-TEST(DeviserBase, NilEqTest) {
+TEST(DeviserBase, NilEq) {
     shared_ptr<lispobj> n(new nil);
 
     ASSERT_TRUE(eq(n, n));
 }
 
-TEST(DeviserBase, NumEqTest) {
+TEST(DeviserBase, NumEq) {
     shared_ptr<lispobj> num1(new number(1));
     shared_ptr<lispobj> num2(new number(1));
     shared_ptr<lispobj> num3(new number(10));
@@ -25,7 +25,7 @@ TEST(DeviserBase, NumEqTest) {
     ASSERT_FALSE(eq(num3, num2));
 }
 
-TEST(DeviserBase, NilNumEqTest) {
+TEST(DeviserBase, NilNumEq) {
     shared_ptr<lispobj> n(new nil);
     shared_ptr<lispobj> num(new number(0));
 
@@ -33,7 +33,7 @@ TEST(DeviserBase, NilNumEqTest) {
     ASSERT_FALSE(eq(num, n));
 }
 
-TEST(DeviserBase, NumEqvTest) {
+TEST(DeviserBase, NumEqv) {
     shared_ptr<lispobj> zero(new number(0));
     shared_ptr<lispobj> zero2(new number(0));
     shared_ptr<lispobj> one(new number(1));
@@ -53,7 +53,7 @@ TEST(DeviserBase, NumEqvTest) {
     ASSERT_FALSE(eqv(one, zero));
 }
 
-TEST(DeviserEval, NumberConstantTest) {
+TEST(DeviserEval, NumberConstant) {
     shared_ptr<lispobj> zero(new number(0));
     shared_ptr<lispobj> one(new number(1));
     shared_ptr<lispobj> two(new number(2));
@@ -64,7 +64,7 @@ TEST(DeviserEval, NumberConstantTest) {
     ASSERT_EQ(two, eval(two, scope));
 }
 
-TEST(DeviserEval, StringConstantTest) {
+TEST(DeviserEval, StringConstant) {
     shared_ptr<lispobj> str(new lispstring("This is a string"));
     shared_ptr<lexicalscope> scope(new lexicalscope);
 
