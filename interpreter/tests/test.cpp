@@ -25,6 +25,32 @@ TEST(DeviserBase, NumEq) {
     ASSERT_FALSE(eq(num3, num2));
 }
 
+TEST(DeviserBase, SymbolEq) {
+    shared_ptr<lispobj> sym(new symbol("sym1"));
+    shared_ptr<lispobj> sym1(new symbol("sym1"));
+    shared_ptr<lispobj> sym2(new symbol("sym2"));
+
+    EXPECT_PRED2(eq, sym, sym);
+    EXPECT_PRED2(eq, sym1, sym1);
+    EXPECT_PRED2(eq, sym2, sym2);
+
+    EXPECT_PRED2(eq, sym, sym1);
+    EXPECT_PRED2(eq, sym1, sym);
+    EXPECT_FALSE(eq(sym, sym2));
+    EXPECT_FALSE(eq(sym2, sym));
+}
+
+TEST(DeviserBase, ConsEq) {
+    shared_ptr<lispobj> c1(new cons(std::make_shared<symbol>("a"), std::make_shared<nil>()));
+    shared_ptr<lispobj> c2(new cons(std::make_shared<symbol>("a"), std::make_shared<nil>()));
+
+    EXPECT_PRED2(eq, c1, c1);
+    EXPECT_PRED2(eq, c2, c2);
+
+    EXPECT_FALSE(eq(c1, c2));
+    EXPECT_FALSE(eq(c2, c1));
+}
+
 TEST(DeviserBase, NilNumEq) {
     shared_ptr<lispobj> n(new nil);
     shared_ptr<lispobj> num(new number(0));
