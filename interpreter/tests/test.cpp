@@ -53,6 +53,45 @@ TEST(DeviserBase, NumEqv) {
     ASSERT_FALSE(eqv(one, zero));
 }
 
+TEST(DeviserBase, readNumber) {
+    shared_ptr<lispobj> readobj(read("1"));
+    shared_ptr<number> num = std::dynamic_pointer_cast<number>(readobj);
+
+    ASSERT_EQ(readobj, num);
+    EXPECT_EQ(1, num->value());
+}
+
+TEST(DeviserBase, readNil) {
+    shared_ptr<lispobj> readobj(read("()"));
+    shared_ptr<nil> n = std::dynamic_pointer_cast<nil>(readobj);
+
+    ASSERT_EQ(readobj, n);
+}
+
+TEST(DeviserBase, readSymbol) {
+    shared_ptr<lispobj> readobj(read("testsymbol"));
+    shared_ptr<symbol> sym = std::dynamic_pointer_cast<symbol>(readobj);
+
+    ASSERT_EQ(readobj, sym);
+    EXPECT_STREQ("testsymbol", sym->name().c_str());
+}
+
+TEST(DeviserBase, readCons) {
+    shared_ptr<lispobj> readobj(read(" ( 1 ) "));
+    shared_ptr<cons> c = std::dynamic_pointer_cast<cons>(readobj);
+
+    ASSERT_EQ(readobj, c);
+
+    shared_ptr<lispobj> conscar = c->car();
+    shared_ptr<lispobj> conscdr = c->cdr();
+    shared_ptr<number> num = std::dynamic_pointer_cast<number>(conscar);
+    shared_ptr<nil> n = std::dynamic_pointer_cast<nil>(conscdr);
+
+    ASSERT_EQ(conscar, num);
+    ASSERT_EQ(conscdr, n);
+    EXPECT_EQ(1, num->value());
+}
+
 TEST(DeviserEval, NumberConstant) {
     shared_ptr<lispobj> zero(new number(0));
     shared_ptr<lispobj> one(new number(1));
