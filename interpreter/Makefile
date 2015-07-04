@@ -25,6 +25,7 @@ tests/test.o: tests/test.cpp deviser.hpp
 	$(CC) -c $(CCFLAGS) -I../gmock-1.7.0/gtest/include -o $@ $<
 
 runtests: interpretertests
+	lcov --directory . --zerocounters
 	./interpretertests
 	mkdir -p testout
 	lcov --directory . --capture --output-file testout/interpretertest.out
