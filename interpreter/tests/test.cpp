@@ -142,6 +142,14 @@ TEST(DeviserBase, readCons) {
     EXPECT_EQ(1, num->value());
 }
 
+TEST(DeviserBase, readString) {
+    shared_ptr<lispobj> readobj(read("\"\\a\\s\\d\\f\\nThis is a string.\""));
+    shared_ptr<lispstring> str = std::dynamic_pointer_cast<lispstring>(readobj);
+
+    ASSERT_EQ(readobj, str);
+    EXPECT_STREQ("asdf\nThis is a string.", str->get_contents().c_str());
+}
+
 TEST(DeviserEval, NumberConstant) {
     shared_ptr<lispobj> zero(new number(0));
     shared_ptr<lispobj> one(new number(1));
