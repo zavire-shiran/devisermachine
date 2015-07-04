@@ -4,7 +4,7 @@
 TEST(DeviserBase, NilEq) {
     shared_ptr<lispobj> n(new nil);
 
-    ASSERT_TRUE(eq(n, n));
+    EXPECT_TRUE(eq(n, n));
 }
 
 TEST(DeviserBase, NumEq) {
@@ -12,17 +12,17 @@ TEST(DeviserBase, NumEq) {
     shared_ptr<lispobj> num2(new number(1));
     shared_ptr<lispobj> num3(new number(10));
 
-    ASSERT_TRUE(eq(num1, num1));
-    ASSERT_TRUE(eq(num2, num2));
-    ASSERT_TRUE(eq(num3, num3));
+    EXPECT_TRUE(eq(num1, num1));
+    EXPECT_TRUE(eq(num2, num2));
+    EXPECT_TRUE(eq(num3, num3));
 
-    ASSERT_FALSE(eq(num1, num2));
-    ASSERT_FALSE(eq(num1, num3));
-    ASSERT_FALSE(eq(num2, num3));
+    EXPECT_FALSE(eq(num1, num2));
+    EXPECT_FALSE(eq(num1, num3));
+    EXPECT_FALSE(eq(num2, num3));
 
-    ASSERT_FALSE(eq(num2, num1));
-    ASSERT_FALSE(eq(num2, num1));
-    ASSERT_FALSE(eq(num3, num2));
+    EXPECT_FALSE(eq(num2, num1));
+    EXPECT_FALSE(eq(num2, num1));
+    EXPECT_FALSE(eq(num3, num2));
 }
 
 TEST(DeviserBase, SymbolEq) {
@@ -55,8 +55,8 @@ TEST(DeviserBase, NilNumEq) {
     shared_ptr<lispobj> n(new nil);
     shared_ptr<lispobj> num(new number(0));
 
-    ASSERT_FALSE(eq(n, num));
-    ASSERT_FALSE(eq(num, n));
+    EXPECT_FALSE(eq(n, num));
+    EXPECT_FALSE(eq(num, n));
 }
 
 TEST(DeviserBase, NumEqv) {
@@ -65,18 +65,18 @@ TEST(DeviserBase, NumEqv) {
     shared_ptr<lispobj> one(new number(1));
     shared_ptr<lispobj> one2(new number(1));
 
-    ASSERT_TRUE(eqv(zero, zero));
-    ASSERT_TRUE(eqv(zero2, zero2));
-    ASSERT_TRUE(eqv(zero, zero2));
-    ASSERT_TRUE(eqv(zero2, zero));
+    EXPECT_TRUE(eqv(zero, zero));
+    EXPECT_TRUE(eqv(zero2, zero2));
+    EXPECT_TRUE(eqv(zero, zero2));
+    EXPECT_TRUE(eqv(zero2, zero));
 
-    ASSERT_TRUE(eqv(one, one));
-    ASSERT_TRUE(eqv(one2, one2));
-    ASSERT_TRUE(eqv(one, one2));
-    ASSERT_TRUE(eqv(one2, one));
+    EXPECT_TRUE(eqv(one, one));
+    EXPECT_TRUE(eqv(one2, one2));
+    EXPECT_TRUE(eqv(one, one2));
+    EXPECT_TRUE(eqv(one2, one));
 
-    ASSERT_FALSE(eqv(zero, one));
-    ASSERT_FALSE(eqv(one, zero));
+    EXPECT_FALSE(eqv(zero, one));
+    EXPECT_FALSE(eqv(one, zero));
 }
 
 TEST(DeviserBase, ConsEqv) {
@@ -156,16 +156,16 @@ TEST(DeviserEval, NumberConstant) {
     shared_ptr<lispobj> two(new number(2));
     shared_ptr<lexicalscope> scope(new lexicalscope);
 
-    ASSERT_EQ(zero, eval(zero, scope));
-    ASSERT_EQ(one, eval(one, scope));
-    ASSERT_EQ(two, eval(two, scope));
+    EXPECT_EQ(zero, eval(zero, scope));
+    EXPECT_EQ(one, eval(one, scope));
+    EXPECT_EQ(two, eval(two, scope));
 }
 
 TEST(DeviserEval, StringConstant) {
     shared_ptr<lispobj> str(new lispstring("This is a string"));
     shared_ptr<lexicalscope> scope(new lexicalscope);
 
-    ASSERT_EQ(str, eval(str, scope));
+    EXPECT_EQ(str, eval(str, scope));
 }
 
 TEST(DeviserEval, VariableLookup) {
@@ -175,13 +175,13 @@ TEST(DeviserEval, VariableLookup) {
 
     scope->defval("testval", val);
 
-    ASSERT_EQ(val, eval(varname, scope));
+    EXPECT_EQ(val, eval(varname, scope));
 }
 
 TEST(lexicalscope, getvalUndefined) {
     shared_ptr<lexicalscope> scope(new lexicalscope);
 
-    ASSERT_TRUE(eq(scope->getval("undefinedvariable"), std::make_shared<nil>()));
+    EXPECT_TRUE(eq(scope->getval("undefinedvariable"), std::make_shared<nil>()));
 }
 
 TEST(lexicalscope, getvalDefined) {
@@ -190,7 +190,7 @@ TEST(lexicalscope, getvalDefined) {
 
     scope->defval("testvar", zero);
 
-    ASSERT_EQ(zero, scope->getval("testvar"));
+    EXPECT_EQ(zero, scope->getval("testvar"));
 }
 
 TEST(lexicalscope, getvalFromParent) {
@@ -200,13 +200,13 @@ TEST(lexicalscope, getvalFromParent) {
 
     parentscope->defval("testvar", zero);
 
-    ASSERT_EQ(zero, childscope->getval("testvar"));
+    EXPECT_EQ(zero, childscope->getval("testvar"));
 }
 
 TEST(lexicalscope, getfunUndefined) {
     shared_ptr<lexicalscope> scope(new lexicalscope);
 
-    ASSERT_TRUE(eq(scope->getfun("undefinedfunction"), std::make_shared<nil>()));
+    EXPECT_TRUE(eq(scope->getfun("undefinedfunction"), std::make_shared<nil>()));
 }
 
 TEST(lexicalscope, getfunDefined) {
@@ -215,7 +215,7 @@ TEST(lexicalscope, getfunDefined) {
 
     scope->defun("testfun", zero);
 
-    ASSERT_EQ(zero, scope->getfun("testfun"));
+    EXPECT_EQ(zero, scope->getfun("testfun"));
 }
 
 TEST(lexicalscope, getfunFromParent) {
@@ -225,7 +225,7 @@ TEST(lexicalscope, getfunFromParent) {
 
     parent->defun("testfun", zero);
 
-    ASSERT_EQ(zero, child->getfun("testfun"));
+    EXPECT_EQ(zero, child->getfun("testfun"));
 }
 
 shared_ptr<lispobj> find_fun_in_module(shared_ptr<module> mod, string name);
@@ -234,7 +234,7 @@ TEST(lexicalscope, find_fun_in_moduleFailure) {
     shared_ptr<lexicalscope> scope(new lexicalscope);
     shared_ptr<module> mod(new module(std::make_shared<symbol>("testmod"), scope));
 
-    ASSERT_EQ(nullptr, find_fun_in_module(mod, "undefinedfun"));
+    EXPECT_EQ(nullptr, find_fun_in_module(mod, "undefinedfun"));
 }
 
 TEST(lexicalscope, find_fun_in_moduleSuccess) {
@@ -243,7 +243,7 @@ TEST(lexicalscope, find_fun_in_moduleSuccess) {
 
     mod->add_export(std::make_shared<symbol>("testfun"));
 
-    ASSERT_TRUE(eq(std::make_shared<nil>(), find_fun_in_module(mod, "testfun")));
+    EXPECT_TRUE(eq(std::make_shared<nil>(), find_fun_in_module(mod, "testfun")));
 }
 
 TEST(lexicalscope, getvalFromModule) {
@@ -255,7 +255,7 @@ TEST(lexicalscope, getvalFromModule) {
 
     mod->defval_and_export("testval", zero);
 
-    ASSERT_EQ(zero, scope->getval("testval"));
+    EXPECT_EQ(zero, scope->getval("testval"));
 }
 
 TEST(lexicalscope, getfunFromModule) {
@@ -267,5 +267,5 @@ TEST(lexicalscope, getfunFromModule) {
 
     mod->defun_and_export("testfun", zero);
 
-    ASSERT_EQ(zero, scope->getfun("testfun"));
+    EXPECT_EQ(zero, scope->getfun("testfun"));
 }
