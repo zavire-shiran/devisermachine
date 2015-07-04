@@ -89,6 +89,20 @@ TEST(DeviserBase, ConsEqv) {
     EXPECT_FALSE(eqv(c2, c1));
 }
 
+TEST(DeviserBase, ConsEqual) {
+    shared_ptr<lispobj> c1(new cons(std::make_shared<number>(0), std::make_shared<nil>()));
+    shared_ptr<lispobj> c2(new cons(std::make_shared<number>(0), std::make_shared<nil>()));
+    shared_ptr<lispobj> c3(new cons(std::make_shared<number>(1), std::make_shared<nil>()));
+
+    EXPECT_PRED2(equal, c1, c1);
+    EXPECT_PRED2(equal, c2, c2);
+    EXPECT_PRED2(equal, c1, c2);
+    EXPECT_PRED2(equal, c2, c1);
+
+    EXPECT_FALSE(equal(c1, c3));
+    EXPECT_FALSE(equal(c3, c1));
+}
+
 TEST(DeviserBase, readNumber) {
     shared_ptr<lispobj> readobj(read("1"));
     shared_ptr<number> num = std::dynamic_pointer_cast<number>(readobj);
