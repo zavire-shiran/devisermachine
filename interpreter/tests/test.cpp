@@ -4,7 +4,7 @@
 TEST(DeviserBase, NilEq) {
     shared_ptr<lispobj> n(new nil);
 
-    EXPECT_TRUE(eq(n, n));
+    EXPECT_PRED2(eq, n, n);
 }
 
 TEST(DeviserBase, NumEq) {
@@ -12,9 +12,9 @@ TEST(DeviserBase, NumEq) {
     shared_ptr<lispobj> num2(new number(1));
     shared_ptr<lispobj> num3(new number(10));
 
-    EXPECT_TRUE(eq(num1, num1));
-    EXPECT_TRUE(eq(num2, num2));
-    EXPECT_TRUE(eq(num3, num3));
+    EXPECT_PRED2(eq, num1, num1);
+    EXPECT_PRED2(eq, num2, num2);
+    EXPECT_PRED2(eq, num3, num3);
 
     EXPECT_FALSE(eq(num1, num2));
     EXPECT_FALSE(eq(num1, num3));
@@ -65,15 +65,15 @@ TEST(DeviserBase, NumEqv) {
     shared_ptr<lispobj> one(new number(1));
     shared_ptr<lispobj> one2(new number(1));
 
-    EXPECT_TRUE(eqv(zero, zero));
-    EXPECT_TRUE(eqv(zero2, zero2));
-    EXPECT_TRUE(eqv(zero, zero2));
-    EXPECT_TRUE(eqv(zero2, zero));
+    EXPECT_PRED2(eqv, zero, zero);
+    EXPECT_PRED2(eqv, zero2, zero2);
+    EXPECT_PRED2(eqv, zero, zero2);
+    EXPECT_PRED2(eqv, zero2, zero);
 
-    EXPECT_TRUE(eqv(one, one));
-    EXPECT_TRUE(eqv(one2, one2));
-    EXPECT_TRUE(eqv(one, one2));
-    EXPECT_TRUE(eqv(one2, one));
+    EXPECT_PRED2(eqv, one, one);
+    EXPECT_PRED2(eqv, one2, one2);
+    EXPECT_PRED2(eqv, one, one2);
+    EXPECT_PRED2(eqv, one2, one);
 
     EXPECT_FALSE(eqv(zero, one));
     EXPECT_FALSE(eqv(one, zero));
@@ -181,7 +181,7 @@ TEST(DeviserEval, VariableLookup) {
 TEST(lexicalscope, getvalUndefined) {
     shared_ptr<lexicalscope> scope(new lexicalscope);
 
-    EXPECT_TRUE(eq(scope->getval("undefinedvariable"), std::make_shared<nil>()));
+    EXPECT_PRED2(eq, scope->getval("undefinedvariable"), std::make_shared<nil>());
 }
 
 TEST(lexicalscope, getvalDefined) {
@@ -206,7 +206,7 @@ TEST(lexicalscope, getvalFromParent) {
 TEST(lexicalscope, getfunUndefined) {
     shared_ptr<lexicalscope> scope(new lexicalscope);
 
-    EXPECT_TRUE(eq(scope->getfun("undefinedfunction"), std::make_shared<nil>()));
+    EXPECT_PRED2(eq, scope->getfun("undefinedfunction"), std::make_shared<nil>());
 }
 
 TEST(lexicalscope, getfunDefined) {
@@ -243,7 +243,7 @@ TEST(lexicalscope, find_fun_in_moduleSuccess) {
 
     mod->add_export(std::make_shared<symbol>("testfun"));
 
-    EXPECT_TRUE(eq(std::make_shared<nil>(), find_fun_in_module(mod, "testfun")));
+    EXPECT_PRED2(eq, std::make_shared<nil>(), find_fun_in_module(mod, "testfun"));
 }
 
 TEST(lexicalscope, getvalFromModule) {
