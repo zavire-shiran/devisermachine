@@ -18,24 +18,6 @@ using std::endl;
 using std::dynamic_pointer_cast;
 using std::make_shared;
 
-bool ismodulecommand(shared_ptr<lispobj> lobj) {
-    shared_ptr<cons> c;
-    if(!(c = dynamic_pointer_cast<cons>(lobj))) {
-        return false;
-    }
-
-    shared_ptr<symbol> sym;
-    if(!(sym = dynamic_pointer_cast<symbol>(c->car()))) {
-        return false;
-    }
-
-    string formname = sym->name();
-    return formname == "define" || formname == "import" ||
-        formname == "export" || formname == "init" ||
-        formname == "undefine" || formname == "unimport" ||
-        formname == "unexport";
-}
-
 void read_eval_print(const string& lispstr, shared_ptr<module> mod) {
     //cout << "(print (eval (read \"" << lispstr << "\"))) => ";
     auto lobj = read(lispstr);
