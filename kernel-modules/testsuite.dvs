@@ -41,7 +41,13 @@
    (testexp equal (list (quote a) (quote b)) (quote (a b)))
    (testexp equal (list 1 (quote a)) (quote (1 a))))
 
+ (defun testappend ()
+   (testexp equal (append "asdf" "1234") "asdf1234")
+   (testexp equal (append "" "asdf") "asdf")
+   (testexp equal (append "asdf" "") "asdf"))
+
  (defun test ()
+   (testappend)
    (testlist)
    (testmul)
    (testsub)
