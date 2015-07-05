@@ -27,6 +27,7 @@ tests/test.o: tests/test.cpp deviser.hpp
 runtests: interpretertests
 	lcov --directory . --zerocounters
 	./interpretertests
+	./deviser -e '(import (testsuite))' -e '(test)'
 	mkdir -p testout
 	lcov --directory . --capture --output-file testout/interpretertest.out
 	(cd testout; genhtml interpretertest.out)
