@@ -116,9 +116,13 @@ int main(int argc, char** argv)
 {
     int ch;
     string kernelmodulesdir = "../kernel-modules";
+    vector<string> statements_to_run;
 
-    while((ch = getopt(argc, argv, "hm:")) != -1) {
+    while((ch = getopt(argc, argv, "e:hm:")) != -1) {
         switch(ch) {
+        case 'e':
+            statements_to_run.push_back(optarg);
+            break;
         case 'm':
             kernelmodulesdir = optarg;
             break;
@@ -148,11 +152,17 @@ int main(int argc, char** argv)
         eval_file(module_file, top_level_scope);
     }
 
-    LineEditor ledit("deviser");
-    string input = ledit.getLine();
-    while(!ledit.isEndOfFile()) {
-        read_eval_print(input, user_module);
-        input = ledit.getLine();
+    if(!statements_to_run.empty()) {
+        for(auto statement : statements_to_run) {
+            read_eval_print(statement, user_module);
+        }
+    } else {
+        LineEditor ledit("deviser");
+        string input = ledit.getLine();
+        while(!ledit.isEndOfFile()) {
+            read_eval_print(input, user_module);
+            input = ledit.getLine();
+        }
+        cout << endl;
     }
-    cout << endl;
 }
