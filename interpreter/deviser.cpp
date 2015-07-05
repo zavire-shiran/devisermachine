@@ -463,6 +463,10 @@ bool equal(shared_ptr<lispobj> left, shared_ptr<lispobj> right) {
         shared_ptr<cons> lc(dynamic_pointer_cast<cons>(left));
         shared_ptr<cons> rc(dynamic_pointer_cast<cons>(right));
         return equal(lc->car(), rc->car()) && equal(lc->cdr(), rc->cdr());
+    } else if(left_type == typeid(lispstring)) {
+        shared_ptr<lispstring> left_string(dynamic_pointer_cast<lispstring>(left));
+        shared_ptr<lispstring> right_string(dynamic_pointer_cast<lispstring>(right));
+        return left_string->get_contents() == right_string->get_contents();
     } else {
         return false;
     };

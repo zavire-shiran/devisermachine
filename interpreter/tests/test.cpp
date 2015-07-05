@@ -103,6 +103,20 @@ TEST(DeviserBase, ConsEqual) {
     EXPECT_FALSE(equal(c3, c1));
 }
 
+TEST(DeviserBase, StringEqual) {
+    shared_ptr<lispobj> str1(new lispstring("asdf"));
+    shared_ptr<lispobj> str2(new lispstring("asdf"));
+    shared_ptr<lispobj> str3(new lispstring("Some other string"));
+
+    EXPECT_PRED2(equal, str1, str1);
+    EXPECT_PRED2(equal, str2, str2);
+    EXPECT_PRED2(equal, str1, str2);
+    EXPECT_PRED2(equal, str2, str1);
+
+    EXPECT_FALSE(equal(str1, str3));
+    EXPECT_FALSE(equal(str3, str1));
+}
+
 TEST(DeviserBase, readNumber) {
     shared_ptr<lispobj> readobj(read("1"));
     shared_ptr<number> num = std::dynamic_pointer_cast<number>(readobj);
