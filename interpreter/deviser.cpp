@@ -862,9 +862,9 @@ int apply_macro(std::deque<stackframe>& exec_stack) {
 
     if(!dynamic_pointer_cast<nil>(param_names) ||
        !dynamic_pointer_cast<nil>(args)) {
-        cout << "ERROR: function arity does not match call." << endl;
-        cout << "func args: "; func->args->print(); cout << endl;
-        cout << "evaled args: " << endl; exec_stack.front().code->print(); cout << endl;
+        cout << "ERROR: macro arity does not match call." << endl;
+        cout << "macro args: "; func->args->print(); cout << endl;
+        cout << "evaled args: "; exec_stack.front().code->print(); cout << endl;
         return 1;
     }
 

@@ -24,7 +24,7 @@ interpretertests: deviser.o tests/test.o
 tests/test.o: tests/test.cpp deviser.hpp
 	$(CC) -c $(CCFLAGS) -I../gmock-1.7.0/gtest/include -o $@ $<
 
-runtests: interpretertests
+runtests: interpretertests deviser
 	lcov --directory . --zerocounters
 	./interpretertests
 	./deviser -e '(import (testsuite))' -e '(test)'

@@ -35,6 +35,12 @@
    (testexp eqv (* 1 2) 2)
    (testexp eqv (* 2 1) 2))
 
+ (defun testdiv ()
+   (testexp eqv (/ 1 1) 1)
+   (testexp eqv (/ 2 1) 2)
+   (testexp eqv (/ 20 5) 4)
+   (testexp eqv (/ 5) 5))
+
  (defun testlist ()
    (testexp equal (list) (quote ()))
    (testexp equal (list 1) (quote (1)))
@@ -46,9 +52,15 @@
    (testexp equal (append "" "asdf") "asdf")
    (testexp equal (append "asdf" "") "asdf"))
 
+ (defun testlambda ()
+   (testexp eq ((lambda () (quote t))) (quote t))
+   (testexp eq ((lambda (a) a) (quote t)) (quote t)))
+
  (defun test ()
+   (testadd)
+   (testsub)
+   (testmul)
+   (testdiv)
    (testappend)
    (testlist)
-   (testmul)
-   (testsub)
-   (testadd)))
+   (testlambda)))
