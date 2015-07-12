@@ -56,6 +56,26 @@
    (testexp eq ((lambda () (quote t))) (quote t))
    (testexp eq ((lambda (a) a) (quote t)) (quote t)))
 
+ (defun testeq ()
+   (testexp eq (eq (quote t) (quote t)) (quote t))
+   (testexp eq (eq (quote t) 2) (quote ())))
+
+ (defun testeqv ()
+   (testexp eq (eqv 1 1) (quote t))
+   (testexp eq (eqv 1 2) (quote ())))
+
+ (defun testequal ()
+   (testexp eq (equal (quote (1)) (quote (1))) (quote t))
+   (testexp eq (equal (quote (1)) (quote (2))) (quote ())))
+
+ (defun testif ()
+   (testexp eqv (if (quote t) 1 0) 1)
+   (testexp eqv (if (quote ()) 1 0) 0)
+   (testexp eq (if (quote ()) 1) (quote ())))
+
+ (defun testcons ()
+   (testexp equal (cons 1 (quote ())) (quote (1))))
+
  (defun test ()
    (testadd)
    (testsub)
@@ -63,4 +83,9 @@
    (testdiv)
    (testappend)
    (testlist)
-   (testlambda)))
+   (testlambda)
+   (testeq)
+   (testeqv)
+   (testequal)
+   (testif)
+   (testcons)))
