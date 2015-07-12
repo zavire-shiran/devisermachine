@@ -424,6 +424,52 @@ void module::print() {
     cout << ")";
 }
 
+syntax::syntax(shared_ptr<syntaxlocation> loc, shared_ptr<syntax> par) :
+    location(loc),
+    parent(par)
+{
+}
+
+shared_ptr<syntaxlocation> syntax::get_location() {
+    return location;
+}
+
+shared_ptr<syntax> syntax::get_parent() {
+    return parent;
+}
+
+syntaxnil::syntaxnil(shared_ptr<syntaxlocation> loc, shared_ptr<syntax> par) :
+    syntax(loc, par)
+{
+}
+
+syntaxsymbol::syntaxsymbol(string sn, shared_ptr<syntaxlocation> loc, shared_ptr<syntax> par) :
+    syntax(loc, par),
+    symbol(sn)
+{
+}
+
+syntaxcons::syntaxcons(shared_ptr<lispobj> a,
+                       shared_ptr<lispobj> d,
+                       shared_ptr<syntaxlocation> loc,
+                       shared_ptr<syntax> par) :
+    syntax(loc, par),
+    cons(a, d)
+{
+}
+
+syntaxnumber::syntaxnumber(int num, shared_ptr<syntaxlocation> loc, shared_ptr<syntax> par) :
+    syntax(loc, par),
+    number(num)
+{
+}
+
+syntaxstring::syntaxstring(const string& str, shared_ptr<syntaxlocation> loc, shared_ptr<syntax> par) :
+    syntax(loc, par),
+    lispstring(str)
+{
+}
+
 bool eq(shared_ptr<lispobj> left, shared_ptr<lispobj> right) {
     if(left == right) return true;
     const std::type_info& left_type = typeid(*left);

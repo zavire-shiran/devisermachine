@@ -205,6 +205,54 @@ private:
     bool inited;
 };
 
+class syntaxlocation {
+
+};
+
+class filesyntaxlocation {
+    filesyntaxlocation(string filename, int linenum, int charnum);
+};
+
+class syntax {
+public:
+    syntax(shared_ptr<syntaxlocation> loc, shared_ptr<syntax> par);
+
+    shared_ptr<syntaxlocation> get_location();
+    shared_ptr<syntax> get_parent();
+
+private:
+    shared_ptr<syntaxlocation> location;
+    shared_ptr<syntax> parent;
+};
+
+class syntaxnil : public syntax, public nil {
+public:
+    syntaxnil(shared_ptr<syntaxlocation> loc, shared_ptr<syntax> par);
+};
+
+class syntaxsymbol : public syntax, public symbol {
+public:
+    syntaxsymbol(string sn, shared_ptr<syntaxlocation> loc, shared_ptr<syntax> par);
+};
+
+class syntaxcons : public syntax, public cons {
+public:
+    syntaxcons(shared_ptr<lispobj> a,
+               shared_ptr<lispobj> d,
+               shared_ptr<syntaxlocation> loc,
+               shared_ptr<syntax> par);
+};
+
+class syntaxnumber : public syntax, public number {
+public:
+    syntaxnumber(int num, shared_ptr<syntaxlocation> loc, shared_ptr<syntax> par);
+};
+
+class syntaxstring : public syntax, public lispstring {
+public:
+    syntaxstring(const string& str, shared_ptr<syntaxlocation> loc, shared_ptr<syntax> par);
+};
+
 bool eq(shared_ptr<lispobj> left, shared_ptr<lispobj> right);
 bool eqv(shared_ptr<lispobj> left, shared_ptr<lispobj> right);
 bool equal(shared_ptr<lispobj> left, shared_ptr<lispobj> right);
