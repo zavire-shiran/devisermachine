@@ -206,16 +206,24 @@ private:
 };
 
 class syntaxlocation {
-
+public:
+    virtual ~syntaxlocation() {}
 };
 
-class filesyntaxlocation {
+class filesyntaxlocation : public syntaxlocation {
+public:
     filesyntaxlocation(string filename, int linenum, int charnum);
+
+private:
+    string filename;
+    int linenum;
+    int charnum;
 };
 
 class syntax {
 public:
     syntax(shared_ptr<syntaxlocation> loc, shared_ptr<syntax> par);
+    virtual ~syntax();
 
     shared_ptr<syntaxlocation> get_location();
     shared_ptr<syntax> get_parent();

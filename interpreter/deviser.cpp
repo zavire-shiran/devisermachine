@@ -424,10 +424,19 @@ void module::print() {
     cout << ")";
 }
 
+filesyntaxlocation::filesyntaxlocation(string filename, int linenum, int charnum) {
+    this->filename = filename;
+    this->linenum = linenum;
+    this->charnum = charnum;
+}
+
 syntax::syntax(shared_ptr<syntaxlocation> loc, shared_ptr<syntax> par) :
     location(loc),
     parent(par)
 {
+}
+
+syntax::~syntax() {
 }
 
 shared_ptr<syntaxlocation> syntax::get_location() {
@@ -472,14 +481,14 @@ syntaxstring::syntaxstring(const string& str, shared_ptr<syntaxlocation> loc, sh
 
 bool eq(shared_ptr<lispobj> left, shared_ptr<lispobj> right) {
     if(left == right) return true;
-    const std::type_info& left_type = typeid(*left);
-    if(typeid(*left) != typeid(*right)) return false;
 
-    if(left_type == typeid(symbol)) {
+    if(dynamic_pointer_cast<symbol>(left) &&
+       dynamic_pointer_cast<symbol>(right)) {
         shared_ptr<symbol> ls(dynamic_pointer_cast<symbol>(left));
         shared_ptr<symbol> rs(dynamic_pointer_cast<symbol>(right));
         return ls->name() == rs->name();
-    } else if(left_type == typeid(nil)) {
+    } else if(dynamic_pointer_cast<nil>(left) &&
+              dynamic_pointer_cast<nil>(right)) {
         return true;
     } else {
         return false;
@@ -488,10 +497,9 @@ bool eq(shared_ptr<lispobj> left, shared_ptr<lispobj> right) {
 
 bool eqv(shared_ptr<lispobj> left, shared_ptr<lispobj> right) {
     if(eq(left, right)) return true;
-    const std::type_info& left_type = typeid(*left);
-    if(typeid(*left) != typeid(*right)) return false;
 
-    if(left_type == typeid(number)) {
+    if(dynamic_pointer_cast<number>(left) &&
+       dynamic_pointer_cast<number>(right)) {
         shared_ptr<number> ln(dynamic_pointer_cast<number>(left));
         shared_ptr<number> rn(dynamic_pointer_cast<number>(right));
         return ln->value() == rn->value();
@@ -502,14 +510,14 @@ bool eqv(shared_ptr<lispobj> left, shared_ptr<lispobj> right) {
 
 bool equal(shared_ptr<lispobj> left, shared_ptr<lispobj> right) {
     if(eqv(left, right)) return true;
-    const std::type_info& left_type = typeid(*left);
-    if(typeid(*left) != typeid(*right)) return false;
 
-    if(left_type == typeid(cons)) {
+    if(dynamic_pointer_cast<cons>(left) &&
+       dynamic_pointer_cast<cons>(right)) {
         shared_ptr<cons> lc(dynamic_pointer_cast<cons>(left));
         shared_ptr<cons> rc(dynamic_pointer_cast<cons>(right));
         return equal(lc->car(), rc->car()) && equal(lc->cdr(), rc->cdr());
-    } else if(left_type == typeid(lispstring)) {
+    } else if(dynamic_pointer_cast<lispstring>(left) &&
+              dynamic_pointer_cast<lispstring>(right)) {
         shared_ptr<lispstring> left_string(dynamic_pointer_cast<lispstring>(left));
         shared_ptr<lispstring> right_string(dynamic_pointer_cast<lispstring>(right));
         return left_string->get_contents() == right_string->get_contents();
@@ -557,7 +565,7 @@ shared_ptr<lispobj> _read(string& str) {
         size_t pos = 0;
         int n = std::stoi(str, &pos);
         str.erase(0, pos);
-        return make_shared<number>(n);
+        return make_shared<syntaxnumber>(n, make_shared<syntaxlocation>(), nullptr);
     } else if(str[0] == '"') {
         string contents;
         int n = 1;
@@ -576,7 +584,7 @@ shared_ptr<lispobj> _read(string& str) {
         }
 
         str.erase(0,n+1);
-        return make_shared<lispstring>(contents);
+        return make_shared<syntaxstring>(contents, make_shared<syntaxlocation>(), nullptr);
     } else { //symbol
         int n = 1;
         while(!isspace(str[n]) && str[n] != '(' && str[n] != ')') {
@@ -585,7 +593,7 @@ shared_ptr<lispobj> _read(string& str) {
 
         string sym_name = str.substr(0, n);
         str.erase(0, n);
-        return make_shared<symbol>(sym_name);
+        return make_shared<syntaxsymbol>(sym_name, make_shared<syntaxlocation>(), nullptr);
     }
 }
 
