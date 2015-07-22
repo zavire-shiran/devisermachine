@@ -63,7 +63,7 @@ void cons::print() {
         obj = c->cdr();
     }
 
-    if(typeid(*obj) == typeid(class nil)) {
+    if(dynamic_pointer_cast<nil>(obj)) {
         cout << ')';
     } else {
         cout << " . ";
@@ -554,7 +554,8 @@ shared_ptr<lispobj> _read(string& str) {
     // figure out type of object
     if(str[0] == '(') { //list
         str.erase(0, 1);
-        vector<shared_ptr<lispobj> > list_values;
+        shared_ptr<lispobj> listtoreturn = make_shared<syntaxnil>(make_shared<syntaxlocation>(), nullptr);
+        shared_ptr<cons> placeinlist;
 
         while(str[0] != ')') {
             while(isspace(str[0])) {
@@ -563,12 +564,18 @@ shared_ptr<lispobj> _read(string& str) {
 
             auto obj = _read(str);
             if(obj) {
-               list_values.push_back(obj);
+                if(dynamic_pointer_cast<nil>(listtoreturn)) {
+                    listtoreturn = make_shared<syntaxcons>(obj, listtoreturn, make_shared<syntaxlocation>(), nullptr);
+                    placeinlist = dynamic_pointer_cast<cons>(listtoreturn);
+                } else {
+                    placeinlist->set_cdr(make_shared<syntaxcons>(obj, placeinlist->cdr(), make_shared<syntaxlocation>(), nullptr));
+                    placeinlist = dynamic_pointer_cast<cons>(placeinlist->cdr());
+                }
             }
         }
 
         str.erase(0, 1);
-        return make_reverse_list(list_values.rbegin(), list_values.rend());
+        return listtoreturn;
     } else if(isdigit(str[0])) { // number ('.' too, once we have non-integers)
         size_t pos = 0;
         int n = std::stoi(str, &pos);
@@ -965,7 +972,7 @@ int add_import_to_module(shared_ptr<module> mod, shared_ptr<lispobj> importdecl)
         return 1;
     }
 
-    if(typeid(*(c->cdr())) != typeid(nil)) {
+    if(!dynamic_pointer_cast<nil>(c->cdr())) {
         cout << "too many arguments to import" << endl;
         return 1;
     }
@@ -1318,7 +1325,7 @@ int eval_special_form(string name,
             return 1;
         }
 
-        if(typeid(*(c->cdr())) != typeid(nil)) {
+        if(!dynamic_pointer_cast<nil>(c->cdr())) {
             cout << "quote has too many args" << endl;
             return 1;
         }
@@ -1342,7 +1349,7 @@ shared_ptr<lispobj> eval(shared_ptr<lispobj> code,
             shared_ptr<lispobj> c = exec_stack.front().code;
             exec_stack.pop_front();
             if(exec_stack.front().mark == applying) {
-                if(typeid(*(exec_stack.front().code)) == typeid(nil)) {
+                if(dynamic_pointer_cast<nil>(exec_stack.front().code)) {
                     exec_stack.front().mark = evaled;
                     exec_stack.front().code = c;
                 } else {
@@ -1361,7 +1368,7 @@ shared_ptr<lispobj> eval(shared_ptr<lispobj> code,
                 return nullptr;
             }
         } else if(exec_stack.front().mark == applying) {
-            if(typeid(*(exec_stack.front().code)) == typeid(nil)) {
+            if(dynamic_pointer_cast<nil>(exec_stack.front().code)) {
                 exec_stack.front().mark = evaled;
             } else if(shared_ptr<cons> c = dynamic_pointer_cast<cons>(exec_stack.front().code)) {
                 shared_ptr<lispobj> next_statement = c->car();
@@ -1396,7 +1403,7 @@ shared_ptr<lispobj> eval(shared_ptr<lispobj> code,
                                                      evaluating,
                                                      c->car()));
                 }
-            } else if(typeid(*(exec_stack.front().code)) == typeid(nil)) {
+            } else if(dynamic_pointer_cast<nil>(exec_stack.front().code)) {
                 auto evaled_args = exec_stack.front().evaled_args;
                 if(evaled_args.empty()) {
                     cout << "ERROR: empty function application" << endl;
@@ -1665,5 +1672,5 @@ shared_ptr<module> make_builtins_module(shared_ptr<lexicalscope> top_level_scope
 }
 
 bool istrue(shared_ptr<lispobj> lobj) {
-    return typeid(*lobj) != typeid(nil);
+    return !dynamic_pointer_cast<nil>(lobj);
 }
