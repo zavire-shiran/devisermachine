@@ -672,16 +672,8 @@ shared_ptr<lispobj> read(string str) {
 vector< shared_ptr<lispobj> > readall(string str) {
     shared_ptr<std::stringstream> sstream(new std::stringstream(str));
     reader r(std::static_pointer_cast<std::istream>(sstream), "INPUT");
-    vector< shared_ptr<lispobj> > ret;
 
-    while(sstream->good()) {
-        shared_ptr<lispobj> lobj = r.read();
-        if(lobj) {
-            ret.push_back(lobj);
-        }
-    }
-
-    return ret;
+    return r.readall();
 }
 
 bool prefix_match(shared_ptr<lispobj> name, shared_ptr<lispobj> prefix) {
