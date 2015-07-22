@@ -1,5 +1,6 @@
 #include <istream>
 #include <iostream>
+#include <sstream>
 #include <stack>
 #include <typeinfo>
 
@@ -541,28 +542,39 @@ void printall(vector< shared_ptr<lispobj> > objs) {
     }
 }
 
-shared_ptr<lispobj> _read(string& str) {
-    // remove leading whitespace, could be faster, but wevs
-    while(isspace(str[0])) {
-        str.erase(0, 1);
+reader::reader(shared_ptr<std::istream> in, string name) :
+    input(in),
+    streamname(name),
+    linenum(1),
+    colnum(0)
+{
+}
+
+shared_ptr<lispobj> reader::read() {
+    // remove leading whitespace
+    int line = linenum;
+    int col = colnum;
+
+    while(isspace(peek_char())) {
+        get_char();
     }
 
-    if(str[0] == ')') {
+    if(peek_char() == ')' || peek_char() == std::char_traits<char>::eof()) {
         return nullptr;
     }
 
     // figure out type of object
-    if(str[0] == '(') { //list
-        str.erase(0, 1);
+    if(peek_char() == '(') { //list
+        get_char();
         shared_ptr<lispobj> listtoreturn = make_shared<syntaxnil>(make_shared<syntaxlocation>(), nullptr);
         shared_ptr<cons> placeinlist;
 
-        while(str[0] != ')') {
-            while(isspace(str[0])) {
-                str.erase(0, 1);
+        while(peek_char() != ')') {
+            while(isspace(peek_char())) {
+                get_char();
             }
 
-            auto obj = _read(str);
+            auto obj = read();
             if(obj) {
                 if(dynamic_pointer_cast<nil>(listtoreturn)) {
                     listtoreturn = make_shared<syntaxcons>(obj, listtoreturn, make_shared<syntaxlocation>(), nullptr);
@@ -574,53 +586,83 @@ shared_ptr<lispobj> _read(string& str) {
             }
         }
 
-        str.erase(0, 1);
+        get_char();
         return listtoreturn;
-    } else if(isdigit(str[0])) { // number ('.' too, once we have non-integers)
+    } else if(isdigit(peek_char())) { // number ('.' too, once we have non-integers)
+        string numstring;
+
+        while(isdigit(peek_char())) {
+            numstring.push_back(get_char());
+        }
+
         size_t pos = 0;
-        int n = std::stoi(str, &pos);
-        str.erase(0, pos);
+        int n = std::stoi(numstring, &pos);
         return make_shared<syntaxnumber>(n, make_shared<syntaxlocation>(), nullptr);
-    } else if(str[0] == '"') {
+    } else if(peek_char() == '"') {
+        get_char();
+
         string contents;
-        int n = 1;
-        while(str[n] != '"') {
-            if(str[n] == '\\') {
-                if(str[n+1] == 'n') {
+
+        while(peek_char() != '"') {
+            char next = get_char();
+
+            if(next == '\\') {
+                char escapedchar = get_char();
+
+                if(escapedchar == 'n') {
                     contents.push_back('\n');
                 } else {
-                    contents.push_back(str[n+1]);
+                    contents.push_back(escapedchar);
                 }
-                ++n;
             } else {
-                contents.push_back(str[n]);
+                contents.push_back(next);
             }
-            ++n;
         }
+        get_char();
 
-        str.erase(0,n+1);
         return make_shared<syntaxstring>(contents, make_shared<syntaxlocation>(), nullptr);
     } else { //symbol
-        int n = 1;
-        while(!isspace(str[n]) && str[n] != '(' && str[n] != ')') {
-            ++n;
+        string sym_name;
+        char next = peek_char();
+
+        while(!isspace(next) && next != '(' && next != ')' && next != std::char_traits<char>::eof()) {
+            sym_name.push_back(get_char());
+            next = peek_char();
         }
 
-        string sym_name = str.substr(0, n);
-        str.erase(0, n);
         return make_shared<syntaxsymbol>(sym_name, make_shared<syntaxlocation>(), nullptr);
     }
 }
 
+char reader::get_char() {
+    char ret = input->get();
+    if(ret == '\n') {
+        ++linenum;
+        colnum = 0;
+    } else {
+        ++colnum;
+    }
+
+    return ret;
+}
+
+char reader::peek_char() {
+    return input->peek();
+}
+
 shared_ptr<lispobj> read(string str) {
-    return _read(str);
+    shared_ptr<std::stringstream> sstream(new std::stringstream(str));
+    reader r(std::static_pointer_cast<std::istream>(sstream), "INPUT");
+    return r.read();
 }
 
 vector< shared_ptr<lispobj> > readall(string str) {
+    shared_ptr<std::stringstream> sstream(new std::stringstream(str));
+    reader r(std::static_pointer_cast<std::istream>(sstream), "INPUT");
     vector< shared_ptr<lispobj> > ret;
 
-    while(!str.empty()) {
-        shared_ptr<lispobj> lobj = _read(str);
+    while(sstream->good()) {
+        shared_ptr<lispobj> lobj = r.read();
         if(lobj) {
             ret.push_back(lobj);
         }

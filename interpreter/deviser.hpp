@@ -281,6 +281,22 @@ shared_ptr<lispobj> make_reverse_list(input_iterator begin,
 }
 
 void printall(vector< shared_ptr<lispobj> > objs);
+
+class reader {
+public:
+    reader(shared_ptr<std::istream> in, string name);
+    shared_ptr<lispobj> read();
+
+private:
+    char get_char();
+    char peek_char();
+
+    shared_ptr<std::istream> input;
+    string streamname;
+    int linenum;
+    int colnum;
+};
+
 shared_ptr<lispobj> read(string str);
 vector< shared_ptr<lispobj> > readall(string str);
 
