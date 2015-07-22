@@ -85,6 +85,9 @@ public:
     shared_ptr<lispobj> car() const;
     shared_ptr<lispobj> cdr() const;
 
+    void set_car(shared_ptr<lispobj> a);
+    void set_cdr(shared_ptr<lispobj> d);
+
     virtual void print();
 
 private:

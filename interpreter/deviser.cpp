@@ -44,6 +44,14 @@ shared_ptr<lispobj> cons::cdr() const {
     return second;
 }
 
+void cons::set_car(shared_ptr<lispobj> a) {
+    first = a;
+}
+
+void cons::set_cdr(shared_ptr<lispobj> d) {
+    second = d;
+}
+
 void cons::print() {
     cout << '(';
     car()->print();
