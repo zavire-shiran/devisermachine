@@ -210,15 +210,9 @@ private:
 
 class syntaxlocation {
 public:
-    virtual ~syntaxlocation() {}
-};
+    syntaxlocation(string name, int linenum, int charnum);
 
-class filesyntaxlocation : public syntaxlocation {
-public:
-    filesyntaxlocation(string filename, int linenum, int charnum);
-
-private:
-    string filename;
+    string name;
     int linenum;
     int charnum;
 };
@@ -286,6 +280,7 @@ class reader {
 public:
     reader(shared_ptr<std::istream> in, string name);
     shared_ptr<lispobj> read();
+    vector< shared_ptr<lispobj> > readall();
 
 private:
     char get_char();

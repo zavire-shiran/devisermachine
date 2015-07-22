@@ -433,8 +433,8 @@ void module::print() {
     cout << ")";
 }
 
-filesyntaxlocation::filesyntaxlocation(string filename, int linenum, int charnum) {
-    this->filename = filename;
+syntaxlocation::syntaxlocation(string name, int linenum, int charnum) {
+    this->name = name;
     this->linenum = linenum;
     this->charnum = charnum;
 }
@@ -566,7 +566,7 @@ shared_ptr<lispobj> reader::read() {
     // figure out type of object
     if(peek_char() == '(') { //list
         get_char();
-        shared_ptr<lispobj> listtoreturn = make_shared<syntaxnil>(make_shared<syntaxlocation>(), nullptr);
+        shared_ptr<lispobj> listtoreturn = make_shared<syntaxnil>(make_shared<syntaxlocation>(streamname, line, col), nullptr);
         shared_ptr<cons> placeinlist;
 
         while(peek_char() != ')') {
@@ -577,10 +577,10 @@ shared_ptr<lispobj> reader::read() {
             auto obj = read();
             if(obj) {
                 if(dynamic_pointer_cast<nil>(listtoreturn)) {
-                    listtoreturn = make_shared<syntaxcons>(obj, listtoreturn, make_shared<syntaxlocation>(), nullptr);
+                    listtoreturn = make_shared<syntaxcons>(obj, listtoreturn, make_shared<syntaxlocation>(streamname, line, col), nullptr);
                     placeinlist = dynamic_pointer_cast<cons>(listtoreturn);
                 } else {
-                    placeinlist->set_cdr(make_shared<syntaxcons>(obj, placeinlist->cdr(), make_shared<syntaxlocation>(), nullptr));
+                    placeinlist->set_cdr(make_shared<syntaxcons>(obj, placeinlist->cdr(), make_shared<syntaxlocation>(streamname, line, col), nullptr));
                     placeinlist = dynamic_pointer_cast<cons>(placeinlist->cdr());
                 }
             }
@@ -597,7 +597,7 @@ shared_ptr<lispobj> reader::read() {
 
         size_t pos = 0;
         int n = std::stoi(numstring, &pos);
-        return make_shared<syntaxnumber>(n, make_shared<syntaxlocation>(), nullptr);
+        return make_shared<syntaxnumber>(n, make_shared<syntaxlocation>(streamname, line, col), nullptr);
     } else if(peek_char() == '"') {
         get_char();
 
@@ -620,7 +620,7 @@ shared_ptr<lispobj> reader::read() {
         }
         get_char();
 
-        return make_shared<syntaxstring>(contents, make_shared<syntaxlocation>(), nullptr);
+        return make_shared<syntaxstring>(contents, make_shared<syntaxlocation>(streamname, line, col), nullptr);
     } else { //symbol
         string sym_name;
         char next = peek_char();
@@ -630,8 +630,21 @@ shared_ptr<lispobj> reader::read() {
             next = peek_char();
         }
 
-        return make_shared<syntaxsymbol>(sym_name, make_shared<syntaxlocation>(), nullptr);
+        return make_shared<syntaxsymbol>(sym_name, make_shared<syntaxlocation>(streamname, line, col), nullptr);
     }
+}
+
+vector< shared_ptr<lispobj> > reader::readall() {
+    vector< shared_ptr<lispobj> > ret;
+
+    while(input->good()) {
+        shared_ptr<lispobj> lobj = read();
+        if(lobj) {
+            ret.push_back(lobj);
+        }
+    }
+
+    return ret;
 }
 
 char reader::get_char() {

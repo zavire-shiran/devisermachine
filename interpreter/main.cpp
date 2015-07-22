@@ -28,20 +28,16 @@ void read_eval_print(const string& lispstr, shared_ptr<module> mod) {
 }
 
 vector< shared_ptr<lispobj> > read_file(string filename) {
-    std::ifstream infile(filename);
-    string file_contents;
+    shared_ptr<std::ifstream> infile(new std::ifstream(filename));
     vector< shared_ptr<lispobj> > ret;
-    if(!infile) {
+    if(!(infile->good())) {
         cout << "Couldn't open " << filename << endl;
         return ret;
     }
 
-    infile.seekg(0, std::ios::end);
-    file_contents.resize(infile.tellg());
-    infile.seekg(0, std::ios::beg);
-    infile.read(&file_contents[0], file_contents.size());
+    reader r(std::static_pointer_cast<std::istream>(infile), "filename");
 
-    ret = readall(file_contents);
+    ret = r.readall();
 
     return ret;
 }
