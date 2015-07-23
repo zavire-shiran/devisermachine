@@ -119,41 +119,52 @@ TEST(DeviserBase, StringEqual) {
 
 TEST(DeviserBase, readNumber) {
     shared_ptr<lispobj> readobj(read("1"));
-    shared_ptr<number> num = std::dynamic_pointer_cast<number>(readobj);
+    shared_ptr<syntaxnumber> num = std::dynamic_pointer_cast<syntaxnumber>(readobj);
 
     ASSERT_EQ(readobj, num);
     EXPECT_EQ(1, num->value());
+    EXPECT_EQ(1, num->get_location()->linenum);
+    EXPECT_EQ(1, num->get_location()->charnum);
 }
 
 TEST(DeviserBase, readNil) {
     shared_ptr<lispobj> readobj(read("()"));
-    shared_ptr<nil> n = std::dynamic_pointer_cast<nil>(readobj);
+    shared_ptr<syntaxnil> n = std::dynamic_pointer_cast<syntaxnil>(readobj);
 
     ASSERT_EQ(readobj, n);
-}
+    EXPECT_EQ(1, n->get_location()->linenum);
+    EXPECT_EQ(1, n->get_location()->charnum);}
 
 TEST(DeviserBase, readSymbol) {
     shared_ptr<lispobj> readobj(read("testsymbol"));
-    shared_ptr<symbol> sym = std::dynamic_pointer_cast<symbol>(readobj);
+    shared_ptr<syntaxsymbol> sym = std::dynamic_pointer_cast<syntaxsymbol>(readobj);
 
     ASSERT_EQ(readobj, sym);
     EXPECT_STREQ("testsymbol", sym->name().c_str());
+    EXPECT_EQ(1, sym->get_location()->linenum);
+    EXPECT_EQ(1, sym->get_location()->charnum);
 }
 
 TEST(DeviserBase, readCons) {
     shared_ptr<lispobj> readobj(read(" ( 1 ) "));
-    shared_ptr<cons> c = std::dynamic_pointer_cast<cons>(readobj);
+    shared_ptr<syntaxcons> c = std::dynamic_pointer_cast<syntaxcons>(readobj);
 
     ASSERT_EQ(readobj, c);
+    EXPECT_EQ(1, c->get_location()->linenum);
+    EXPECT_EQ(2, c->get_location()->charnum);
 
     shared_ptr<lispobj> conscar = c->car();
     shared_ptr<lispobj> conscdr = c->cdr();
-    shared_ptr<number> num = std::dynamic_pointer_cast<number>(conscar);
-    shared_ptr<nil> n = std::dynamic_pointer_cast<nil>(conscdr);
+    shared_ptr<syntaxnumber> num = std::dynamic_pointer_cast<syntaxnumber>(conscar);
+    shared_ptr<syntaxnil> n = std::dynamic_pointer_cast<syntaxnil>(conscdr);
 
     ASSERT_EQ(conscar, num);
     ASSERT_EQ(conscdr, n);
     EXPECT_EQ(1, num->value());
+    EXPECT_EQ(1, num->get_location()->linenum);
+    EXPECT_EQ(4, num->get_location()->charnum);
+    EXPECT_EQ(1, n->get_location()->linenum);
+    EXPECT_EQ(6, n->get_location()->charnum);
 }
 
 TEST(DeviserBase, readString) {

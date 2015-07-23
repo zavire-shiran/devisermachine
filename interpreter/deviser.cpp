@@ -546,18 +546,18 @@ reader::reader(shared_ptr<std::istream> in, string name) :
     input(in),
     streamname(name),
     linenum(1),
-    colnum(0)
+    colnum(1)
 {
 }
 
 shared_ptr<lispobj> reader::read() {
     // remove leading whitespace
-    int line = linenum;
-    int col = colnum;
-
     while(isspace(peek_char())) {
         get_char();
     }
+
+    int line = linenum;
+    int col = colnum;
 
     if(peek_char() == ')' || peek_char() == std::char_traits<char>::eof()) {
         return nullptr;
@@ -567,7 +567,7 @@ shared_ptr<lispobj> reader::read() {
     if(peek_char() == '(') { //list
         get_char();
         shared_ptr<lispobj> listtoreturn = make_shared<syntaxnil>(make_shared<syntaxlocation>(streamname, line, col), nullptr);
-        shared_ptr<cons> placeinlist;
+        shared_ptr<cons> placeinlist(nullptr);
 
         while(peek_char() != ')') {
             while(isspace(peek_char())) {
@@ -584,6 +584,13 @@ shared_ptr<lispobj> reader::read() {
                     placeinlist = dynamic_pointer_cast<cons>(placeinlist->cdr());
                 }
             }
+        }
+
+        //update location of the nil to the end of the list
+        if(placeinlist) {
+            shared_ptr<syntax> syn = dynamic_pointer_cast<syntax>(placeinlist->cdr());
+            syn->get_location()->charnum = colnum;
+            syn->get_location()->linenum = linenum;
         }
 
         get_char();
@@ -651,7 +658,7 @@ char reader::get_char() {
     char ret = input->get();
     if(ret == '\n') {
         ++linenum;
-        colnum = 0;
+        colnum = 1;
     } else {
         ++colnum;
     }
