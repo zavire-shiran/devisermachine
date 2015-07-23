@@ -456,6 +456,10 @@ shared_ptr<syntax> syntax::get_parent() {
     return parent;
 }
 
+void syntax::set_parent(shared_ptr<syntax> p) {
+    parent = p;
+}
+
 syntaxnil::syntaxnil(shared_ptr<syntaxlocation> loc, shared_ptr<syntax> par) :
     syntax(loc, par)
 {
@@ -550,7 +554,7 @@ reader::reader(shared_ptr<std::istream> in, string name) :
 {
 }
 
-shared_ptr<lispobj> reader::read() {
+shared_ptr<lispobj> reader::read(shared_ptr<syntax> parent) {
     // remove leading whitespace
     while(isspace(peek_char())) {
         get_char();
@@ -566,7 +570,7 @@ shared_ptr<lispobj> reader::read() {
     // figure out type of object
     if(peek_char() == '(') { //list
         get_char();
-        shared_ptr<lispobj> listtoreturn = make_shared<syntaxnil>(make_shared<syntaxlocation>(streamname, line, col), nullptr);
+        shared_ptr<lispobj> listtoreturn = make_shared<syntaxnil>(make_shared<syntaxlocation>(streamname, line, col), parent);
         shared_ptr<cons> placeinlist(nullptr);
 
         while(peek_char() != ')') {
@@ -574,13 +578,15 @@ shared_ptr<lispobj> reader::read() {
                 get_char();
             }
 
-            auto obj = read();
+            auto obj = read(dynamic_pointer_cast<syntax>(listtoreturn));
             if(obj) {
                 if(dynamic_pointer_cast<nil>(listtoreturn)) {
-                    listtoreturn = make_shared<syntaxcons>(obj, listtoreturn, make_shared<syntaxlocation>(streamname, line, col), nullptr);
+                    listtoreturn = make_shared<syntaxcons>(obj, listtoreturn, make_shared<syntaxlocation>(streamname, line, col), parent);
+                    shared_ptr<syntax> syntaxobj = dynamic_pointer_cast<syntax>(obj);
+                    syntaxobj->set_parent(dynamic_pointer_cast<syntax>(listtoreturn));
                     placeinlist = dynamic_pointer_cast<cons>(listtoreturn);
                 } else {
-                    placeinlist->set_cdr(make_shared<syntaxcons>(obj, placeinlist->cdr(), make_shared<syntaxlocation>(streamname, line, col), nullptr));
+                    placeinlist->set_cdr(make_shared<syntaxcons>(obj, placeinlist->cdr(), make_shared<syntaxlocation>(streamname, line, col), parent));
                     placeinlist = dynamic_pointer_cast<cons>(placeinlist->cdr());
                 }
             }
@@ -604,7 +610,7 @@ shared_ptr<lispobj> reader::read() {
 
         size_t pos = 0;
         int n = std::stoi(numstring, &pos);
-        return make_shared<syntaxnumber>(n, make_shared<syntaxlocation>(streamname, line, col), nullptr);
+        return make_shared<syntaxnumber>(n, make_shared<syntaxlocation>(streamname, line, col), parent);
     } else if(peek_char() == '"') {
         get_char();
 
@@ -627,7 +633,7 @@ shared_ptr<lispobj> reader::read() {
         }
         get_char();
 
-        return make_shared<syntaxstring>(contents, make_shared<syntaxlocation>(streamname, line, col), nullptr);
+        return make_shared<syntaxstring>(contents, make_shared<syntaxlocation>(streamname, line, col), parent);
     } else { //symbol
         string sym_name;
         char next = peek_char();
@@ -637,7 +643,7 @@ shared_ptr<lispobj> reader::read() {
             next = peek_char();
         }
 
-        return make_shared<syntaxsymbol>(sym_name, make_shared<syntaxlocation>(streamname, line, col), nullptr);
+        return make_shared<syntaxsymbol>(sym_name, make_shared<syntaxlocation>(streamname, line, col), parent);
     }
 }
 

@@ -224,6 +224,7 @@ public:
 
     shared_ptr<syntaxlocation> get_location();
     shared_ptr<syntax> get_parent();
+    void set_parent(shared_ptr<syntax> p);
 
 private:
     shared_ptr<syntaxlocation> location;
@@ -279,7 +280,7 @@ void printall(vector< shared_ptr<lispobj> > objs);
 class reader {
 public:
     reader(shared_ptr<std::istream> in, string name);
-    shared_ptr<lispobj> read();
+    shared_ptr<lispobj> read(shared_ptr<syntax> parent = nullptr);
     vector< shared_ptr<lispobj> > readall();
 
 private:

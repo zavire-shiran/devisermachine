@@ -125,6 +125,7 @@ TEST(DeviserBase, readNumber) {
     EXPECT_EQ(1, num->value());
     EXPECT_EQ(1, num->get_location()->linenum);
     EXPECT_EQ(1, num->get_location()->charnum);
+    EXPECT_EQ(nullptr, num->get_parent());
 }
 
 TEST(DeviserBase, readNil) {
@@ -133,7 +134,9 @@ TEST(DeviserBase, readNil) {
 
     ASSERT_EQ(readobj, n);
     EXPECT_EQ(1, n->get_location()->linenum);
-    EXPECT_EQ(1, n->get_location()->charnum);}
+    EXPECT_EQ(1, n->get_location()->charnum);
+    EXPECT_EQ(nullptr, n->get_parent());
+}
 
 TEST(DeviserBase, readSymbol) {
     shared_ptr<lispobj> readobj(read("testsymbol"));
@@ -152,6 +155,7 @@ TEST(DeviserBase, readCons) {
     ASSERT_EQ(readobj, c);
     EXPECT_EQ(1, c->get_location()->linenum);
     EXPECT_EQ(2, c->get_location()->charnum);
+    EXPECT_EQ(nullptr, c->get_parent());
 
     shared_ptr<lispobj> conscar = c->car();
     shared_ptr<lispobj> conscdr = c->cdr();
@@ -163,16 +167,19 @@ TEST(DeviserBase, readCons) {
     EXPECT_EQ(1, num->value());
     EXPECT_EQ(1, num->get_location()->linenum);
     EXPECT_EQ(4, num->get_location()->charnum);
+    EXPECT_EQ(c, num->get_parent());
     EXPECT_EQ(1, n->get_location()->linenum);
     EXPECT_EQ(6, n->get_location()->charnum);
+    EXPECT_EQ(nullptr, n->get_parent());
 }
 
 TEST(DeviserBase, readString) {
     shared_ptr<lispobj> readobj(read("\"\\a\\s\\d\\f\\nThis is a string.\""));
-    shared_ptr<lispstring> str = std::dynamic_pointer_cast<lispstring>(readobj);
+    shared_ptr<syntaxstring> str = std::dynamic_pointer_cast<syntaxstring>(readobj);
 
     ASSERT_EQ(readobj, str);
     EXPECT_STREQ("asdf\nThis is a string.", str->get_contents().c_str());
+    EXPECT_EQ(nullptr, str->get_parent());
 }
 
 TEST(DeviserEval, NumberConstant) {
