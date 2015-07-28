@@ -1396,130 +1396,127 @@ int eval_special_form(string name,
     return 0;
 }
 
+void evalstep(std::deque<stackframe>& exec_stack) {
+    if(exec_stack.front().mark == evaled) {
+        shared_ptr<lispobj> c = exec_stack.front().code;
+        exec_stack.pop_front();
+        if(exec_stack.front().mark == applying) {
+            if(dynamic_pointer_cast<nil>(exec_stack.front().code)) {
+                exec_stack.front().mark = evaled;
+                exec_stack.front().code = c;
+            } else {
+                //the frame was popped, and nothing else needs doing
+            }
+        } else if(exec_stack.front().mark == evaluating ||
+                  exec_stack.front().mark == evalspecial) {
+            exec_stack.front().evaled_args.push_back(c);
+        } else if(exec_stack.front().mark == evalmacro) {
+            //This is the return of the macro expansion, so evaluate it
+            exec_stack.front().mark = evaluating;
+            exec_stack.front().code = c;
+            exec_stack.front().evaled_args.clear();
+        } else {
+            throw string("bad stack");
+        }
+    } else if(exec_stack.front().mark == applying) {
+        if(dynamic_pointer_cast<nil>(exec_stack.front().code)) {
+            exec_stack.front().mark = evaled;
+        } else if(shared_ptr<cons> c = dynamic_pointer_cast<cons>(exec_stack.front().code)) {
+            shared_ptr<lispobj> next_statement = c->car();
+            exec_stack.front().code = c->cdr();
+            exec_stack.push_front(stackframe(exec_stack.front().scope,
+                                             evaluating,
+                                             next_statement));
+        } else {
+            throw string("bad stack");
+        }
+    } else if(exec_stack.front().mark == evaluating) {
+        shared_ptr<cons> c = dynamic_pointer_cast<cons>(exec_stack.front().code);
+        if(c) {
+            //evaluating arguments
+            shared_ptr<macro> macrofunc;
+            if(exec_stack.front().evaled_args.size() == 0 &&
+               is_special_form(c->car())) {
+                //special forms go here, rather than normal argument evaluation
+                exec_stack.front().mark = evalspecial;
+                exec_stack.front().evaled_args.push_back(c->car());
+                exec_stack.front().code = c->cdr();
+            } else if(exec_stack.front().evaled_args.size() == 1 &&
+                      (macrofunc = dynamic_pointer_cast<macro>(exec_stack.front().evaled_args.front()))) {
+                exec_stack.front().mark = evalmacro;
+                if(apply_macro(exec_stack) != 0) {
+                    throw string("error applying macro");
+                }
+            } else {
+                exec_stack.front().code = c->cdr();
+                exec_stack.push_front(stackframe(exec_stack.front().scope,
+                                                 evaluating,
+                                                 c->car()));
+            }
+        } else if(dynamic_pointer_cast<nil>(exec_stack.front().code)) {
+            auto evaled_args = exec_stack.front().evaled_args;
+            if(evaled_args.empty()) {
+                throw string("empty function application");
+            } else if(typeid(*(evaled_args.front())) == typeid(lispfunc)) {
+                if(apply_lispfunc(exec_stack) != 0) {
+                    throw string("error applying function");
+                }
+            } else if(shared_ptr<cfunc> func = dynamic_pointer_cast<cfunc>(evaled_args.front())) {
+                evaled_args.erase(evaled_args.begin());
+                shared_ptr<lispobj> ret = func->func(evaled_args);
+                if(!ret) {
+                    throw string("error in cfunc");
+                }
+                exec_stack.front().mark = evaled;
+                exec_stack.front().code = ret;
+                exec_stack.front().evaled_args.clear();
+            } else {
+                throw string("trying to apply a non-function");
+            }
+        } else if(shared_ptr<symbol> s = dynamic_pointer_cast<symbol>(exec_stack.front().code)) {
+            //variable lookup
+            exec_stack.front().mark = evaled;
+
+            if(s->name() == "nil") {
+                exec_stack.front().code = make_shared<nil>();
+            } else if(exec_stack.size() > 1 &&
+                      exec_stack[1].mark == evaluating &&
+                      exec_stack[1].evaled_args.size() == 0) {
+                // first element of a call, so look up a function
+                exec_stack.front().code = exec_stack.front().scope->getfun(s->name());
+            } else {
+                exec_stack.front().code = exec_stack.front().scope->getval(s->name());
+            }
+            //cout << "getting var " << s->name() << ": ";
+            //print(exec_stack.front().code); cout << endl;
+        } else {
+            //constant value
+            exec_stack.front().mark = evaled;
+        }
+    } else if(exec_stack.front().mark == evalspecial) {
+        shared_ptr<lispobj> list_head = exec_stack.front().evaled_args[0];
+        shared_ptr<symbol> sym = dynamic_pointer_cast<symbol>(list_head);
+        if(!sym) {
+            throw string("non-special form given evalspecial mark.");
+        }
+
+        if(eval_special_form(sym->name(), exec_stack) != 0) {
+            throw string("error in special form");
+        }
+    } else {
+        throw string("bad stack");
+    }
+}
+
 shared_ptr<lispobj> eval(shared_ptr<lispobj> code,
                          shared_ptr<lexicalscope> tls) {
     std::deque<stackframe> exec_stack;
-    shared_ptr<lispobj> nil_obj(new nil());
 
     exec_stack.push_front(stackframe(tls, evaluating, code));
 
     while(exec_stack.size() != 0 && (exec_stack.size() > 1 || exec_stack.front().mark != evaled)) {
         //print_stack(exec_stack);
-        if(exec_stack.front().mark == evaled) {
-            shared_ptr<lispobj> c = exec_stack.front().code;
-            exec_stack.pop_front();
-            if(exec_stack.front().mark == applying) {
-                if(dynamic_pointer_cast<nil>(exec_stack.front().code)) {
-                    exec_stack.front().mark = evaled;
-                    exec_stack.front().code = c;
-                } else {
-                    //the frame was popped, and nothing else needs doing
-                }
-            } else if(exec_stack.front().mark == evaluating ||
-                      exec_stack.front().mark == evalspecial) {
-                exec_stack.front().evaled_args.push_back(c);
-            } else if(exec_stack.front().mark == evalmacro) {
-                //This is the return of the macro expansion, so evaluate it
-                exec_stack.front().mark = evaluating;
-                exec_stack.front().code = c;
-                exec_stack.front().evaled_args.clear();
-            } else {
-                cout << "ERROR: bad stack" << endl;
-                return nullptr;
-            }
-        } else if(exec_stack.front().mark == applying) {
-            if(dynamic_pointer_cast<nil>(exec_stack.front().code)) {
-                exec_stack.front().mark = evaled;
-            } else if(shared_ptr<cons> c = dynamic_pointer_cast<cons>(exec_stack.front().code)) {
-                shared_ptr<lispobj> next_statement = c->car();
-                exec_stack.front().code = c->cdr();
-                exec_stack.push_front(stackframe(exec_stack.front().scope,
-                                                 evaluating,
-                                                 next_statement));
-            } else {
-                cout << "ERROR: bad stack" << endl;
-                return nullptr;
-            }
-        } else if(exec_stack.front().mark == evaluating) {
-            shared_ptr<cons> c = dynamic_pointer_cast<cons>(exec_stack.front().code);
-            if(c) {
-                //evaluating arguments
-                shared_ptr<macro> macrofunc;
-                if(exec_stack.front().evaled_args.size() == 0 &&
-                   is_special_form(c->car())) {
-                    //special forms go here, rather than normal argument evaluation
-                    exec_stack.front().mark = evalspecial;
-                    exec_stack.front().evaled_args.push_back(c->car());
-                    exec_stack.front().code = c->cdr();
-                } else if(exec_stack.front().evaled_args.size() == 1 &&
-                          (macrofunc = dynamic_pointer_cast<macro>(exec_stack.front().evaled_args.front()))) {
-                    exec_stack.front().mark = evalmacro;
-                    if(apply_macro(exec_stack) != 0) {
-                        return nullptr;
-                    }
-                } else {
-                    exec_stack.front().code = c->cdr();
-                    exec_stack.push_front(stackframe(exec_stack.front().scope,
-                                                     evaluating,
-                                                     c->car()));
-                }
-            } else if(dynamic_pointer_cast<nil>(exec_stack.front().code)) {
-                auto evaled_args = exec_stack.front().evaled_args;
-                if(evaled_args.empty()) {
-                    cout << "ERROR: empty function application" << endl;
-                    return nullptr;
-                } else if(typeid(*(evaled_args.front())) == typeid(lispfunc)) {
-                    if(apply_lispfunc(exec_stack) != 0) {
-                        return nullptr;
-                    }
-                } else if(shared_ptr<cfunc> func = dynamic_pointer_cast<cfunc>(evaled_args.front())) {
-                    evaled_args.erase(evaled_args.begin());
-                    shared_ptr<lispobj> ret = func->func(evaled_args);
-                    if(!ret) {
-                        return nullptr;
-                    }
-                    exec_stack.front().mark = evaled;
-                    exec_stack.front().code = ret;
-                    exec_stack.front().evaled_args.clear();
-                } else {
-                    cout << "ERROR: trying to apply a non-function" << endl;
-                    return nullptr;
-                }
-            } else if(shared_ptr<symbol> s = dynamic_pointer_cast<symbol>(exec_stack.front().code)) {
-                //variable lookup
-                exec_stack.front().mark = evaled;
-
-                if(s->name() == "nil") {
-                    exec_stack.front().code = nil_obj;
-                } else if(exec_stack.size() > 1 &&
-                          exec_stack[1].mark == evaluating &&
-                          exec_stack[1].evaled_args.size() == 0) {
-                    // first element of a call, so look up a function
-                    exec_stack.front().code = exec_stack.front().scope->getfun(s->name());
-                } else {
-                    exec_stack.front().code = exec_stack.front().scope->getval(s->name());
-                }
-                //cout << "getting var " << s->name() << ": ";
-                //print(exec_stack.front().code); cout << endl;
-            } else {
-                //constant value
-                exec_stack.front().mark = evaled;
-            }
-        } else if(exec_stack.front().mark == evalspecial) {
-            shared_ptr<lispobj> list_head = exec_stack.front().evaled_args[0];
-            shared_ptr<symbol> sym = dynamic_pointer_cast<symbol>(list_head);
-            if(!sym) {
-                cout << "non-special form given evalspecial mark." << endl;
-                return nullptr;
-            }
-
-            if(eval_special_form(sym->name(), exec_stack) != 0) {
-                return nullptr;
-            }
-        } else {
-            cout << "ERROR: bad stack" << endl;
-            return nullptr;
-        }
+        evalstep(exec_stack);
     }
 
     return exec_stack.front().code;
