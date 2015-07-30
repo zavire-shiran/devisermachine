@@ -912,6 +912,14 @@ void print_stack(const std::deque<stackframe> exec_stack) {
         cout << "  code: ";
         frame.code->print();
         cout << endl;
+        shared_ptr<syntax> code_syntax = dynamic_pointer_cast<syntax>(frame.code);
+        if(code_syntax) {
+            shared_ptr<syntaxlocation> loc = code_syntax->get_location();
+            cout << "  location: " << loc->name << " (" << loc->linenum << ", " << loc->charnum
+                 << ")" << endl;
+        } else {
+            cout << "  no code location info" << endl;
+        }
         cout << "  args:" << endl;
         for(auto arg: frame.evaled_args) {
             cout << "    ";
@@ -1514,9 +1522,14 @@ shared_ptr<lispobj> eval(shared_ptr<lispobj> code,
 
     exec_stack.push_front(stackframe(tls, evaluating, code));
 
-    while(exec_stack.size() != 0 && (exec_stack.size() > 1 || exec_stack.front().mark != evaled)) {
-        //print_stack(exec_stack);
-        evalstep(exec_stack);
+    try {
+        while(exec_stack.size() != 0 && (exec_stack.size() > 1 || exec_stack.front().mark != evaled)) {
+            //print_stack(exec_stack);
+            evalstep(exec_stack);
+        }
+    } catch(string error) {
+        print_stack(exec_stack);
+        cout << error << endl;
     }
 
     return exec_stack.front().code;
@@ -1527,8 +1540,7 @@ shared_ptr<lispobj> plus(vector<shared_ptr<lispobj> > args) {
     for(auto obj : args) {
         shared_ptr<number> n = dynamic_pointer_cast<number>(obj);
         if(!n) {
-            cout << "plus requires numbers" << endl;
-            return nullptr;
+            throw string("plus requires numbers");
         }
         sum += n->value();
     }
@@ -1539,8 +1551,7 @@ shared_ptr<lispobj> minus(vector<shared_ptr<lispobj> > args) {
     if(args.size() > 1) {
         shared_ptr<number> n = dynamic_pointer_cast<number>(args[0]);
         if(!n) {
-            cout << "minus requires numbers" << endl;
-            return nullptr;
+            throw string("minus requires numbers");
         }
         int diff = n->value();
         args.erase(args.begin());
@@ -1548,8 +1559,7 @@ shared_ptr<lispobj> minus(vector<shared_ptr<lispobj> > args) {
         for(auto obj : args) {
             shared_ptr<number> n = dynamic_pointer_cast<number>(obj);
             if(!n) {
-                cout << "minus requires numbers" << endl;
-                return nullptr;
+                throw string("minus requires numbers");
             }
             diff -= n->value();
         }
@@ -1558,7 +1568,7 @@ shared_ptr<lispobj> minus(vector<shared_ptr<lispobj> > args) {
         shared_ptr<lispobj> obj(args[0]);
         shared_ptr<number> n = dynamic_pointer_cast<number>(obj);
         if(!n) {
-            cout << "minus requires numbers" << endl;
+            throw string("minus requires numbers");
         }
         return make_shared<number>(-(n->value()));
     }
@@ -1569,8 +1579,7 @@ shared_ptr<lispobj> multiply(vector<shared_ptr<lispobj> > args) {
     for(auto obj : args) {
         shared_ptr<number> n = dynamic_pointer_cast<number>(obj);
         if(!n) {
-            cout << "multiply requires numbers" << endl;
-            return nullptr;
+            throw string("multiply requires numbers");
         }
         product *= n->value();
     }
@@ -1581,8 +1590,7 @@ shared_ptr<lispobj> divide(vector<shared_ptr<lispobj> > args) {
     if(args.size() > 1) {
         shared_ptr<number> n = dynamic_pointer_cast<number>(args[0]);
         if(!n) {
-            cout << "divide requires numbers" << endl;
-            return nullptr;
+            throw string("divide requires numbers");
         }
         int quotient = n->value();
         args.erase(args.begin());
@@ -1590,8 +1598,7 @@ shared_ptr<lispobj> divide(vector<shared_ptr<lispobj> > args) {
         for(auto obj : args) {
             shared_ptr<number> n = dynamic_pointer_cast<number>(obj);
             if(!n) {
-                cout << "divide requires numbers" << endl;
-                return nullptr;
+                throw string("divide requires numbers");
             }
             quotient /= n->value();
         }
@@ -1600,7 +1607,7 @@ shared_ptr<lispobj> divide(vector<shared_ptr<lispobj> > args) {
         shared_ptr<lispobj> obj(args[0]);
         shared_ptr<number> n = dynamic_pointer_cast<number>(obj);
         if(!n) {
-            cout << "divide requires numbers" << endl;
+            throw string("divide requires numbers");
         }
         return make_shared<number>(n->value());
     }
@@ -1625,8 +1632,7 @@ shared_ptr<lispobj> list_cfunc(vector< shared_ptr<lispobj> > args) {
 
 shared_ptr<lispobj> eq_cfunc(vector< shared_ptr<lispobj> > args) {
     if(args.size() != 2) {
-        cout << "ERROR eq wants 2 args" << endl;
-        return nullptr;
+        throw string("ERROR eq wants 2 args");
     }
 
     if(eq(args[0], args[1])) {
@@ -1638,8 +1644,7 @@ shared_ptr<lispobj> eq_cfunc(vector< shared_ptr<lispobj> > args) {
 
 shared_ptr<lispobj> eqv_cfunc(vector< shared_ptr<lispobj> > args) {
     if(args.size() != 2) {
-        cout << "ERROR eqv wants 2 args" << endl;
-        return nullptr;
+        throw string("ERROR eqv wants 2 args");
     }
 
     if(eqv(args[0], args[1])) {
@@ -1651,8 +1656,7 @@ shared_ptr<lispobj> eqv_cfunc(vector< shared_ptr<lispobj> > args) {
 
 shared_ptr<lispobj> equal_cfunc(vector< shared_ptr<lispobj> > args) {
     if(args.size() != 2) {
-        cout << "ERROR equal wants 2 args" << endl;
-        return nullptr;
+        throw string("ERROR equal wants 2 args");
     }
 
     if(equal(args[0], args[1])) {
@@ -1664,8 +1668,7 @@ shared_ptr<lispobj> equal_cfunc(vector< shared_ptr<lispobj> > args) {
 
 shared_ptr<lispobj> cons_cfunc(vector< shared_ptr<lispobj> > args) {
     if(args.size() != 2) {
-        cout << "ERROR cons wants 2 args" << endl;
-        return nullptr;
+        throw string("ERROR cons wants 2 args");
     }
 
     return make_shared<cons>(args[0], args[1]);
@@ -1677,8 +1680,7 @@ shared_ptr<lispobj> append_cfunc(vector< shared_ptr<lispobj> > args) {
     for(auto it = args.begin(); it != args.end(); ++it) {
         shared_ptr<lispstring> arg = dynamic_pointer_cast<lispstring>(*it);
         if(!arg) {
-            cout << "ERROR append wants only strings" << endl;
-            return nullptr;
+            throw string("ERROR append wants only strings");
         }
 
         lstr->append(arg);
@@ -1689,8 +1691,7 @@ shared_ptr<lispobj> append_cfunc(vector< shared_ptr<lispobj> > args) {
 
 shared_ptr<lispobj> open_file_cfunc(vector< shared_ptr<lispobj> > args) {
     if(args.size() != 1 || !dynamic_pointer_cast<lispstring>(args[0])) {
-        cout << "ERROR open-file wants one string" << endl;
-        return nullptr;
+        throw string("ERROR open-file wants one string");
     }
 
     shared_ptr<lispstring> filename = dynamic_pointer_cast<lispstring>(args[0]);
@@ -1699,8 +1700,7 @@ shared_ptr<lispobj> open_file_cfunc(vector< shared_ptr<lispobj> > args) {
 
 shared_ptr<lispobj> read_cfunc(vector< shared_ptr<lispobj> > args) {
     if(args.size() != 1 || !dynamic_pointer_cast<fileinputport>(args[0])) {
-        cout << "ERROR read wants on input-port" << endl;
-        return nullptr;
+        throw string("ERROR read wants on input-port");
     }
 
     shared_ptr<fileinputport> port = dynamic_pointer_cast<fileinputport>(args[0]);

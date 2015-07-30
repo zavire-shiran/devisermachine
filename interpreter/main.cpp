@@ -35,7 +35,7 @@ vector< shared_ptr<lispobj> > read_file(string filename) {
         return ret;
     }
 
-    reader r(std::static_pointer_cast<std::istream>(infile), "filename");
+    reader r(std::static_pointer_cast<std::istream>(infile), filename);
 
     ret = r.readall();
 
