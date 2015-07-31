@@ -10,14 +10,15 @@ using std::cout;
 using std::endl;
 using std::dynamic_pointer_cast;
 using std::make_shared;
+using std::stringstream;
 
 lispobj::lispobj() {}
 lispobj::~lispobj() {}
 
 nil::nil() {}
 
-void nil::print() {
-    cout << "'()";
+void nil::print(ostream& out) {
+    out << "'()";
 }
 
 symbol::symbol(string sn) {
@@ -28,8 +29,8 @@ string symbol::name() const {
     return symname;
 }
 
-void symbol::print() {
-    cout << symname;
+void symbol::print(ostream& out) {
+    out << symname;
 }
 
 cons::cons(shared_ptr<lispobj> a, shared_ptr<lispobj> d) {
@@ -53,23 +54,23 @@ void cons::set_cdr(shared_ptr<lispobj> d) {
     second = d;
 }
 
-void cons::print() {
-    cout << '(';
-    car()->print();
+void cons::print(ostream& out) {
+    out << '(';
+    car()->print(out);
     shared_ptr<cons> c;
     shared_ptr<lispobj> obj = cdr();
     while((c = dynamic_pointer_cast<cons>(obj))) {
-        cout << ' ';
-        c->car()->print();
+        out << ' ';
+        c->car()->print(out);
         obj = c->cdr();
     }
 
     if(dynamic_pointer_cast<nil>(obj)) {
-        cout << ')';
+        out << ')';
     } else {
-        cout << " . ";
-        obj->print();
-        cout << ')';
+        out << " . ";
+        obj->print(out);
+        out << ')';
     }
 }
 
@@ -81,8 +82,8 @@ int number::value() const {
     return num;
 }
 
-void number::print() {
-    cout << value();
+void number::print(ostream& out) {
+    out << value();
 }
 
 lispstring::lispstring() {
@@ -103,32 +104,32 @@ const string& lispstring::get_contents() const {
     return contents;
 }
 
-void lispstring::print() {
-    cout << contents;
+void lispstring::print(ostream& out) {
+    out << contents;
 }
 
-void lispstring::repr() {
-    cout << "\"";
+void lispstring::repr(ostream& out) {
+    out << "\"";
     for(auto it = contents.begin(); it != contents.end(); ++it) {
         switch(*it) {
         case '"':
-            cout << "\\\"";
+            out << "\\\"";
             break;
         case '\\':
-            cout << "\\\\";
+            out << "\\\\";
             break;
         case '\n':
-            cout << "\\n";
+            out << "\\n";
             break;
         case '\t':
-            cout << "\\t";
+            out << "\\t";
             break;
         default:
-            cout << *it;
+            out << *it;
             break;
         }
     }
-    cout << "\"";
+    out << "\"";
 }
 
 lispfunc::lispfunc(shared_ptr<lispobj> _args,
@@ -141,9 +142,9 @@ lispfunc::lispfunc(shared_ptr<lispobj> _args,
 
 }
 
-void lispfunc::print() {
+void lispfunc::print(ostream& out) {
     make_shared<cons>(make_shared<symbol>("lambda"),
-                      make_shared<cons>(args, code))->print();
+                      make_shared<cons>(args, code))->print(out);
 }
 
 macro::macro(shared_ptr<lispobj> _args,
@@ -156,9 +157,9 @@ macro::macro(shared_ptr<lispobj> _args,
 
 }
 
-void macro::print() {
+void macro::print(ostream& out) {
     make_shared<cons>(make_shared<symbol>("macro"),
-                      make_shared<cons>(args, code))->print();
+                      make_shared<cons>(args, code))->print(out);
 }
 
 cfunc::cfunc(std::function<shared_ptr<lispobj>(vector<shared_ptr<lispobj> >)> f) :
@@ -167,8 +168,8 @@ cfunc::cfunc(std::function<shared_ptr<lispobj>(vector<shared_ptr<lispobj> >)> f)
 
 }
 
-void cfunc::print() {
-    cout << "CFUNC";
+void cfunc::print(ostream& out) {
+    out << "CFUNC";
 }
 
 fileinputport::fileinputport(string fname) :
@@ -198,8 +199,8 @@ shared_ptr<lispobj> fileinputport::readchar() {
     }
 }
 
-void fileinputport::print() {
-    cout << "<fileinputport: " << filename << ">";
+void fileinputport::print(ostream& out) {
+    out << "<fileinputport: " << filename << ">";
 }
 
 
@@ -407,30 +408,30 @@ const vector< shared_ptr<lispobj> >& module::get_initblocks() const {
     return initblocks;
 }
 
-void module::print() {
-    cout << "(module ";
-    get_name()->print();
-    cout << " (imports ";
+void module::print(ostream& out) {
+    out << "(module ";
+    get_name()->print(out);
+    out << " (imports ";
     auto imports = get_imports();
     for(auto import : imports) {
-        import->print();
-        cout << " ";
+        import->print(out);
+        out << " ";
     }
-    cout << ") (exports ";
+    out << ") (exports ";
     auto exports = get_exports();
     for(auto exprt : exports) {
-        exprt->print();
-        cout << " ";
+        exprt->print(out);
+        out << " ";
     }
-    cout << ") (init ";
+    out << ") (init ";
     auto inits = get_initblocks();
     for(auto init : inits) {
-        init->print();
-        cout  << " ";
+        init->print(out);
+        out  << " ";
     }
-    cout << ") ";
+    out << ") ";
     get_bindings()->dump();
-    cout << ")";
+    out << ")";
 }
 
 syntaxlocation::syntaxlocation(string name, int linenum, int charnum) {
@@ -944,8 +945,7 @@ int apply_lispfunc(std::deque<stackframe>& exec_stack) {
         if(name) {
             scope->defval(name->name(), *arg_value_iter);
         } else {
-            cout << "ERROR: arguments must be symbols" << endl;
-            return 1;
+            throw string("ERROR: arguments must be symbols");
         }
         arg_names = c->cdr();
         c = dynamic_pointer_cast<cons>(arg_names);
@@ -954,16 +954,7 @@ int apply_lispfunc(std::deque<stackframe>& exec_stack) {
 
     if(!dynamic_pointer_cast<nil>(arg_names) ||
        arg_value_iter != evaled_args.end()) {
-        cout << "ERROR: function arity does not match call." << endl;
-        cout << "func args: "; func->args->print(); cout << endl;
-        cout << "evaled args: " << endl;
-        for(auto arg_value_iter = evaled_args.begin();
-            arg_value_iter != evaled_args.end();
-            ++arg_value_iter) {
-            (*arg_value_iter)->print(); cout << " ";
-        }
-        cout << endl;
-        return 1;
+        throw string("ERROR: function arity does not match call.");
     }
 
     exec_stack.front().mark = applying;
@@ -988,8 +979,7 @@ int apply_macro(std::deque<stackframe>& exec_stack) {
         if(param_name) {
             scope->defval(param_name->name(), args_cons->car());
         } else {
-            cout << "ERROR: parameter names must be symbols" << endl;
-            return 1;
+            throw string("ERROR: parameter names must be symbols");
         }
         param_names = param_cons->cdr();
         param_cons = dynamic_pointer_cast<cons>(param_names);
@@ -999,10 +989,7 @@ int apply_macro(std::deque<stackframe>& exec_stack) {
 
     if(!dynamic_pointer_cast<nil>(param_names) ||
        !dynamic_pointer_cast<nil>(args)) {
-        cout << "ERROR: macro arity does not match call." << endl;
-        cout << "macro args: "; func->args->print(); cout << endl;
-        cout << "evaled args: "; exec_stack.front().code->print(); cout << endl;
-        return 1;
+        throw string("ERROR: macro arity does not match call.");
     }
 
     exec_stack.front().mark = evalmacro;
@@ -1136,8 +1123,7 @@ int add_defmacro_to_module(shared_ptr<module> mod,
 int eval_module_special_form(std::deque<stackframe>& exec_stack) {
     shared_ptr<cons> c = dynamic_pointer_cast<cons>(exec_stack.front().code);
     if(!c) {
-        cout << "module does not have name" << endl;
-        return 1;
+        throw string("module does not have name");
     }
 
     shared_ptr<lispobj> lobj;
@@ -1148,48 +1134,54 @@ int eval_module_special_form(std::deque<stackframe>& exec_stack) {
     while(c) {
         shared_ptr<cons> decl = dynamic_pointer_cast<cons>(c->car());
         if(!decl) {
-            cout << "invalid module declaration:";
-            c->print();
-            cout << endl;
-            return 1;
+            stringstream errormsg;
+            errormsg << "invalid module declaration: ";
+            c->print(errormsg);
+            errormsg << endl;
+            throw errormsg.str();
         }
 
 
         shared_ptr<symbol> s = dynamic_pointer_cast<symbol>(decl->car());
         if(!s) {
-            cout << "invalid module declaration:";
-            c->print();
-            cout << endl;
-            return 1;
+            stringstream errormsg;
+            errormsg << "invalid module declaration: ";
+            c->print(errormsg);
+            errormsg << endl;
+            throw errormsg.str();
         }
 
         if(s->name() == "import") {
             if(add_import_to_module(m, decl->cdr())) {
-                cout << "invalid import declaration: ";
-                decl->print();
-                cout << endl;
-                return 1;
+                stringstream errormsg;
+                errormsg << "invalid import declaration: ";
+                decl->print(errormsg);
+                errormsg << endl;
+                throw errormsg.str();
             }
         } else if(s->name() == "export") {
             if(add_export_to_module(m, decl->cdr())) {
-                cout << "invalid export declaration: ";
-                decl->print();
-                cout << endl;
-                return 1;
+                stringstream errormsg;
+                errormsg << "invalid export declaration: ";
+                decl->print(errormsg);
+                errormsg << endl;
+                throw errormsg.str();
             }
         } else if(s->name() == "defun") {
             if(add_defun_to_module(m, decl->cdr())) {
-                cout << "invalid defun declaration: ";
-                decl->print();
-                cout << endl;
-                return 1;
+                stringstream errormsg;
+                errormsg << "invalid defun declaration: ";
+                decl->print(errormsg);
+                errormsg << endl;
+                throw errormsg.str();
             }
         } else if(s->name() == "defmacro") {
             if(add_defmacro_to_module(m, decl->cdr())) {
-                cout << "invalid defmacro declaration: ";
-                decl->print();
-                cout << endl;
-                return 1;
+                stringstream errormsg;
+                errormsg << "invalid defmacro declaration: ";
+                decl->print(errormsg);
+                errormsg << endl;
+                throw errormsg.str();
             }
         } else if(s->name() == "init") {
             m->add_init(decl->cdr());
@@ -1211,9 +1203,10 @@ int eval_if_special_form(std::deque<stackframe>& exec_stack) {
         shared_ptr<lispobj> lobj = exec_stack.front().code;
         shared_ptr<cons> c = dynamic_pointer_cast<cons>(lobj);
         if(!c) {
-            lobj->print();
-            cout << " if has no condition" << endl;
-            return 1;
+            std::stringstream errormsg;
+            lobj->print(errormsg);
+            errormsg << " if has no condition" << endl;
+            throw errormsg.str();
         }
         exec_stack.front().code = c->cdr();
         exec_stack.push_front(stackframe(exec_stack.front().scope,
@@ -1222,8 +1215,7 @@ int eval_if_special_form(std::deque<stackframe>& exec_stack) {
     } else if(exec_stack.front().evaled_args.size() == 2) {
         shared_ptr<cons> c = dynamic_pointer_cast<cons>(exec_stack.front().code);
         if(!c) {
-            cout << "if has no true branch" << endl;
-            return 1;
+            throw string("if has no true branch");
         }
 
         if(!istrue(exec_stack.front().evaled_args[1])) {
@@ -1251,28 +1243,26 @@ int eval_defun_special_form(std::deque<stackframe>& exec_stack) {
     shared_ptr<lispobj> lobj = exec_stack.front().code;
     shared_ptr<cons> c = dynamic_pointer_cast<cons>(lobj);
     if(!c) {
-        cout << "define needs more arguments" << endl;
-        return 1;
+        throw string("define needs more arguments");
     }
 
     shared_ptr<symbol> funcname = dynamic_pointer_cast<symbol>(c->car());
     if(!funcname) {
-        cout << "defun: first argument must be symbol, instead got: ";
-        c->car()->print();
-        cout << endl;
-        return 1;
+        std::stringstream errormsg;
+        errormsg << "defun: first argument must be symbol, instead got: ";
+        c->car()->print(errormsg);
+        errormsg << endl;
+        throw errormsg.str();
     }
 
     shared_ptr<cons> c2 = dynamic_pointer_cast<cons>(c->cdr());
     if(!c2) {
-        cout << "defun: not enough arguments" << endl;
-        return 1;
+        throw string("defun: not enough arguments");
     }
 
     if(typeid(*(c2->car())) != typeid(cons) &&
        typeid(*(c2->car())) != typeid(nil)) {
-        cout << "defun: second argument not list" << endl;
-        return 1;
+        throw string("defun: second argument not list");
     }
 
     if(typeid(*(c2->cdr())) != typeid(nil)) {
@@ -1292,28 +1282,26 @@ int eval_defmacro_special_form(std::deque<stackframe>& exec_stack) {
     shared_ptr<lispobj> lobj = exec_stack.front().code;
     shared_ptr<cons> c = dynamic_pointer_cast<cons>(lobj);
     if(!c) {
-        cout << "defmacro needs more arguments" << endl;
-        return 1;
+        throw string("defmacro needs more arguments");
     }
 
     shared_ptr<symbol> macroname = dynamic_pointer_cast<symbol>(c->car());
     if(!macroname) {
-        cout << "defmacro: first argument must be symbol, instead got: ";
-        c->car()->print();
-        cout << endl;
-        return 1;
+        std::stringstream errormsg;
+        errormsg << "defmacro: first argument must be symbol, instead got: ";
+        c->car()->print(errormsg);
+        errormsg << endl;
+        throw errormsg.str();
     }
 
     shared_ptr<cons> c2 = dynamic_pointer_cast<cons>(c->cdr());
     if(!c2) {
-        cout << "defmacro: not enough arguments" << endl;
-        return 1;
+        throw string("defmacro: not enough arguments");
     }
 
     if(typeid(*(c2->car())) != typeid(cons) &&
        typeid(*(c2->car())) != typeid(nil)) {
-        cout << "defmacro: second argument not list" << endl;
-        return 1;
+        throw string("defmacro: second argument not list");
     }
 
     if(typeid(*(c2->cdr())) == typeid(nil)) {
@@ -1333,14 +1321,12 @@ int eval_lambda_special_form(std::deque<stackframe>& exec_stack) {
     shared_ptr<lispobj> lobj = exec_stack.front().code;
     shared_ptr<cons> c = dynamic_pointer_cast<cons>(lobj);
     if(!c) {
-        cout << "lambda needs more arguments" << endl;
-        return 1;
+        throw string("lambda needs more arguments");
     }
 
     shared_ptr<cons> c2 = dynamic_pointer_cast<cons>(c->cdr());
     if(!c2) {
-        cout << "lambda needs more arguments" << endl;
-        return 1;
+        throw string("lambda needs more arguments");
     }
 
     shared_ptr<lispfunc> lfunc(new lispfunc(c->car(), exec_stack.front().scope, c2));

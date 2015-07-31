@@ -1,6 +1,8 @@
 #pragma once
 
 #include <fstream>
+#include <ostream>
+#include <iostream>
 #include <map>
 #include <memory>
 #include <string>
@@ -9,6 +11,7 @@
 using std::string;
 using std::shared_ptr;
 using std::vector;
+using std::ostream;
 
 const int INVALID_TYPE = 0;
 const int NIL_TYPE = 1;
@@ -26,7 +29,7 @@ public:
     lispobj();
     virtual ~lispobj();
 
-    virtual void print() = 0;
+    virtual void print(ostream& out = std::cout) = 0;
 };
 
 class module;
@@ -66,14 +69,14 @@ private:
 class nil : public lispobj {
 public:
     nil();
-    virtual void print();
+    virtual void print(ostream& out = std::cout);
 };
 
 class symbol : public lispobj {
 public:
     symbol(string sn);
     string name() const;
-    virtual void print();
+    virtual void print(ostream& out = std::cout);
 
 private:
     string symname;
@@ -88,7 +91,7 @@ public:
     void set_car(shared_ptr<lispobj> a);
     void set_cdr(shared_ptr<lispobj> d);
 
-    virtual void print();
+    virtual void print(ostream& out = std::cout);
 
 private:
     shared_ptr<lispobj> first;
@@ -100,7 +103,7 @@ public:
     number(int num);
     int value() const;
 
-    virtual void print();
+    virtual void print(ostream& out = std::cout);
 
 private:
     int num;
@@ -115,8 +118,8 @@ public:
 
     const string& get_contents() const;
 
-    virtual void print();
-    virtual void repr();
+    virtual void print(ostream& out = std::cout);
+    virtual void repr(ostream& out = std::cout);
 
 private:
     string contents;
@@ -128,7 +131,7 @@ public:
              shared_ptr<lexicalscope> _closure,
              shared_ptr<lispobj> _code);
 
-    virtual void print();
+    virtual void print(ostream& out = std::cout);
 
     shared_ptr<lispobj> args;
     shared_ptr<lexicalscope> closure;
@@ -141,7 +144,7 @@ public:
           shared_ptr<lexicalscope> _closure,
           shared_ptr<lispobj> _code);
 
-    virtual void print();
+    virtual void print(ostream& out = std::cout);
 
     shared_ptr<lispobj> args;
     shared_ptr<lexicalscope> closure;
@@ -152,7 +155,7 @@ class cfunc : public lispobj {
 public:
     cfunc(std::function<shared_ptr<lispobj>(vector<shared_ptr<lispobj> >)> f);
 
-    virtual void print();
+    virtual void print(ostream& out = std::cout);
 
     std::function<shared_ptr<lispobj>(vector<shared_ptr<lispobj> >)> func;
 };
@@ -164,7 +167,7 @@ public:
     shared_ptr<lispobj> read();
     shared_ptr<lispobj> readchar();
 
-    virtual void print();
+    virtual void print(ostream& out = std::cout);
 
 private:
     string filename;
@@ -194,7 +197,7 @@ public:
     const vector< shared_ptr<symbol> >& get_exports() const;
     const vector< shared_ptr<lispobj> >& get_initblocks() const;
 
-    virtual void print();
+    virtual void print(ostream& out = std::cout);
 
 private:
     bool ismodulecommand(shared_ptr<lispobj> command);
