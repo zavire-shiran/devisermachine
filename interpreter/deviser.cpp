@@ -930,7 +930,7 @@ void print_stack(const std::deque<stackframe> exec_stack) {
     }
 }
 
-int apply_lispfunc(std::deque<stackframe>& exec_stack) {
+void apply_lispfunc(std::deque<stackframe>& exec_stack) {
     auto evaled_args = exec_stack.front().evaled_args;
     shared_ptr<lispfunc> func = dynamic_pointer_cast<lispfunc>(evaled_args.front());
     //cout << "applying "; func->print(); cout << endl;
@@ -960,10 +960,9 @@ int apply_lispfunc(std::deque<stackframe>& exec_stack) {
     exec_stack.front().mark = applying;
     exec_stack.front().scope = scope;
     exec_stack.front().code = func->code;
-    return 0;
 }
 
-int apply_macro(std::deque<stackframe>& exec_stack) {
+void apply_macro(std::deque<stackframe>& exec_stack) {
     auto evaled_args = exec_stack.front().evaled_args;
     shared_ptr<macro> func = dynamic_pointer_cast<macro>(evaled_args.front());
     //cout << "applying "; func->print(); cout << endl;
@@ -994,7 +993,6 @@ int apply_macro(std::deque<stackframe>& exec_stack) {
 
     exec_stack.front().mark = evalmacro;
     exec_stack.push_front(stackframe(scope, applying, func->code));
-    return 0;
 }
 
 bool is_special_form(shared_ptr<lispobj> form) {
@@ -1120,7 +1118,7 @@ int add_defmacro_to_module(shared_ptr<module> mod,
     return 0;
 }
 
-int eval_module_special_form(std::deque<stackframe>& exec_stack) {
+void eval_module_special_form(std::deque<stackframe>& exec_stack) {
     shared_ptr<cons> c = dynamic_pointer_cast<cons>(exec_stack.front().code);
     if(!c) {
         throw string("module does not have name");
@@ -1194,11 +1192,9 @@ int eval_module_special_form(std::deque<stackframe>& exec_stack) {
 
     exec_stack.front().mark = evaled;
     exec_stack.front().code = m;
-
-    return 0;
 }
 
-int eval_if_special_form(std::deque<stackframe>& exec_stack) {
+void eval_if_special_form(std::deque<stackframe>& exec_stack) {
     if(exec_stack.front().evaled_args.size() == 1) {
         shared_ptr<lispobj> lobj = exec_stack.front().code;
         shared_ptr<cons> c = dynamic_pointer_cast<cons>(lobj);
@@ -1235,11 +1231,9 @@ int eval_if_special_form(std::deque<stackframe>& exec_stack) {
             exec_stack.front().evaled_args.clear();
         }
     }
-
-    return 0;
 }
 
-int eval_defun_special_form(std::deque<stackframe>& exec_stack) {
+void eval_defun_special_form(std::deque<stackframe>& exec_stack) {
     shared_ptr<lispobj> lobj = exec_stack.front().code;
     shared_ptr<cons> c = dynamic_pointer_cast<cons>(lobj);
     if(!c) {
@@ -1275,10 +1269,9 @@ int eval_defun_special_form(std::deque<stackframe>& exec_stack) {
     exec_stack.front().evaled_args.clear();
     exec_stack.front().mark = evaled;
     exec_stack.front().code = c->car();
-    return 0;
 }
 
-int eval_defmacro_special_form(std::deque<stackframe>& exec_stack) {
+void eval_defmacro_special_form(std::deque<stackframe>& exec_stack) {
     shared_ptr<lispobj> lobj = exec_stack.front().code;
     shared_ptr<cons> c = dynamic_pointer_cast<cons>(lobj);
     if(!c) {
@@ -1314,10 +1307,9 @@ int eval_defmacro_special_form(std::deque<stackframe>& exec_stack) {
     exec_stack.front().evaled_args.clear();
     exec_stack.front().mark = evaled;
     exec_stack.front().code = macroname;
-    return 0;
 }
 
-int eval_lambda_special_form(std::deque<stackframe>& exec_stack) {
+void eval_lambda_special_form(std::deque<stackframe>& exec_stack) {
     shared_ptr<lispobj> lobj = exec_stack.front().code;
     shared_ptr<cons> c = dynamic_pointer_cast<cons>(lobj);
     if(!c) {
@@ -1332,36 +1324,35 @@ int eval_lambda_special_form(std::deque<stackframe>& exec_stack) {
     shared_ptr<lispfunc> lfunc(new lispfunc(c->car(), exec_stack.front().scope, c2));
     exec_stack.front().mark = evaled;
     exec_stack.front().code = lfunc;
-
-    return 0;
 }
 
-int eval_special_form(string name,
+void eval_special_form(string name,
                       std::deque<stackframe>& exec_stack) {
     if(name == "if") {
-        return eval_if_special_form(exec_stack);
+        eval_if_special_form(exec_stack);
     } else if(name == "lambda") {
-        return eval_lambda_special_form(exec_stack);
+        eval_lambda_special_form(exec_stack);
     } else if(name == "module") {
-        return eval_module_special_form(exec_stack);
+        eval_module_special_form(exec_stack);
     } else if(name == "import") {
         shared_ptr<cons> c = dynamic_pointer_cast<cons>(exec_stack.front().code);
         if(!c) {
-            cout << "import needs more arguments" << endl;
-            return 1;
+            throw string("import needs more arguments");
         }
 
         shared_ptr<module> m = nullptr; //env->get_module_by_prefix(c->car());
         if(!m) {
-            cout << "Module ";
-            c->car()->print();
-            cout << " not found." << endl;
-            return 1;
+            stringstream errormsg;
+            errormsg << "Module ";
+            c->car()->print(errormsg);
+            errormsg << " not found.";
+            throw errormsg.str();
         } else if(!(m->init())) {
-            cout << "Module ";
-            c->car()->print();
-            cout << " init failed." << endl;
-            return 1;
+            stringstream errormsg;
+            errormsg << "Module ";
+            c->car()->print(errormsg);
+            errormsg << " init failed.";
+            throw errormsg.str();
         }
         exec_stack.front().scope->add_import(m);
         exec_stack.front().mark = evaled;
@@ -1369,25 +1360,22 @@ int eval_special_form(string name,
     } else if(name == "begin") {
         exec_stack.front().mark = applying;
     } else if(name == "defun") {
-        return eval_defun_special_form(exec_stack);
+        eval_defun_special_form(exec_stack);
     } else if(name == "defmacro") {
-        return eval_defmacro_special_form(exec_stack);
+        eval_defmacro_special_form(exec_stack);
     } else if(name == "quote") {
         shared_ptr<cons> c = dynamic_pointer_cast<cons>(exec_stack.front().code);
         if(!c) {
-            cout << "quote needs more arguments" << endl;
-            return 1;
+            throw string("quote needs more arguments");
         }
 
         if(!dynamic_pointer_cast<nil>(c->cdr())) {
-            cout << "quote has too many args" << endl;
-            return 1;
+            throw string("quote has too many args");
         }
 
         exec_stack.front().code = c->car();
         exec_stack.front().mark = evaled;
     }
-    return 0;
 }
 
 void evalstep(std::deque<stackframe>& exec_stack) {
@@ -1438,9 +1426,7 @@ void evalstep(std::deque<stackframe>& exec_stack) {
             } else if(exec_stack.front().evaled_args.size() == 1 &&
                       (macrofunc = dynamic_pointer_cast<macro>(exec_stack.front().evaled_args.front()))) {
                 exec_stack.front().mark = evalmacro;
-                if(apply_macro(exec_stack) != 0) {
-                    throw string("error applying macro");
-                }
+                apply_macro(exec_stack);
             } else {
                 exec_stack.front().code = c->cdr();
                 exec_stack.push_front(stackframe(exec_stack.front().scope,
@@ -1452,9 +1438,7 @@ void evalstep(std::deque<stackframe>& exec_stack) {
             if(evaled_args.empty()) {
                 throw string("empty function application");
             } else if(typeid(*(evaled_args.front())) == typeid(lispfunc)) {
-                if(apply_lispfunc(exec_stack) != 0) {
-                    throw string("error applying function");
-                }
+                apply_lispfunc(exec_stack);
             } else if(shared_ptr<cfunc> func = dynamic_pointer_cast<cfunc>(evaled_args.front())) {
                 evaled_args.erase(evaled_args.begin());
                 shared_ptr<lispobj> ret = func->func(evaled_args);
@@ -1494,9 +1478,7 @@ void evalstep(std::deque<stackframe>& exec_stack) {
             throw string("non-special form given evalspecial mark.");
         }
 
-        if(eval_special_form(sym->name(), exec_stack) != 0) {
-            throw string("error in special form");
-        }
+        eval_special_form(sym->name(), exec_stack);
     } else {
         throw string("bad stack");
     }
