@@ -103,6 +103,20 @@ TEST(DeviserBase, ConsEqual) {
     EXPECT_FALSE(equal(c3, c1));
 }
 
+TEST(DeviserBase, StringEqual) {
+    shared_ptr<lispobj> str1(new lispstring("asdf"));
+    shared_ptr<lispobj> str2(new lispstring("asdf"));
+    shared_ptr<lispobj> str3(new lispstring("Some other string"));
+
+    EXPECT_PRED2(equal, str1, str1);
+    EXPECT_PRED2(equal, str2, str2);
+    EXPECT_PRED2(equal, str1, str2);
+    EXPECT_PRED2(equal, str2, str1);
+
+    EXPECT_FALSE(equal(str1, str3));
+    EXPECT_FALSE(equal(str3, str1));
+}
+
 TEST(DeviserBase, ConsSetCar) {
     shared_ptr<lispobj> str1(new lispstring("asdf"));
     shared_ptr<lispobj> str2(new lispstring("qwer"));
@@ -116,18 +130,56 @@ TEST(DeviserBase, ConsSetCar) {
     EXPECT_EQ(str2, c->car());
 }
 
-TEST(DeviserBase, StringEqual) {
+TEST(DeviserBase, ConsSetCdr) {
     shared_ptr<lispobj> str1(new lispstring("asdf"));
-    shared_ptr<lispobj> str2(new lispstring("asdf"));
-    shared_ptr<lispobj> str3(new lispstring("Some other string"));
+    shared_ptr<lispobj> str2(new lispstring("qwer"));
+    shared_ptr<lispobj> n(new nil());
+    shared_ptr<cons> c(new cons(n, str1));
 
-    EXPECT_PRED2(equal, str1, str1);
-    EXPECT_PRED2(equal, str2, str2);
-    EXPECT_PRED2(equal, str1, str2);
-    EXPECT_PRED2(equal, str2, str1);
+    EXPECT_EQ(str1, c->cdr());
 
-    EXPECT_FALSE(equal(str1, str3));
-    EXPECT_FALSE(equal(str3, str1));
+    c->set_cdr(str2);
+
+    EXPECT_EQ(str2, c->cdr());
+}
+
+TEST(DeviserBase, NilPrint) {
+    shared_ptr<lispobj> n(new nil());
+    std::stringstream ss;
+
+    n->print(ss);
+
+    EXPECT_STREQ("'()", ss.str().c_str());
+}
+
+TEST(DeviserBase, SymbolPrint) {
+    shared_ptr<lispobj> sym(new symbol("symname"));
+    std::stringstream ss;
+
+    sym->print(ss);
+
+    EXPECT_STREQ("symname", ss.str().c_str());
+}
+
+TEST(DeviserBase, ProperListPrint) {
+    shared_ptr<lispobj> c(new cons(std::make_shared<number>(1),
+                                   std::make_shared<cons>(std::make_shared<number>(2),
+                                                          std::make_shared<nil>())));
+    std::stringstream ss;
+
+    c->print(ss);
+
+    EXPECT_STREQ("(1 2)", ss.str().c_str());
+}
+
+TEST(DeviserBase, ImproperListPrint) {
+    shared_ptr<lispobj> c(new cons(std::make_shared<number>(1),
+                                   std::make_shared<number>(2)));
+    std::stringstream ss;
+
+    c->print(ss);
+
+    EXPECT_STREQ("(1 . 2)", ss.str().c_str());
 }
 
 TEST(DeviserBase, readNumber) {
@@ -193,6 +245,18 @@ TEST(DeviserBase, readString) {
     ASSERT_EQ(readobj, str);
     EXPECT_STREQ("asdf\nThis is a string.", str->get_contents().c_str());
     EXPECT_EQ(nullptr, str->get_parent());
+}
+
+TEST(DeviserBase, appendString) {
+    shared_ptr<lispstring> str1(new lispstring("asdf"));
+    shared_ptr<lispstring> str2(new lispstring("qwer"));
+
+    EXPECT_STREQ("asdf", str1->get_contents().c_str());
+    EXPECT_STREQ("qwer", str2->get_contents().c_str());
+
+    str1->append(str2);
+
+    EXPECT_STREQ("asdfqwer", str1->get_contents().c_str());
 }
 
 TEST(DeviserEval, NumberConstant) {
