@@ -103,6 +103,19 @@ TEST(DeviserBase, ConsEqual) {
     EXPECT_FALSE(equal(c3, c1));
 }
 
+TEST(DeviserBase, ConsSetCar) {
+    shared_ptr<lispobj> str1(new lispstring("asdf"));
+    shared_ptr<lispobj> str2(new lispstring("qwer"));
+    shared_ptr<lispobj> n(new nil());
+    shared_ptr<cons> c(new cons(str1, n));
+
+    EXPECT_EQ(str1, c->car());
+
+    c->set_car(str2);
+
+    EXPECT_EQ(str2, c->car());
+}
+
 TEST(DeviserBase, StringEqual) {
     shared_ptr<lispobj> str1(new lispstring("asdf"));
     shared_ptr<lispobj> str2(new lispstring("asdf"));
