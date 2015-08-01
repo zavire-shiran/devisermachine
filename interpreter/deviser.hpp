@@ -111,7 +111,6 @@ private:
 
 class lispstring : public lispobj {
 public:
-    lispstring();
     explicit lispstring(const string& str);
 
     void append(shared_ptr<lispstring> lstr);

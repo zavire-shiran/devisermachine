@@ -86,10 +86,6 @@ void number::print(ostream& out) {
     out << value();
 }
 
-lispstring::lispstring() {
-
-}
-
 lispstring::lispstring(const string& str) :
     contents(str)
 {
@@ -185,7 +181,7 @@ shared_ptr<lispobj> fileinputport::read() {
     if(instream) {
         return make_shared<lispstring>(buf);
     } else {
-        return make_shared<lispstring>();
+        return make_shared<lispstring>("");
     }
 }
 
@@ -195,7 +191,7 @@ shared_ptr<lispobj> fileinputport::readchar() {
     if(instream) {
         return make_shared<lispstring>(string(&buf, 1));
     } else {
-        return make_shared<lispstring>();
+        return make_shared<lispstring>("");
     }
 }
 
@@ -1492,7 +1488,6 @@ shared_ptr<lispobj> eval(shared_ptr<lispobj> code,
 
     try {
         while(exec_stack.size() != 0 && (exec_stack.size() > 1 || exec_stack.front().mark != evaled)) {
-            //print_stack(exec_stack);
             evalstep(exec_stack);
         }
     } catch(string error) {
@@ -1643,7 +1638,7 @@ shared_ptr<lispobj> cons_cfunc(vector< shared_ptr<lispobj> > args) {
 }
 
 shared_ptr<lispobj> append_cfunc(vector< shared_ptr<lispobj> > args) {
-    shared_ptr<lispstring> lstr(new lispstring());
+    shared_ptr<lispstring> lstr(new lispstring(""));
 
     for(auto it = args.begin(); it != args.end(); ++it) {
         shared_ptr<lispstring> arg = dynamic_pointer_cast<lispstring>(*it);
