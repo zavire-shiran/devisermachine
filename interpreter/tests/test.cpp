@@ -259,6 +259,24 @@ TEST(DeviserBase, appendString) {
     EXPECT_STREQ("asdfqwer", str1->get_contents().c_str());
 }
 
+TEST(DeviserBase, printString) {
+    shared_ptr<lispobj> str(new lispstring("asdf\n"));
+    std::stringstream ss;
+
+    str->print(ss);
+
+    EXPECT_STREQ("asdf\n", ss.str().c_str());
+}
+
+TEST(DeviserBase, reprString) {
+    shared_ptr<lispstring> str(new lispstring("\"\\\tasdf\n"));
+    std::stringstream ss;
+
+    str->repr(ss);
+
+    EXPECT_STREQ("\"\\\"\\\\\\tasdf\\n\"", ss.str().c_str());
+}
+
 TEST(DeviserEval, NumberConstant) {
     shared_ptr<lispobj> zero(new number(0));
     shared_ptr<lispobj> one(new number(1));
