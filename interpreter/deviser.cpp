@@ -972,7 +972,15 @@ void apply_macro(std::deque<stackframe>& exec_stack) {
     while(args_cons && param_cons) {
         shared_ptr<symbol> param_name = dynamic_pointer_cast<symbol>(param_cons->car());
         if(param_name) {
-            scope->defval(param_name->name(), args_cons->car());
+            if(param_name->name() == "&rest") {
+                param_names = param_cons->cdr();
+                param_cons = dynamic_pointer_cast<cons>(param_names);
+                args = make_shared<cons>(args, make_shared<nil>());
+                args_cons = dynamic_pointer_cast<cons>(args);
+                continue;
+            } else {
+                scope->defval(param_name->name(), args_cons->car());
+            }
         } else {
             throw string("ERROR: parameter names must be symbols");
         }
@@ -982,9 +990,29 @@ void apply_macro(std::deque<stackframe>& exec_stack) {
         args_cons = dynamic_pointer_cast<cons>(args);
     }
 
+    // handle rest param == nil
+    if(param_cons) {
+        shared_ptr<symbol> param_name = dynamic_pointer_cast<symbol>(param_cons->car());
+        if(param_name && param_name->name() == "&rest") {
+            param_names = param_cons->cdr();
+            param_cons = dynamic_pointer_cast<cons>(param_names);
+            if(param_cons) {
+                param_name = dynamic_pointer_cast<symbol>(param_cons->car());
+                if(param_name) {
+                    param_names = param_cons->cdr();
+                    scope->defval(param_name->name(), make_shared<nil>());
+                }
+            }
+        }
+    }
+
     if(!dynamic_pointer_cast<nil>(param_names) ||
        !dynamic_pointer_cast<nil>(args)) {
-        throw string("ERROR: macro arity does not match call.");
+        stringstream ss;
+        ss << "ERROR: macro arity does not match call." << endl;
+        ss << "Remaining param_names: "; param_names->print(ss); ss << endl;
+        ss << "Remaining args: "; args->print(ss);
+        throw ss.str();
     }
 
     exec_stack.front().mark = evalmacro;

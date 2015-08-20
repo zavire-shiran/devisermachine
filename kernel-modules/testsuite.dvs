@@ -2,6 +2,7 @@
  (testsuite)
 
  (import (builtins))
+ (import (deviserlib))
  (export test)
 
  (defmacro testexp (test expression expected-result)
@@ -16,10 +17,11 @@
                (list (quote print) "   FAIL\n"))))
 
  (defun testadd ()
-   (testexp eqv (+ 1 1) 2)
-   (testexp eqv (+ 2 3) 5)
-   (testexp eqv (+ 5 10) 15)
-   (testexp eqv (+ 0 1) 1))
+   (and
+    (testexp eqv (+ 1 1) 2)
+    (testexp eqv (+ 2 3) 5)
+    (testexp eqv (+ 5 10) 15)
+    (testexp eqv (+ 0 1) 1)))
 
  (defun testsub ()
    (testexp eqv (- 1 1) 0)

@@ -1,0 +1,11 @@
+(module
+ (deviserlib)
+
+ (import (builtins))
+ (export and)
+
+ (defmacro and (first &rest r)
+   (list (quote if) first
+         (if r
+             (cons (quote and) r)
+           (quote t)))))
