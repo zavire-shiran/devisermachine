@@ -2,10 +2,19 @@
  (deviserlib)
 
  (import (builtins))
- (export and)
+ (export and all all*)
 
  (defmacro and (first &rest r)
    (list (quote if) first
          (if r
              (cons (quote and) r)
-           (quote t)))))
+           (quote t))))
+
+ (defun all (&rest r)
+   (all* r))
+
+ (defun all* (l)
+   (if l
+       (if (car l)
+           (all* (cdr l)))
+     t)))

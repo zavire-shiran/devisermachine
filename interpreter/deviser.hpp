@@ -277,6 +277,25 @@ shared_ptr<lispobj> make_reverse_list(input_iterator begin,
     return ret;
 }
 
+template<typename input_iterator>
+shared_ptr<lispobj> make_list(input_iterator begin,
+                              input_iterator end) {
+    shared_ptr<lispobj> ret(new nil());
+    shared_ptr<cons> placeinlist(nullptr);
+
+    for(auto it = begin; it != end; ++it) {
+        if(std::dynamic_pointer_cast<nil>(ret)) {
+            ret.reset(new cons(*it, ret));
+            placeinlist = std::dynamic_pointer_cast<cons>(ret);
+        } else {
+            placeinlist->set_cdr(std::make_shared<cons>(*it, placeinlist->cdr()));
+            placeinlist = std::dynamic_pointer_cast<cons>(placeinlist->cdr());
+        }
+    }
+
+    return ret;
+}
+
 void printall(vector< shared_ptr<lispobj> > objs);
 
 class reader {

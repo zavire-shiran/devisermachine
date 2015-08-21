@@ -17,7 +17,7 @@
                (list (quote print) "   FAIL\n"))))
 
  (defun testadd ()
-   (and
+   (all
     (testexp eqv (+ 1 1) 2)
     (testexp eqv (+ 2 3) 5)
     (testexp eqv (+ 5 10) 15)

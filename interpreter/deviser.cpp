@@ -939,7 +939,26 @@ void apply_lispfunc(std::deque<stackframe>& exec_stack) {
     while(arg_value_iter != evaled_args.end() && c) {
         shared_ptr<symbol> name = dynamic_pointer_cast<symbol>(c->car());
         if(name) {
-            scope->defval(name->name(), *arg_value_iter);
+            if(name->name() == "&rest") {
+                arg_names = c->cdr();
+                c = dynamic_pointer_cast<cons>(arg_names);
+                if(c){
+                    name = dynamic_pointer_cast<symbol>(c->car());
+                    if(name) {
+                        scope->defval(name->name(), make_list(arg_value_iter, evaled_args.end()));
+                        arg_value_iter = evaled_args.end();
+                        arg_names = c->cdr();
+                        c = dynamic_pointer_cast<cons>(arg_names);
+                        continue;
+                    } else {
+                        throw string("ERROR: arguments must be symbols");
+                    }
+                } else {
+                    throw("ERROR: need an argument after &rest");
+                }
+            } else {
+                scope->defval(name->name(), *arg_value_iter);
+            }
         } else {
             throw string("ERROR: arguments must be symbols");
         }
@@ -1698,6 +1717,24 @@ shared_ptr<lispobj> read_cfunc(vector< shared_ptr<lispobj> > args) {
     return port->read();
 }
 
+shared_ptr<lispobj> car_cfunc(vector< shared_ptr<lispobj> > args) {
+    if(args.size() != 1 || !dynamic_pointer_cast<cons>(args[0])) {
+        throw string("ERROR car wants one cons");
+    }
+
+    shared_ptr<cons> c = dynamic_pointer_cast<cons>(args[0]);
+    return c->car();
+}
+
+shared_ptr<lispobj> cdr_cfunc(vector< shared_ptr<lispobj> > args) {
+    if(args.size() != 1 || !dynamic_pointer_cast<cons>(args[0])) {
+        throw string("ERROR cdr wants one cons");
+    }
+
+    shared_ptr<cons> c = dynamic_pointer_cast<cons>(args[0]);
+    return c->cdr();
+}
+
 shared_ptr<module> make_builtins_module(shared_ptr<lexicalscope> top_level_scope) {
     shared_ptr<lispobj> module_name(new cons(make_shared<symbol>("builtins"), make_shared<nil>()));
     shared_ptr<module> builtins_module(new module(module_name, top_level_scope));
@@ -1715,6 +1752,8 @@ shared_ptr<module> make_builtins_module(shared_ptr<lexicalscope> top_level_scope
     builtins_module->defun_and_export("append", make_shared<cfunc>(append_cfunc));
     builtins_module->defun_and_export("open-file", make_shared<cfunc>(open_file_cfunc));
     builtins_module->defun_and_export("read", make_shared<cfunc>(read_cfunc));
+    builtins_module->defun_and_export("car", make_shared<cfunc>(car_cfunc));
+    builtins_module->defun_and_export("cdr", make_shared<cfunc>(cdr_cfunc));
 
     return builtins_module;
 }
