@@ -1500,6 +1500,8 @@ void evalstep(std::deque<stackframe>& exec_stack) {
 
             if(s->name() == "nil") {
                 exec_stack.front().code = make_shared<nil>();
+            } else if(s->name() == "t") {
+                //self evaling
             } else if(exec_stack.size() > 1 &&
                       exec_stack[1].mark == evaluating &&
                       exec_stack[1].evaled_args.size() == 0) {
