@@ -1686,13 +1686,13 @@ shared_ptr<lispobj> cons_cfunc(vector< shared_ptr<lispobj> > args) {
     return make_shared<cons>(args[0], args[1]);
 }
 
-shared_ptr<lispobj> append_cfunc(vector< shared_ptr<lispobj> > args) {
+shared_ptr<lispobj> string_append_cfunc(vector< shared_ptr<lispobj> > args) {
     shared_ptr<lispstring> lstr(new lispstring(""));
 
     for(auto it = args.begin(); it != args.end(); ++it) {
         shared_ptr<lispstring> arg = dynamic_pointer_cast<lispstring>(*it);
         if(!arg) {
-            throw string("ERROR append wants only strings");
+            throw string("ERROR string-append wants only strings");
         }
 
         lstr->append(arg);
@@ -1751,7 +1751,7 @@ shared_ptr<module> make_builtins_module(shared_ptr<lexicalscope> top_level_scope
     builtins_module->defun_and_export("eqv", make_shared<cfunc>(eqv_cfunc));
     builtins_module->defun_and_export("equal", make_shared<cfunc>(equal_cfunc));
     builtins_module->defun_and_export("cons", make_shared<cfunc>(cons_cfunc));
-    builtins_module->defun_and_export("append", make_shared<cfunc>(append_cfunc));
+    builtins_module->defun_and_export("string-append", make_shared<cfunc>(string_append_cfunc));
     builtins_module->defun_and_export("open-file", make_shared<cfunc>(open_file_cfunc));
     builtins_module->defun_and_export("read", make_shared<cfunc>(read_cfunc));
     builtins_module->defun_and_export("car", make_shared<cfunc>(car_cfunc));

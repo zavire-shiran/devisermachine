@@ -53,11 +53,11 @@
     (testexp equal (list (quote a) (quote b)) (quote (a b)))
     (testexp equal (list 1 (quote a)) (quote (1 a)))))
 
- (defun testappend ()
+ (defun test-string-append ()
    (all
-    (testexp equal (append "asdf" "1234") "asdf1234")
-    (testexp equal (append "" "asdf") "asdf")
-    (testexp equal (append "asdf" "") "asdf")))
+    (testexp equal (string-append "asdf" "1234") "asdf1234")
+    (testexp equal (string-append "" "asdf") "asdf")
+    (testexp equal (string-append "asdf" "") "asdf")))
 
  (defun testlambda ()
    (all
@@ -88,17 +88,24 @@
  (defun testcons ()
    (testexp equal (cons 1 (quote ())) (quote (1))))
 
+ (defun test-append ()
+   (all
+    (testexp equal (append nil) nil)
+    (testexp equal (append (list 1 2 3) (list 4 5 6)) (list 1 2 3 4 5 6))
+    (testexp equal (append (list 1) (list 2) (list 3)) (list 1 2 3))))
+
  (defun test ()
    (all
     (testadd)
     (testsub)
     (testmul)
     (testdiv)
-    (testappend)
+    (test-string-append)
     (testlist)
     (testlambda)
     (testeq)
     (testeqv)
     (testequal)
     (testif)
-    (testcons))))
+    (testcons)
+    (test-append))))

@@ -2,7 +2,7 @@
  (deviserlib)
 
  (import (builtins))
- (export and all all*)
+ (export and all all* append append*)
 
  (defmacro and (first &rest r)
    (list (quote if) first
@@ -17,4 +17,18 @@
    (if l
        (if (car l)
            (all* (cdr l)))
-     t)))
+     t))
+
+ (defun append (&rest r)
+   (append* r))
+
+ (defun append* (ls)
+   (if ls
+       (if (car ls)
+           (cons (car (car ls)) (append* (cons (cdr (car ls)) (cdr ls))))
+         (append* (cdr ls)))))
+
+ (defmacro quasiquote (form)
+   (if (consp form)
+       t
+     (quote (quote form)))))
