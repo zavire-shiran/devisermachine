@@ -96,6 +96,12 @@
     (testexp equal (append (list 1) nil (list 3) nil) (list 1 3))
     (testexp equal (append nil nil nil nil nil nil nil) nil)))
 
+ (defun test-let* ()
+   (all
+    (testexp eq (let* (x) x) nil)
+    (testexp eqv (let* ((x 1)) x) 1)
+    (testexp eq (let* ((x (quote y))) (quote y)) (quote y))))
+
  (defun test ()
    (all
     (testadd)
@@ -110,4 +116,5 @@
     (testequal)
     (testif)
     (testcons)
-    (test-append))))
+    (test-append)
+    (test-let*))))

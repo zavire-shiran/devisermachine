@@ -1057,6 +1057,8 @@ bool is_special_form(shared_ptr<lispobj> form) {
             return true;
         } else if(sym->name() == "quote") { 
             return true;
+        } else if(sym->name() == "let*") {
+            return true;
         }
     }
     return false;
@@ -1369,6 +1371,61 @@ void eval_lambda_special_form(std::deque<stackframe>& exec_stack) {
     exec_stack.front().code = lfunc;
 }
 
+void make_let_star_bindings(shared_ptr<lexicalscope> scope, shared_ptr<lispobj> bindings) {
+    shared_ptr<cons> c = dynamic_pointer_cast<cons>(bindings);
+
+    while(c) {
+        shared_ptr<lispobj> binding = c->car();
+        shared_ptr<symbol> symbol_binding = dynamic_pointer_cast<symbol>(binding);
+        shared_ptr<cons> cons_binding = dynamic_pointer_cast<cons>(binding);
+
+        if(symbol_binding) {
+            scope->defval(symbol_binding->name(), make_shared<nil>());
+        } else if(cons_binding) {
+            shared_ptr<symbol> name = dynamic_pointer_cast<symbol>(cons_binding->car());
+            if(!name) {
+                throw string("invalid let binding variable");
+            }
+
+            shared_ptr<cons> c2 = dynamic_pointer_cast<cons>(cons_binding->cdr());
+            if(c2) {
+                shared_ptr<lispobj> val = eval(c2->car(), scope);
+                if(val) {
+                    scope->defval(name->name(), val);
+                } else {
+                    throw string("let binding eval failed");
+                }
+            } else {
+                scope->defval(name->name(), make_shared<nil>());
+            }
+        } else {
+            throw string("Invalid let binding");
+        }
+
+        bindings = c->cdr();
+        c = dynamic_pointer_cast<cons>(bindings);
+    }
+}
+
+void eval_let_star_special_form(std::deque<stackframe>& exec_stack) {
+    //add new stack frame with new env, parent of current stack frame
+
+    shared_ptr<lispobj> lobj = exec_stack.front().code;
+    shared_ptr<cons> c = dynamic_pointer_cast<cons>(lobj);
+
+    if(!c) {
+        throw string("let needs more forms");
+    }
+
+    shared_ptr<lexicalscope> scope(new lexicalscope(exec_stack.front().scope));
+
+    make_let_star_bindings(scope, c->car());
+
+    exec_stack.front().code = c->cdr();
+    exec_stack.front().scope = scope;
+    exec_stack.front().mark = applying;
+}
+
 void eval_special_form(string name,
                       std::deque<stackframe>& exec_stack) {
     if(name == "if") {
@@ -1418,6 +1475,8 @@ void eval_special_form(string name,
 
         exec_stack.front().code = c->car();
         exec_stack.front().mark = evaled;
+    } else if(name == "let*") {
+        eval_let_star_special_form(exec_stack);
     }
 }
 
@@ -1542,6 +1601,7 @@ shared_ptr<lispobj> eval(shared_ptr<lispobj> code,
     } catch(string error) {
         print_stack(exec_stack);
         cout << error << endl;
+        return NULL;
     }
 
     return exec_stack.front().code;
