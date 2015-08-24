@@ -2,13 +2,24 @@
  (deviserlib)
 
  (import (builtins))
- (export and all all* append append*)
+ (export and all all* append append* cond)
 
  (defmacro and (first &rest r)
    (list (quote if) first
          (if r
              (cons (quote and) r)
            (quote t))))
+
+ (defmacro cond (&rest exps)
+   (expand-cond-exps exps))
+
+ (defun expand-cond-exps (exps)
+   (if exps
+       (let* ((condition (car (car exps))) (actions (cdr (car exps))))
+         (append (list (quote if) condition
+                      (cons (quote begin) actions))
+                 (list (expand-cond-exps (cdr exps)))))
+     (quote nil)))
 
  (defun all (&rest r)
    (all* r))

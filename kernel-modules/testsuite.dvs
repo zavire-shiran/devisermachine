@@ -100,7 +100,14 @@
    (all
     (testexp eq (let* (x) x) nil)
     (testexp eqv (let* ((x 1)) x) 1)
-    (testexp eq (let* ((x (quote y))) (quote y)) (quote y))))
+    (testexp eq (let* ((x (quote y))) (quote y)) (quote y))
+    (testexp eqv (let* ((x 1) (y 2)) y) 2)))
+
+ (defun test-cond ()
+   (all
+    (testexp eqv (cond (t 1) (t 2)) 1)
+    (testexp eq (cond (nil 1) (nil 2)) nil)
+    (testexp eqv (cond (nil 1) (t 2)) 2)))
 
  (defun test ()
    (all
@@ -117,4 +124,5 @@
     (testif)
     (testcons)
     (test-append)
-    (test-let*))))
+    (test-let*)
+    (test-cond))))
