@@ -1797,6 +1797,18 @@ shared_ptr<lispobj> cdr_cfunc(vector< shared_ptr<lispobj> > args) {
     return c->cdr();
 }
 
+shared_ptr<lispobj> consp_cfunc(vector< shared_ptr<lispobj> > args) {
+    if(args.size() != 1) {
+        throw string("ERROR cons? wants one argument");
+    }
+
+    if(dynamic_pointer_cast<cons>(args[0]) != nullptr) {
+        return make_shared<symbol>("t");
+    } else {
+        return make_shared<nil>();
+    }
+}
+
 shared_ptr<module> make_builtins_module(shared_ptr<lexicalscope> top_level_scope) {
     shared_ptr<lispobj> module_name(new cons(make_shared<symbol>("builtins"), make_shared<nil>()));
     shared_ptr<module> builtins_module(new module(module_name, top_level_scope));
@@ -1816,6 +1828,7 @@ shared_ptr<module> make_builtins_module(shared_ptr<lexicalscope> top_level_scope
     builtins_module->defun_and_export("read", make_shared<cfunc>(read_cfunc));
     builtins_module->defun_and_export("car", make_shared<cfunc>(car_cfunc));
     builtins_module->defun_and_export("cdr", make_shared<cfunc>(cdr_cfunc));
+    builtins_module->defun_and_export("cons?", make_shared<cfunc>(consp_cfunc));
 
     return builtins_module;
 }

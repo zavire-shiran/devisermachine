@@ -2,7 +2,7 @@
  (deviserlib)
 
  (import (builtins))
- (export and all all* append append* cond)
+ (export and all all* append append* cond quasiquote)
 
  (defmacro and (first &rest r)
    (list (quote if) first
@@ -39,7 +39,38 @@
            (cons (car (car ls)) (append* (cons (cdr (car ls)) (cdr ls))))
          (append* (cdr ls)))))
 
+ (defun tag-quasiquote? (form)
+   (and (cons? form) (eq (car form) (quote quasiquote))))
+
+ (defun tag-unquote? (form)
+   (and (cons? form) (eq (car form) (quote unquote))))
+
+ (defun tag-unquote-splice? (form)
+   (and (cons? form) (eq (car form) (quote unquote-splice))))
+
+ (defun tag-data (form)
+   (car (cdr form)))
+
+ (defun qq-expand-list (form)
+   (cond ((tag-unquote? form) (list (quote list) (tag-data form)))
+         ((tag-unquote-splice? form) (tag-data form))
+         ((tag-quasiquote? form) (qq-expand-list (qq-expand (tag-data form))))
+         ((cons? form)
+          (list (quote list)
+                (list (quote append)
+                      (qq-expand-list (car form))
+                      (qq-expand (cdr form)))))
+         (t (list (quote quote) (list form)))))
+
+ (defun qq-expand (form)
+   (cond ((tag-unquote? form) (tag-data form))
+         ((tag-quasiquote? form)
+          (qq-expand (qq-expand (tag-data form))))
+         ((cons? form)
+          (list (quote append)
+                (qq-expand-list (car form))
+                (qq-expand (cdr form))))
+         (t (list (quote quote) form))))
+
  (defmacro quasiquote (form)
-   (if (consp form)
-       t
-     (quote (quote form)))))
+   (qq-expand form)))

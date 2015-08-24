@@ -109,6 +109,18 @@
     (testexp eq (cond (nil 1) (nil 2)) nil)
     (testexp eqv (cond (nil 1) (t 2)) 2)))
 
+ (defun test-quasiquote ()
+   (all
+    (testexp equal (quasiquote x) (quote x))
+    (testexp equal (quasiquote (x y)) (quote (x y)))
+    (testexp equal (let* ((x 1)) (quasiquote ((unquote x)))) (quote (1)))
+    (testexp equal (let* ((x (list 1)))
+                     (quasiquote ((unquote-splice x))))
+             (list 1))
+    (testexp equal (let* ((x 1) (y (list 2 3)))
+                     (quasiquote (1 2 (unquote x) x y (unquote-splice y) (unquote y))))
+             (list 1 2 1 (quote x) (quote y) 2 3 (list 2 3)))))
+
  (defun test ()
    (all
     (testadd)
@@ -125,4 +137,5 @@
     (testcons)
     (test-append)
     (test-let*)
-    (test-cond))))
+    (test-cond)
+    (test-quasiquote))))
