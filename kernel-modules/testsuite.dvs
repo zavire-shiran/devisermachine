@@ -7,14 +7,12 @@
 
  (defmacro testexp (test expression expected-result)
    (print (list test expression expected-result)) (newline)
-   (list (quote if)
-         (list test expression expected-result)
-         (quote (quote t))
-         (list (quote begin)
-               (list (quote print) (list (quote quote) expression))
-               (list (quote print) " => ")
-               (list (quote print) expression)
-               (list (quote print) "   FAIL\n"))))
+   (quasiquote (if ((unquote test) (unquote expression) (unquote expected-result))
+                   (quote t)
+                 (begin (print (quote (unquote expression)))
+                        (print " => ")
+                        (print (unquote expression))
+                        (print "  FAIL\n")))))
 
  (defun testadd ()
    (all
