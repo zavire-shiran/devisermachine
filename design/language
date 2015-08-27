@@ -34,3 +34,10 @@ if size is a factor, only explicitly sized types
   i.e. no generic "int", but bigint by default is ok
 
 with complex enough syntax objects, any definition can show the full code path to recreate it
+
+macroexpand
+  to fully expand a form and all sub-forms:
+    if not a cons, return it
+    if car is a macro (and not a special form), call macro, recurse
+    if function, recurse on each argument, replacing code as you go
+    if special form, recurse on each place that may be evaled
