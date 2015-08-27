@@ -17,7 +17,7 @@
    (if exps
        (let* ((condition (car (car exps))) (actions (cdr (car exps))))
          (append (list (quote if) condition
-                      (cons (quote begin) actions))
+                       (cons (quote begin) actions))
                  (list (expand-cond-exps (cdr exps)))))
      (quote nil)))
 
