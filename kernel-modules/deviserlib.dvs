@@ -4,6 +4,8 @@
  (import (builtins))
  (export and all all* append append* cond quasiquote)
 
+ ;;first comment
+
  (defmacro and (first &rest r)
    (list (quote if) first
          (if r

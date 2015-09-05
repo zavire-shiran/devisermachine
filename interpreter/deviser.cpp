@@ -553,9 +553,26 @@ reader::reader(shared_ptr<std::istream> in, string name) :
 
 shared_ptr<lispobj> reader::read(shared_ptr<syntax> parent) {
     // remove leading whitespace
-    while(isspace(peek_char())) {
-        get_char();
-    }
+
+    bool iscomment = false;
+
+    do {
+        iscomment = false;
+
+        while(isspace(peek_char())) {
+            get_char();
+        }
+
+        if(peek_char() == ';') {
+            iscomment = true;
+
+            char c = get_char();
+            while(c != '\n') {
+                c = get_char();
+                cout.flush();
+            }
+        }
+    } while(iscomment);
 
     int line = linenum;
     int col = colnum;
@@ -635,7 +652,11 @@ shared_ptr<lispobj> reader::read(shared_ptr<syntax> parent) {
         string sym_name;
         char next = peek_char();
 
-        while(!isspace(next) && next != '(' && next != ')' && next != std::char_traits<char>::eof()) {
+        while(!isspace(next) &&
+              next != '(' &&
+              next != ')' &&
+              next != ';' &&
+              next != std::char_traits<char>::eof()) {
             sym_name.push_back(get_char());
             next = peek_char();
         }
@@ -1178,8 +1199,8 @@ void eval_module_special_form(std::deque<stackframe>& exec_stack) {
         shared_ptr<cons> decl = dynamic_pointer_cast<cons>(c->car());
         if(!decl) {
             stringstream errormsg;
-            errormsg << "invalid module declaration: ";
-            c->print(errormsg);
+            errormsg << "invalid module declaration 1: ";
+            c->car()->print(errormsg);
             errormsg << endl;
             throw errormsg.str();
         }
@@ -1188,7 +1209,7 @@ void eval_module_special_form(std::deque<stackframe>& exec_stack) {
         shared_ptr<symbol> s = dynamic_pointer_cast<symbol>(decl->car());
         if(!s) {
             stringstream errormsg;
-            errormsg << "invalid module declaration: ";
+            errormsg << "invalid module declaration 2: ";
             c->print(errormsg);
             errormsg << endl;
             throw errormsg.str();

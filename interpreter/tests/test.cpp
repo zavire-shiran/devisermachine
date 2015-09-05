@@ -238,6 +238,56 @@ TEST(DeviserBase, readCons) {
     EXPECT_EQ(nullptr, n->get_parent());
 }
 
+TEST(DeviserBase, readComment) {
+    shared_ptr<lispobj> readobj(read(" (;comment\n1)"));
+    shared_ptr<syntaxcons> c = std::dynamic_pointer_cast<syntaxcons>(readobj);
+
+    ASSERT_EQ(readobj, c);
+    EXPECT_EQ(1, c->get_location()->linenum);
+    EXPECT_EQ(2, c->get_location()->charnum);
+    EXPECT_EQ(nullptr, c->get_parent());
+
+    shared_ptr<lispobj> conscar = c->car();
+    shared_ptr<lispobj> conscdr = c->cdr();
+    shared_ptr<syntaxnumber> num = std::dynamic_pointer_cast<syntaxnumber>(conscar);
+    shared_ptr<syntaxnil> n = std::dynamic_pointer_cast<syntaxnil>(conscdr);
+
+    ASSERT_EQ(conscar, num);
+    ASSERT_EQ(conscdr, n);
+    EXPECT_EQ(1, num->value());
+    EXPECT_EQ(2, num->get_location()->linenum);
+    EXPECT_EQ(1, num->get_location()->charnum);
+    EXPECT_EQ(c, num->get_parent());
+    EXPECT_EQ(2, n->get_location()->linenum);
+    EXPECT_EQ(2, n->get_location()->charnum);
+    EXPECT_EQ(nullptr, n->get_parent());
+}
+
+TEST(DeviserBase, readComment2) {
+    shared_ptr<lispobj> readobj(read("((1) ;comment\n)"));
+    shared_ptr<syntaxcons> c = std::dynamic_pointer_cast<syntaxcons>(readobj);
+
+    ASSERT_EQ(readobj, c);
+    EXPECT_EQ(nullptr, c->get_parent());
+
+    shared_ptr<lispobj> conscar = c->car();
+    shared_ptr<lispobj> conscdr = c->cdr();
+    shared_ptr<syntaxcons> c2 = std::dynamic_pointer_cast<syntaxcons>(conscar);
+    shared_ptr<syntaxnil> n = std::dynamic_pointer_cast<syntaxnil>(conscdr);
+
+    ASSERT_EQ(conscar, c2);
+    ASSERT_EQ(conscdr, n);
+
+    conscar = c2->car();
+    conscdr = c2->cdr();
+    shared_ptr<syntaxnumber> num = std::dynamic_pointer_cast<syntaxnumber>(conscar);
+    n = std::dynamic_pointer_cast<syntaxnil>(conscdr);
+
+    ASSERT_EQ(conscar, num);
+    ASSERT_EQ(conscdr, n);
+    EXPECT_EQ(1, num->value());
+}
+
 TEST(DeviserBase, readString) {
     shared_ptr<lispobj> readobj(read("\"\\a\\s\\d\\f\\nThis is a string.\""));
     shared_ptr<syntaxstring> str = std::dynamic_pointer_cast<syntaxstring>(readobj);
