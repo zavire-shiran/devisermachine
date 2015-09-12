@@ -194,10 +194,18 @@ uint8_t bitvector::get_bit(int position) {
     return (contents[cell] >> bit) & 1;
 }
 
+const vector<uint8_t>& bitvector::get_contents() {
+    return contents;
+}
+
 void bitvector::print(ostream& out) {
     out << "<bitvector ";
     for(int i = size - 1; i > 0; --i) {
-        out << get_bit(i);
+        if(get_bit(i)) {
+            out << '1';
+        } else {
+            out << '0';
+        }
     }
 
     out << ">";
@@ -596,6 +604,11 @@ bool equal(shared_ptr<lispobj> left, shared_ptr<lispobj> right) {
         shared_ptr<lispstring> left_string(dynamic_pointer_cast<lispstring>(left));
         shared_ptr<lispstring> right_string(dynamic_pointer_cast<lispstring>(right));
         return left_string->get_contents() == right_string->get_contents();
+    } else if(dynamic_pointer_cast<bitvector>(left) &&
+              dynamic_pointer_cast<bitvector>(right)) {
+        shared_ptr<bitvector> left_bv = dynamic_pointer_cast<bitvector>(left);
+        shared_ptr<bitvector> right_bv = dynamic_pointer_cast<bitvector>(right);
+        return left_bv->get_contents() == right_bv->get_contents();
     } else {
         return false;
     };
@@ -1932,6 +1945,30 @@ shared_ptr<lispobj> set_bit(vector< shared_ptr<lispobj> > args) {
     return make_shared<symbol>("t");
 }
 
+shared_ptr<lispobj> set_bits(vector< shared_ptr<lispobj> > args) {
+    if(args.size() != 3 ||
+       !dynamic_pointer_cast<bitvector>(args[0]) ||
+       !dynamic_pointer_cast<number>(args[2])) {
+        throw string("ERROR set-bits wants 3 arguments: bitvector list number");
+    }
+
+    shared_ptr<bitvector> bv = dynamic_pointer_cast<bitvector>(args[0]);
+    shared_ptr<number> value = dynamic_pointer_cast<number>(args[2]);
+
+    shared_ptr<cons> value_list = dynamic_pointer_cast<cons>(args[1]);
+    while(value_list) {
+        shared_ptr<number> position = dynamic_pointer_cast<number>(value_list->car());
+        if(!position) {
+            throw string("ERROR set-bits wants only number in its second argument");
+        }
+
+        bv->set_bit(position->value(), value->value());
+        value_list = dynamic_pointer_cast<cons>(value_list->cdr());
+    }
+
+    return make_shared<symbol>("t");
+}
+
 shared_ptr<lispobj> set_bit_range(vector< shared_ptr<lispobj> > args) {
     if(args.size() != 4 ||
        !dynamic_pointer_cast<bitvector>(args[0]) ||
@@ -1973,6 +2010,7 @@ shared_ptr<module> make_builtins_module(shared_ptr<lexicalscope> top_level_scope
     builtins_module->defun_and_export("bitvector", make_shared<cfunc>(bitvector_cfunc));
     builtins_module->defun_and_export("get-bit", make_shared<cfunc>(get_bit));
     builtins_module->defun_and_export("set-bit", make_shared<cfunc>(set_bit));
+    builtins_module->defun_and_export("set-bits", make_shared<cfunc>(set_bits));
     builtins_module->defun_and_export("set-bit-range", make_shared<cfunc>(set_bit_range));
 
     return builtins_module;

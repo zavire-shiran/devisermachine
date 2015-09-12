@@ -31,6 +31,7 @@ runtests: interpretertests deviser
 	lcov --directory . --zerocounters
 	./interpretertests
 	./deviser -e '(import (testsuite))' -e '(test)'
+	./deviser -e '(import (assembler-test))' -e '(test)'
 	mkdir -p testout
 	lcov --directory . --capture --output-file testout/interpretertest.out
 	(cd testout; genhtml interpretertest.out)

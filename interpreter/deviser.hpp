@@ -131,6 +131,8 @@ public:
     void set_bit_range(int start, int end, uint32_t value);
     uint8_t get_bit(int position);
 
+    const vector<uint8_t>& get_contents();
+
     virtual void print(ostream& out = std::cout);
 
 private:

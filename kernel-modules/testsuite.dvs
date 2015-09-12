@@ -3,7 +3,7 @@
 
  (import (builtins))
  (import (deviserlib))
- (export test)
+ (export test testexp)
 
  (defmacro testexp (test expression expected-result)
    (print (list test expression expected-result)) (newline)

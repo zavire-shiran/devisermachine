@@ -1,0 +1,18 @@
+(module
+ (assembler-test)
+
+ (import (assembler))
+ (import (builtins))
+ (import (deviserlib))
+ (import (testsuite))
+
+ (export test)
+
+ (defun test-adc-imm ()
+   (let* ((inst (adc-imm 14 0 3 9 153))
+          (test (bitvector 32)))
+     (set-bits test (list 31 30 29 25 23 21 17 16 15 12 7 4 3 0) 1)
+     (testexp equal inst test)))
+
+ (defun test ()
+   (test-adc-imm)))
