@@ -93,7 +93,7 @@ vector< shared_ptr<lispobj> > eval_file(string filename, shared_ptr<lexicalscope
 int main(int argc, char** argv)
 {
     int ch;
-    string kernelmodulesdir = "../kernel-modules";
+    vector<string> modulesdirs{"../kernel-modules", "../compiler"};
     vector<string> statements_to_run;
 
     while((ch = getopt(argc, argv, "e:hm:")) != -1) {
@@ -102,7 +102,7 @@ int main(int argc, char** argv)
             statements_to_run.push_back(optarg);
             break;
         case 'm':
-            kernelmodulesdir = optarg;
+            modulesdirs.push_back(optarg);
             break;
         case 'h':
         default:
@@ -116,7 +116,10 @@ int main(int argc, char** argv)
     vector<string> modules_to_load;
     shared_ptr<lexicalscope> top_level_scope(new lexicalscope);
 
-    modules_to_load = find_modules(kernelmodulesdir);
+    for(auto directory : modulesdirs) {
+        vector<string> modules_found = find_modules(directory);
+        modules_to_load.insert(modules_to_load.end(), modules_found.begin(), modules_found.end());
+    }
 
     shared_ptr<module> builtins_module = make_builtins_module(top_level_scope);
     top_level_scope->add_import(builtins_module);
