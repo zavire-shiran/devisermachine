@@ -4,7 +4,7 @@
  (import (builtins))
  (import (deviserlib))
 
- (export adc-imm)
+ (export adc-imm adc-reg)
 
  ;;;; Only using ARM instruction set, no Thumb
 
@@ -16,5 +16,17 @@
      (set-bit-range out 16 20 source)
      (set-bit-range out 12 16 destination)
      (set-bit-range out 0 12 immediate)
+     out))
+
+ (defun adc-reg (condition status destination source1 source2 shift-type shift-amount)
+   (let* ((out (bitvector 32)))
+     (set-bit-range out 28 32 condition)
+     (set-bits out (list 23 21) 1)
+     (set-bit out 20 status)
+     (set-bit-range out 16 20 source1)
+     (set-bit-range out 12 16 destination)
+     (set-bit-range out 7 12 shift-amount)
+     (set-bit-range out 5 7 shift-type)
+     (set-bit-range out 0 4 source2)
      out))
  )
