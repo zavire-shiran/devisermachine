@@ -327,6 +327,56 @@ TEST(DeviserBase, reprString) {
     EXPECT_STREQ("\"\\\"\\\\\\tasdf\\n\"", ss.str().c_str());
 }
 
+TEST(DeviserBase, bitvectorZeros) {
+    shared_ptr<bitvector> bv(new bitvector(128));
+
+    ASSERT_NE(nullptr, bv);
+    for(int i = 0; i < 128; ++i) {
+        EXPECT_EQ(0, bv->get_bit(i));
+    }
+}
+
+TEST(DeviserBase, bitvectorSetBit) {
+    shared_ptr<bitvector> bv(new bitvector(128));
+
+    ASSERT_NE(nullptr, bv);
+
+    bv->set_bit(5, 1);
+    bv->set_bit(12, 1);
+    bv->set_bit(32, 1);
+    bv->set_bit(63, 1);
+    bv->set_bit(89, 1);
+    bv->set_bit(100, 1);
+    bv->set_bit(127, 1);
+
+    for(int i = 0; i < 128; ++i) {
+        if(i == 5 || i == 12 || i == 32 || i == 63 ||
+           i == 89 || i == 100 || i == 127) {
+            EXPECT_EQ(1, bv->get_bit(i));
+        } else {
+            EXPECT_EQ(0, bv->get_bit(i));
+        }
+    }
+}
+
+TEST(DeviserBase, bitvectorSetBitRange) {
+    shared_ptr<bitvector> bv(new bitvector(128));
+
+    ASSERT_NE(nullptr, bv);
+
+    bv->set_bit_range(5, 27, 0xffffffff);
+    bv->set_bit_range(65, 67, 0x2);
+
+    for(int i = 0; i < 128; ++i) {
+        if((i >= 5 && i < 27) || i == 66) {
+            SCOPED_TRACE(i);
+            EXPECT_EQ(1, bv->get_bit(i));
+        } else {
+            EXPECT_EQ(0, bv->get_bit(i));
+        }
+    }
+}
+
 TEST(DeviserEval, NumberConstant) {
     shared_ptr<lispobj> zero(new number(0));
     shared_ptr<lispobj> one(new number(1));

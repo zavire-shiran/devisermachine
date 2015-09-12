@@ -124,6 +124,20 @@ private:
     string contents;
 };
 
+class bitvector : public lispobj {
+public:
+    explicit bitvector(int size);
+    void set_bit(int position, uint8_t value);
+    void set_bit_range(int start, int end, uint32_t value);
+    uint8_t get_bit(int position);
+
+    virtual void print(ostream& out = std::cout);
+
+private:
+    int size;
+    vector<uint8_t> contents;
+};
+
 class lispfunc : public lispobj {
 public:
     lispfunc(shared_ptr<lispobj> _args,

@@ -1,3 +1,5 @@
+#include <algorithm>
+#include <cmath>
 #include <istream>
 #include <iostream>
 #include <sstream>
@@ -10,6 +12,7 @@ using std::cout;
 using std::endl;
 using std::dynamic_pointer_cast;
 using std::make_shared;
+using std::min;
 using std::stringstream;
 
 lispobj::lispobj() {}
@@ -136,6 +139,68 @@ lispfunc::lispfunc(shared_ptr<lispobj> _args,
     code(_code)
 {
 
+}
+
+bitvector::bitvector(int size) :
+    size(size),
+    contents(ceil((float) size / 8)) {
+
+}
+
+void bitvector::set_bit(int position, uint8_t value) {
+    if(position < 0 || position > size) {
+        throw string("bitvector::set_bit(): position out of range");
+    }
+
+    value = min(uint8_t(1), value);
+
+    int cell = position / 8;
+    int bit = position % 8;
+
+    contents[cell] = contents[cell] | (value << bit);
+}
+
+void bitvector::set_bit_range(int start, int end, uint32_t value) {
+    if(start >= end) {
+        throw string("bitvector::set_bit_range(): start >= end");
+    }
+    if(start < 0 || start > size) {
+        throw string("bitvector::set_bit_range(): start out of range");
+    }
+    if(end < 0 || end > size) {
+        throw string("bitvector::set_bit_range(): end out of range");
+    }
+
+    int length = end - start;
+    if(length > 32) {
+        throw string("Cannot set more than 32 bits in a bitvector by range");
+    }
+
+    for(int i = start; i < end; ++i) {
+        int v = value & 1;
+        set_bit(i, v);
+        value = value >> 1;
+    }
+}
+
+uint8_t bitvector::get_bit(int position) {
+    if(position < 0 || position > size) {
+        throw string("bitvector::set_bit(): position out of range");
+    }
+
+    int cell = position / 8;
+    int bit = position % 8;
+
+    return (contents[cell] >> bit) & 1;
+}
+
+void bitvector::print(ostream& out) {
+    out << "<bitvector ";
+    for(int i = size - 1; i > 0; --i) {
+        out << get_bit(i);
+    }
+
+    out << ">";
 }
 
 void lispfunc::print(ostream& out) {
