@@ -1,6 +1,10 @@
 *.gcda
 *.gcno
 *~
+*.o
 \#*#
 gmock-1.7.0
+testout
+deviser
+interpretertests
 
