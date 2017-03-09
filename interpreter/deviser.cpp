@@ -1079,7 +1079,7 @@ void apply_lispfunc(std::deque<stackframe>& exec_stack) {
 void apply_macro(std::deque<stackframe>& exec_stack) {
     auto evaled_args = exec_stack.front().evaled_args;
     shared_ptr<macro> func = dynamic_pointer_cast<macro>(evaled_args.front());
-    //cout << "applying "; func->print(); cout << endl;
+    cout << "applying "; func->print(); cout << endl;
 
     shared_ptr<lexicalscope> scope(new lexicalscope(func->closure));
 
@@ -1133,7 +1133,6 @@ void apply_macro(std::deque<stackframe>& exec_stack) {
         throw ss.str();
     }
 
-    exec_stack.front().mark = evalmacro;
     exec_stack.push_front(stackframe(scope, applying, func->code));
 }
 
@@ -1154,9 +1153,11 @@ bool is_special_form(shared_ptr<lispobj> form) {
             return true;
         } else if(sym->name() == "defmacro") {
             return true;
-        } else if(sym->name() == "quote") { 
+        } else if(sym->name() == "quote") {
             return true;
         } else if(sym->name() == "let*") {
+            return true;
+        } else if(sym->name() == "macro-expand-1") {
             return true;
         }
     }
@@ -1576,6 +1577,37 @@ void eval_special_form(string name,
         exec_stack.front().mark = evaled;
     } else if(name == "let*") {
         eval_let_star_special_form(exec_stack);
+    } else if(name == "macro-expand-1") {
+        if(exec_stack.front().evaled_args.size() == 1) {
+            shared_ptr<cons> args = dynamic_pointer_cast<cons>(exec_stack.front().code);
+            if(!args) {
+                throw string("improper macro-expand-1 invocation: not enough args");
+            }
+            shared_ptr<cons> first_arg = dynamic_pointer_cast<cons>(args->car());
+            if(!first_arg) {
+                // argument is something besides a fun/macro call, so just return it
+                exec_stack.front().mark = evaled;
+                exec_stack.front().code = args->car();
+                return;
+            }
+            shared_ptr<symbol> sym = dynamic_pointer_cast<symbol>(first_arg->car());
+            if(!sym) {
+                throw string("car of list passed to macro-expand-1 must be a symbol");
+            }
+            shared_ptr<macro> mac = dynamic_pointer_cast<macro>(
+                exec_stack.front().scope->getfun(sym->name()));
+            if(mac) {
+                exec_stack.front().evaled_args[0] = mac;
+                exec_stack.front().code = first_arg->cdr();
+                exec_stack.front().mark = applying;
+                apply_macro(exec_stack);
+                exec_stack[1].code = make_shared<nil>();
+                print_stack(exec_stack);
+            } else {
+                exec_stack.front().mark = evaled;
+                exec_stack.front().code = first_arg;
+            }
+        }
     }
 }
 
@@ -1599,7 +1631,7 @@ void evalstep(std::deque<stackframe>& exec_stack) {
             exec_stack.front().code = c;
             exec_stack.front().evaled_args.clear();
         } else {
-            throw string("bad stack");
+            throw string("bad stack 1");
         }
     } else if(exec_stack.front().mark == applying) {
         if(dynamic_pointer_cast<nil>(exec_stack.front().code)) {
@@ -1611,7 +1643,7 @@ void evalstep(std::deque<stackframe>& exec_stack) {
                                              evaluating,
                                              next_statement));
         } else {
-            throw string("bad stack");
+            throw string("bad stack 2");
         }
     } else if(exec_stack.front().mark == evaluating) {
         shared_ptr<cons> c = dynamic_pointer_cast<cons>(exec_stack.front().code);
@@ -1683,7 +1715,7 @@ void evalstep(std::deque<stackframe>& exec_stack) {
 
         eval_special_form(sym->name(), exec_stack);
     } else {
-        throw string("bad stack");
+        throw string("bad stack 3");
     }
 }
 
@@ -1696,10 +1728,11 @@ shared_ptr<lispobj> eval(shared_ptr<lispobj> code,
     try {
         while(exec_stack.size() != 0 && (exec_stack.size() > 1 || exec_stack.front().mark != evaled)) {
             evalstep(exec_stack);
+            print_stack(exec_stack);
         }
     } catch(string error) {
-        print_stack(exec_stack);
         cout << error << endl;
+        print_stack(exec_stack);
         return NULL;
     }
 
