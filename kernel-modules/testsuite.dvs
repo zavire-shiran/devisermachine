@@ -119,6 +119,14 @@
                      (quasiquote (1 2 (unquote x) x y (unquote-splice y) (unquote y))))
              (list 1 2 1 (quote x) (quote y) 2 3 (list 2 3)))))
 
+ (defun test-macro-expand-1 ()
+   (all
+    (testexp equal (macro-expand-1 x) (quote x))
+    (testexp equal (macro-expand-1 nil) (quote nil))
+    (testexp equal (macro-expand-1 483) 483)
+    (testexp equal (macro-expand-1 (1 2 3 4)) (quote (1 2 3 4)))
+    (testexp equal (macro-expand-1 (and 1 2 3)) (quote (if 1 (and 2 3))))))
+
  (defun test ()
    (all
     (testadd)
@@ -136,4 +144,5 @@
     (test-append)
     (test-let*)
     (test-cond)
-    (test-quasiquote))))
+    (test-quasiquote)
+    (test-macro-expand-1))))

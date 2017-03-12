@@ -1079,7 +1079,7 @@ void apply_lispfunc(std::deque<stackframe>& exec_stack) {
 void apply_macro(std::deque<stackframe>& exec_stack) {
     auto evaled_args = exec_stack.front().evaled_args;
     shared_ptr<macro> func = dynamic_pointer_cast<macro>(evaled_args.front());
-    cout << "applying "; func->print(); cout << endl;
+    //cout << "applying "; func->print(); cout << endl;
 
     shared_ptr<lexicalscope> scope(new lexicalscope(func->closure));
 
@@ -1592,7 +1592,10 @@ void eval_special_form(string name,
             }
             shared_ptr<symbol> sym = dynamic_pointer_cast<symbol>(first_arg->car());
             if(!sym) {
-                throw string("car of list passed to macro-expand-1 must be a symbol");
+                // argument is not a macro call
+                exec_stack.front().mark = evaled;
+                exec_stack.front().code = args->car();
+                return;
             }
             shared_ptr<macro> mac = dynamic_pointer_cast<macro>(
                 exec_stack.front().scope->getfun(sym->name()));
@@ -1602,7 +1605,7 @@ void eval_special_form(string name,
                 exec_stack.front().mark = applying;
                 apply_macro(exec_stack);
                 exec_stack[1].code = make_shared<nil>();
-                print_stack(exec_stack);
+                //print_stack(exec_stack);
             } else {
                 exec_stack.front().mark = evaled;
                 exec_stack.front().code = first_arg;
@@ -1728,7 +1731,7 @@ shared_ptr<lispobj> eval(shared_ptr<lispobj> code,
     try {
         while(exec_stack.size() != 0 && (exec_stack.size() > 1 || exec_stack.front().mark != evaled)) {
             evalstep(exec_stack);
-            print_stack(exec_stack);
+            //print_stack(exec_stack);
         }
     } catch(string error) {
         cout << error << endl;
