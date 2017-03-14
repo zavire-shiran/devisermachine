@@ -157,7 +157,9 @@ void bitvector::set_bit(int position, uint8_t value) {
     int cell = position / 8;
     int bit = position % 8;
 
-    contents[cell] = contents[cell] | (value << bit);
+    // Flip bit if different
+    value = value ^ ((contents[cell] >> bit) & 1);
+    contents[cell] = contents[cell] ^ (value << bit);
 }
 
 void bitvector::set_bit_range(int start, int end, uint32_t value) {
