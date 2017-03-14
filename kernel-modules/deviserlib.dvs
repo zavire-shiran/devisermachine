@@ -53,6 +53,8 @@
  (defun tag-data (form)
    (car (cdr form)))
 
+; (defun macro-expand-all (form))
+
  (defun qq-expand-list (form)
    (cond ((tag-unquote? form) (list (quote list) (tag-data form)))
          ((tag-unquote-splice? form) (tag-data form))

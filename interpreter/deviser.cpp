@@ -1578,23 +1578,32 @@ void eval_special_form(string name,
     } else if(name == "let*") {
         eval_let_star_special_form(exec_stack);
     } else if(name == "macro-expand-1") {
-        if(exec_stack.front().evaled_args.size() == 1) {
-            shared_ptr<cons> args = dynamic_pointer_cast<cons>(exec_stack.front().code);
-            if(!args) {
-                throw string("improper macro-expand-1 invocation: not enough args");
+        if (exec_stack.front().evaled_args.size() == 1) {
+            shared_ptr<lispobj> lobj = exec_stack.front().code;
+            shared_ptr<cons> c = dynamic_pointer_cast<cons>(lobj);
+            if(!c) {
+                std::stringstream errormsg;
+                lobj->print(errormsg);
+                errormsg << " macro-expand-1 needs one argument" << endl;
+                throw errormsg.str();
             }
-            shared_ptr<cons> first_arg = dynamic_pointer_cast<cons>(args->car());
+            exec_stack.front().code = c->cdr();
+            exec_stack.push_front(stackframe(exec_stack.front().scope,
+                                             evaluating,
+                                             c->car()));
+        } else if(exec_stack.front().evaled_args.size() == 2) {
+            shared_ptr<cons> first_arg = dynamic_pointer_cast<cons>(exec_stack.front().evaled_args[1]);
             if(!first_arg) {
                 // argument is something besides a fun/macro call, so just return it
                 exec_stack.front().mark = evaled;
-                exec_stack.front().code = args->car();
+                exec_stack.front().code = exec_stack.front().evaled_args[1];
                 return;
             }
             shared_ptr<symbol> sym = dynamic_pointer_cast<symbol>(first_arg->car());
             if(!sym) {
                 // argument is not a macro call
                 exec_stack.front().mark = evaled;
-                exec_stack.front().code = args->car();
+                exec_stack.front().code = first_arg;
                 return;
             }
             shared_ptr<macro> mac = dynamic_pointer_cast<macro>(
