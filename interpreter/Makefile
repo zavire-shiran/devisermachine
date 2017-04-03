@@ -1,6 +1,6 @@
 CC := g++
 #Debug/unit test
-CCFLAGS := -g -O0 -Wall -Wextra -std=c++0x -fprofile-arcs -ftest-coverage
+CCFLAGS := -g -O0 -Wall -Wextra -std=c++0x #-fprofile-arcs -ftest-coverage
 #Release
 #CCFLAGS := -O2 -Wall -Wextra -std=c++0x
 LD := g++

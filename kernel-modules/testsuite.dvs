@@ -127,13 +127,13 @@
     (testexp equal (macro-expand-1 (list 1 2 3 4)) (quote (1 2 3 4)))
     (testexp equal (macro-expand-1 (quote (and 1 2 3))) (quote (if 1 (and 2 3))))))
 
- (defun text-macro-expand-all ()
+ (defun test-macro-expand ()
    (all
-    (testexp equal (macro-expand-all (quote x)) (quote x))
-    (testexp equal (macro-expand-all (quote nil)) (quote nil))
-    (testexp equal (macro-expand-all 13983) 13983)
-    (testexp equal (macro-expand-all (list 1 2 3 4)) (quote (1 2 3 4)))
-    (testexp equal (macro-expand-all (quote (and 1 2 3))) (quote (if 1 (and 2 3))))))
+    (testexp equal (macro-expand (quote x)) (quote x))
+    (testexp equal (macro-expand (quote nil)) (quote nil))
+    (testexp equal (macro-expand 13983) 13983)
+    (testexp equal (macro-expand (list 1 2 3 4)) (quote (1 2 3 4)))
+    (testexp equal (macro-expand (quote (and 1 2 3))) (quote (if 1 (and 2 3))))))
 
  (defun test ()
    (all
@@ -153,4 +153,5 @@
     (test-let*)
     (test-cond)
     (test-quasiquote)
-    (test-macro-expand-1))))
+    (test-macro-expand-1)
+    (test-macro-expand))))
