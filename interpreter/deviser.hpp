@@ -148,9 +148,14 @@ public:
 
     virtual void print(ostream& out = std::cout);
 
+    shared_ptr<lispobj> get_expanded_code();
+
     shared_ptr<lispobj> args;
     shared_ptr<lexicalscope> closure;
     shared_ptr<lispobj> code;
+
+private:
+    shared_ptr<lispobj> expandedcode;
 };
 
 class macro : public lispobj {
@@ -337,3 +342,6 @@ shared_ptr<lispobj> eval(shared_ptr<lispobj> code,
                          shared_ptr<lexicalscope> tls);
 shared_ptr<module> make_builtins_module(shared_ptr<lexicalscope> top_level_scope);
 bool istrue(shared_ptr<lispobj> lobj);
+
+shared_ptr<lispobj> expand_function_body(shared_ptr<lispobj> body, shared_ptr<lexicalscope> tls);
+shared_ptr<lispobj> expand_sexp(shared_ptr<lispobj> sexp, shared_ptr<lexicalscope> tls);

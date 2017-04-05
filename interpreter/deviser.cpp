@@ -218,6 +218,14 @@ void lispfunc::print(ostream& out) {
                       make_shared<cons>(args, code))->print(out);
 }
 
+shared_ptr<lispobj> lispfunc::get_expanded_code() {
+    if(!expandedcode) {
+        expandedcode = expand_function_body(code, closure);
+    }
+
+    return expandedcode;
+}
+
 macro::macro(shared_ptr<lispobj> _args,
              shared_ptr<lexicalscope> _closure,
              shared_ptr<lispobj> _code) :
@@ -1075,7 +1083,7 @@ void apply_lispfunc(std::deque<stackframe>& exec_stack) {
 
     exec_stack.front().mark = applying;
     exec_stack.front().scope = scope;
-    exec_stack.front().code = func->code;
+    exec_stack.front().code = func->get_expanded_code();
 }
 
 void apply_macro(std::deque<stackframe>& exec_stack) {
@@ -2065,4 +2073,79 @@ shared_ptr<module> make_builtins_module(shared_ptr<lexicalscope> top_level_scope
 
 bool istrue(shared_ptr<lispobj> lobj) {
     return !dynamic_pointer_cast<nil>(lobj);
+}
+
+shared_ptr<lispobj> expand_function_body(shared_ptr<lispobj> body, shared_ptr<lexicalscope> tls) {
+    vector<shared_ptr<lispobj>> expanded_code;
+
+    while(istrue(body)) {
+        shared_ptr<cons> body_cons = dynamic_pointer_cast<cons>(body);
+        if(body_cons) {
+            expanded_code.push_back(expand_sexp(body_cons->car(), tls));
+            body = body_cons->cdr();
+        } else {
+            throw "weird body when trying to macro expand";
+        }
+    }
+
+    return make_list(expanded_code.begin(), expanded_code.end());
+}
+
+shared_ptr<lispobj> make_quote(shared_ptr<lispobj> sexp) {
+    vector<shared_ptr<lispobj>> quote_sexp;
+    quote_sexp.push_back(make_shared<symbol>("quote"));
+    quote_sexp.push_back(sexp);
+    return make_list(quote_sexp.begin(), quote_sexp.end());
+}
+
+shared_ptr<lispobj> make_macro_expand(shared_ptr<lispobj> sexp) {
+    vector<shared_ptr<lispobj>> macro_expand_sexp;
+    macro_expand_sexp.push_back(make_shared<symbol>("macro-expand-1"));
+    macro_expand_sexp.push_back(make_quote(sexp));
+    return make_list(macro_expand_sexp.begin(), macro_expand_sexp.end());
+}
+
+shared_ptr<lispobj> expand_sexp(shared_ptr<lispobj> sexp, shared_ptr<lexicalscope> tls) {
+    // macro-expand it
+    shared_ptr<lispobj> new_sexp = eval(make_macro_expand(sexp), tls);
+    while(!equal(sexp, new_sexp)) {
+        sexp = new_sexp;
+        new_sexp = eval(make_macro_expand(sexp), tls);
+    }
+
+    // if new_sexp is not a cons, we fully expanded and can just return it
+    shared_ptr<cons> new_sexp_cons = dynamic_pointer_cast<cons>(new_sexp);
+    if(!new_sexp_cons) {
+        return new_sexp;
+    }
+
+    // now we know that new_sexp is a cons, so we have to check to see if
+    // it is a special form, and destructure it appropriately.
+    shared_ptr<symbol> sym = dynamic_pointer_cast<symbol>(new_sexp_cons->car());
+    if(!sym) {
+        return expand_function_body(new_sexp, tls);
+    }
+
+    if(sym->name() == "if" ||
+       sym->name() == "begin" ||
+       sym->name() == "macro-expand-1") {
+        return expand_function_body(new_sexp, tls);
+    } else if(sym->name() == "lambda" ||
+              sym->name() == "defun" ||
+              sym->name() == "defmacro") {
+        shared_ptr<cons> nscons_cdr = dynamic_pointer_cast<cons>(new_sexp_cons->cdr());
+        shared_ptr<lispobj> arglist = nscons_cdr->car();
+        return make_shared<cons>(sym,
+                                 make_shared<cons>(arglist,
+                                                   expand_function_body(nscons_cdr->cdr(), tls)));
+    } else if(sym->name() == "module") {
+        throw "i hate you";
+    } else if(sym->name() == "import" || sym->name() == "quote") {
+        return new_sexp;
+    } else if(sym->name() == "let*") {
+        // this is complicated, so punt for now
+        return new_sexp;
+    } else {
+        return expand_function_body(new_sexp, tls);
+    }
 }
