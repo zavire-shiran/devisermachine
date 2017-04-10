@@ -148,7 +148,7 @@ bitvector::bitvector(int size) :
 }
 
 void bitvector::set_bit(int position, uint8_t value) {
-    if(position < 0 || position > size) {
+    if(position < 0 || position >= size) {
         throw string("bitvector::set_bit(): position out of range");
     }
 
@@ -166,7 +166,7 @@ void bitvector::set_bit_range(int start, int end, uint32_t value) {
     if(start >= end) {
         throw string("bitvector::set_bit_range(): start >= end");
     }
-    if(start < 0 || start > size) {
+    if(start < 0 || start >= size) {
         throw string("bitvector::set_bit_range(): start out of range");
     }
     if(end < 0 || end > size) {
@@ -186,7 +186,7 @@ void bitvector::set_bit_range(int start, int end, uint32_t value) {
 }
 
 uint8_t bitvector::get_bit(int position) {
-    if(position < 0 || position > size) {
+    if(position < 0 || position >= size) {
         throw string("bitvector::set_bit(): position out of range");
     }
 
