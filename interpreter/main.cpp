@@ -139,6 +139,7 @@ int main(int argc, char** argv)
 
     if(!statements_to_run.empty()) {
         for(auto statement : statements_to_run) {
+            cout << "> " << statement << endl;
             read_eval_print(statement, user_module);
         }
     } else {
