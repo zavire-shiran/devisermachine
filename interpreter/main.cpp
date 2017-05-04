@@ -11,6 +11,7 @@
 
 #include "lineeditor.hpp"
 #include "deviser.hpp"
+#include "console.hpp"
 
 using std::shared_ptr;
 using std::cout;
@@ -123,6 +124,9 @@ int main(int argc, char** argv)
 
     shared_ptr<module> builtins_module = make_builtins_module(top_level_scope);
     top_level_scope->add_import(builtins_module);
+
+    shared_ptr<module> console_module = make_console_module(top_level_scope);
+    top_level_scope->add_import(console_module);
 
     shared_ptr<module> user_module(new module(make_shared<cons>(make_shared<symbol>("user"),
                                                                 make_shared<nil>()),

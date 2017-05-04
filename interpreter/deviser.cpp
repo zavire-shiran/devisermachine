@@ -2043,7 +2043,8 @@ shared_ptr<lispobj> set_bit_range(vector< shared_ptr<lispobj> > args) {
 }
 
 shared_ptr<module> make_builtins_module(shared_ptr<lexicalscope> top_level_scope) {
-    shared_ptr<lispobj> module_name(new cons(make_shared<symbol>("builtins"), make_shared<nil>()));
+    shared_ptr<lispobj> module_name(new cons(make_shared<symbol>("builtins"),
+                                             make_shared<nil>()));
     shared_ptr<module> builtins_module(new module(module_name, top_level_scope));
     builtins_module->defun_and_export("+", make_shared<cfunc>(plus));
     builtins_module->defun_and_export("-", make_shared<cfunc>(minus));

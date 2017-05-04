@@ -4,12 +4,12 @@ CCFLAGS := -g -O0 -Wall -Wextra -std=c++0x #-fprofile-arcs -ftest-coverage
 #Release
 #CCFLAGS := -O2 -Wall -Wextra -std=c++0x
 LD := g++
-LDFLAGS := -ledit -fprofile-arcs -ftest-coverage
+LDFLAGS := -ledit -lcurses #-fprofile-arcs -ftest-coverage
 TESTLDFLAGS := -fprofile-arcs -ftest-coverage
 
 all: deviser interpretertests
 
-deviser: main.o deviser.o lineeditor.o
+deviser: main.o deviser.o lineeditor.o console.o
 	$(LD) -o $@ $^ $(LDFLAGS)
 
 main.o: main.cpp deviser.hpp lineeditor.hpp
@@ -21,8 +21,11 @@ deviser.o: deviser.cpp deviser.hpp
 lineeditor.o: lineeditor.cpp lineeditor.hpp
 	$(CC) -c $(CCFLAGS) -o $@ $<
 
+console.o: console.cpp console.hpp deviser.hpp
+	$(CC) -c $(CCFLAGS) -o $@ $<
+
 interpretertests: deviser.o tests/test.o
-	$(LD) -o $@ $^ ../gmock-1.7.0/make/gmock_main.a $(TESTLDFLAGS) 
+	$(LD) -o $@ $^ ../gmock-1.7.0/make/gmock_main.a $(TESTLDFLAGS)
 
 tests/test.o: tests/test.cpp deviser.hpp
 	$(CC) -c $(CCFLAGS) -I../gmock-1.7.0/gtest/include -o $@ $<
