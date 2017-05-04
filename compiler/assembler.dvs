@@ -4,9 +4,27 @@
  (import (builtins))
  (import (deviserlib))
 
- (export adc-imm adc-reg)
+ (export adc-imm adc-reg translate-condition)
 
  ;;;; Only using ARM instruction set, no Thumb
+
+ (defun translate-condition (condition)
+   (cond ((eq condition :eq) 0)
+         ((eq condition :ne) 1)
+         ((eq condition :cs) 2)
+         ((eq condition :cc) 3)
+         ((eq condition :mi) 4)
+         ((eq condition :pl) 5)
+         ((eq condition :vs) 6)
+         ((eq condition :vc) 7)
+         ((eq condition :hi) 8)
+         ((eq condition :ls) 9)
+         ((eq condition :ge) 10)
+         ((eq condition :lt) 11)
+         ((eq condition :gt) 12)
+         ((eq condition :le) 13)
+         ((eq condition :no) 14)
+         (t (print "no matching condition for ") (print condition) (newline) 15)))
 
  (defun adc-imm (condition status source destination immediate)
    (let* ((out (bitvector 32)))
