@@ -231,6 +231,17 @@ private:
     bool inited;
 };
 
+template<class type>
+class foreignobject : public lispobj {
+public:
+    foreignobject(type* obj);
+
+    type* get();
+
+private:
+    std::unique_ptr<type> object;
+};
+
 class syntaxlocation {
 public:
     syntaxlocation(string name, int linenum, int charnum);

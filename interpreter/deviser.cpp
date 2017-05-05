@@ -513,6 +513,18 @@ void module::print(ostream& out) {
     out << ")";
 }
 
+template<class type>
+foreignobject<type>::foreignobject(type* obj) :
+    object(obj)
+{
+
+}
+
+template<class type>
+type* foreignobject<type>::get() {
+    return object.get();
+}
+
 syntaxlocation::syntaxlocation(string name, int linenum, int charnum) {
     this->name = name;
     this->linenum = linenum;
