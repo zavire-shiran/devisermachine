@@ -1,9 +1,12 @@
 #include "deviser.hpp"
 
+#include <map>
 #include <vector>
 #include <iostream>
 
 using std::vector;
+using std::map;
+using std::string;
 
 struct deviserobj;
 typedef deviserobj* dvs;
@@ -19,10 +22,12 @@ bool is_marked(dvs d);
 void set_typeid(dvs d, dvs_int tid);
 dvs_int get_typeid(dvs d);
 
+bool is_symbol(dvs d);
 bool is_int(dvs d);
 dvs_int get_int(dvs d);
 
 const dvs_int int_typeid = 1;
+const dvs_int symbol_typeid = 2;
 
 struct deviserobj {
     dvs pcar() {
@@ -38,6 +43,7 @@ struct deviserstate {
     size_t memoryarenasize;
     size_t nextfree;
     vector<dvs> stack;
+    map<string, dvs> symbol_table;
 };
 
 deviserstate* create_deviser_state() {
@@ -147,6 +153,10 @@ bool is_int(dvs d) {
     return get_typeid(d) == int_typeid;
 }
 
+bool is_symbol(dvs d) {
+    return get_typeid(d) == symbol_typeid;
+}
+
 dvs_int get_int(dvs d) {
     if(is_int(d)) {
         return reinterpret_cast<dvs_int>(d->cdr);
@@ -219,4 +229,31 @@ void cons_cdr(deviserstate* dstate, uint64_t pos) {
     }
 
     dstate->stack.push_back(conscell->cdr);
+}
+
+void push_symbol(deviserstate* dstate, string symbolname) {
+    auto symbol_entry = dstate->symbol_table.find(symbolname);
+    dvs symbol = nullptr;
+    if(symbol_entry == dstate->symbol_table.end()) {
+        symbol = alloc_dvs(dstate);
+        set_typeid(symbol, symbol_typeid);
+        symbol->cdr = reinterpret_cast<dvs>(new string(symbolname));
+    } else {
+        symbol = symbol_entry->second;
+    }
+    dstate->stack.push_back(symbol);
+}
+
+string get_symbol_name(deviserstate* dstate, uint64_t pos) {
+    if(dstate->stack.size() < pos) {
+        throw "invalid position for get_symbol_name";
+    }
+
+    uint64_t symbol_pos = dstate->stack.size() - (pos + 1);
+    dvs symbol = dstate->stack[symbol_pos];
+    if(is_symbol(symbol)) {
+        return *reinterpret_cast<string*>(symbol->cdr);
+    } else {
+        throw "not a symbol";
+    }
 }

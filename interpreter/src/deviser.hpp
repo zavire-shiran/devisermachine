@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <ostream>
+#include <string>
 
 struct deviserstate;
 
@@ -24,3 +25,6 @@ void push_null(deviserstate* dstate);
 void make_cons(deviserstate* dstate);
 void cons_car(deviserstate* dstate, uint64_t pos);
 void cons_cdr(deviserstate* dstate, uint64_t pos);
+
+void push_symbol(deviserstate* dstate, std::string symbolname);
+std::string get_symbol_name(deviserstate* dstate, uint64_t pos);
