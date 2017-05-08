@@ -112,6 +112,12 @@ void internal_print(dvs obj, std::ostream& out) {
         case int_typeid:
             out << get_int(obj);
             break;
+        case symbol_typeid:
+        {
+            string name = *reinterpret_cast<string*>(obj->cdr);
+            out << name;
+            break;
+        }
         default:
             throw "unknown typeid to print";
             break;
