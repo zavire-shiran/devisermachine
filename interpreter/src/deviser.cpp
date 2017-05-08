@@ -10,6 +10,8 @@ typedef deviserobj* dvs;
 
 dvs alloc_dvs(deviserstate* dstate);
 
+void internal_print(dvs obj, std::ostream& out);
+
 bool is_null(dvs d);
 bool is_cons(dvs d);
 bool is_marked(dvs d);
@@ -80,6 +82,47 @@ void dup(deviserstate* dstate) {
     }
 }
 
+void internal_print(dvs obj, std::ostream& out) {
+    if(is_null(obj)) {
+        out << "()";
+    }
+    else if(is_cons(obj)) {
+        out << "(";
+        while(obj != nullptr and is_cons(obj)) {
+            internal_print(obj->pcar(), out);
+            obj = obj->cdr;
+            if(obj != nullptr) {
+                out << " ";
+            }
+        }
+
+        if(obj != nullptr) {
+            out << ". ";
+            internal_print(obj, out);
+        }
+        out << ")";
+    } else {
+        switch(get_typeid(obj)) {
+        case int_typeid:
+            out << get_int(obj);
+            break;
+        default:
+            throw "unknown typeid to print";
+            break;
+        }
+    }
+}
+
+void print(deviserstate* dstate, std::ostream& out) {
+    uint64_t stacksize = dstate->stack.size();
+    if(stacksize == 0) {
+        throw "nothing to print";
+    }
+
+    dvs obj = dstate->stack[stacksize - 1];
+    internal_print(obj, out);
+}
+
 bool is_null(dvs d) {
     return d == nullptr;
 }
@@ -112,7 +155,7 @@ dvs_int get_int(dvs d) {
     }
 }
 
-void make_int(deviserstate* dstate, dvs_int value) {
+void push_int(deviserstate* dstate, dvs_int value) {
     dvs newint = alloc_dvs(dstate);
     set_typeid(newint, int_typeid);
     newint->cdr = reinterpret_cast<dvs>(value);
@@ -125,6 +168,10 @@ dvs_int get_int_value(deviserstate* dstate, uint64_t pos) {
     }
     dvs i = dstate->stack[int_pos];
     return get_int(i);
+}
+
+void push_null(deviserstate* dstate) {
+    dstate->stack.push_back(nullptr);
 }
 
 void make_cons(deviserstate* dstate) {

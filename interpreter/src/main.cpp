@@ -8,14 +8,14 @@ using std::endl;
 
 int main(int argc, char** argv) {
     deviserstate* dstate = create_deviser_state();
-    make_int(dstate, 0);
-    make_int(dstate, 200);
+    push_int(dstate, 0);
+    push_int(dstate, 200);
+    push_null(dstate);
     make_cons(dstate);
-    cons_car(dstate, 0);
-    cons_cdr(dstate, 1);
+    make_cons(dstate);
 
-    cout << "top int: " << get_int_value(dstate, 0) <<
-        " next int: " << get_int_value(dstate, 1) << endl;
+    print(dstate, cout);
+    cout << endl;
     destroy_deviser_state(dstate);
 
     return 0;

@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include <ostream>
 
 struct deviserstate;
 
@@ -14,9 +15,12 @@ void rot_two(deviserstate* dstate);
 void pop(deviserstate* dstate);
 void dup(deviserstate* dstate);
 
-void make_int(deviserstate* dstate, dvs_int value);
+void print(deviserstate* dstate, std::ostream& out);
+
+void push_int(deviserstate* dstate, dvs_int value);
 dvs_int get_int_value(deviserstate* dstate, uint64_t pos);
 
+void push_null(deviserstate* dstate);
 void make_cons(deviserstate* dstate);
 void cons_car(deviserstate* dstate, uint64_t pos);
 void cons_cdr(deviserstate* dstate, uint64_t pos);
