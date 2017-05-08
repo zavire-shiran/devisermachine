@@ -60,6 +60,26 @@ void destroy_deviser_state(deviserstate* ds) {
     delete ds;
 }
 
+void rot_two(deviserstate* dstate) {
+    uint64_t stacksize = dstate->stack.size();
+    dvs temp = dstate->stack[stacksize-1];
+    dstate->stack[stacksize-1] = dstate->stack[stacksize-2];
+    dstate->stack[stacksize-2] = temp;
+}
+
+void pop(deviserstate* dstate) {
+    dstate->stack.pop_back();
+}
+
+void dup(deviserstate* dstate) {
+    uint64_t stacksize = dstate->stack.size();
+    if(stacksize > 0) {
+        dstate->stack.push_back(dstate->stack[stacksize-1]);
+    } else {
+        throw "nothing to dup";
+    }
+}
+
 bool is_null(dvs d) {
     return d == nullptr;
 }
@@ -105,4 +125,51 @@ dvs_int get_int_value(deviserstate* dstate, uint64_t pos) {
     }
     dvs i = dstate->stack[int_pos];
     return get_int(i);
+}
+
+void make_cons(deviserstate* dstate) {
+    if(dstate->stack.size() < 2) {
+        throw "stack too small for cons";
+    }
+
+    uint64_t stacksize = dstate->stack.size();
+    dvs car = dstate->stack[stacksize - 2];
+    dvs cdr = dstate->stack[stacksize - 1];
+
+    dvs newcons = alloc_dvs(dstate);
+    newcons->car = car;
+    newcons->cdr = cdr;
+
+    rot_two(dstate);
+    pop(dstate);
+    rot_two(dstate);
+    pop(dstate);
+}
+
+void cons_car(deviserstate* dstate, uint64_t pos) {
+    if(dstate->stack.size() < pos) {
+        throw "invalid position for cons_car";
+    }
+
+    uint64_t cons_pos = dstate->stack.size() - (pos + 1);
+    dvs conscell = dstate->stack[cons_pos];
+    if(!is_cons(conscell)) {
+        throw "not a cons";
+    }
+
+    dstate->stack.push_back(conscell->pcar());
+}
+
+void cons_cdr(deviserstate* dstate, uint64_t pos) {
+    if(dstate->stack.size() < pos) {
+        throw "invalid position for cons_cdr";
+    }
+
+    uint64_t cons_pos = dstate->stack.size() - (pos + 1);
+    dvs conscell = dstate->stack[cons_pos];
+    if(!is_cons(conscell)) {
+        throw "not a cons";
+    }
+
+    dstate->stack.push_back(conscell->cdr);
 }
