@@ -2,10 +2,18 @@
 
 #include <iostream>
 #include <cstdint>
+#include <sstream>
 
 using std::cout;
 using std::endl;
 using std::string;
+
+void test_read(deviserstate* dstate, string test) {
+    std::stringstream ss(test);
+    read(dstate, ss);
+    print(dstate, cout);
+    cout << endl;
+}
 
 int main(int argc, char** argv) {
     deviserstate* dstate = create_deviser_state();
@@ -17,6 +25,14 @@ int main(int argc, char** argv) {
 
     print(dstate, cout);
     cout << endl;
+
+    test_read(dstate, "11");
+    test_read(dstate, "test");
+    test_read(dstate, "()");
+    test_read(dstate, "(test)");
+    test_read(dstate, "(aa bb cc dd)");
+    test_read(dstate, "(test 11)");
+    test_read(dstate, "(test a 123)");
 
     destroy_deviser_state(dstate);
 

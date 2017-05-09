@@ -3,10 +3,13 @@
 #include <map>
 #include <vector>
 #include <iostream>
+#include <utility>
 
 using std::vector;
 using std::map;
 using std::string;
+using std::cout;
+using std::endl;
 
 struct deviserobj;
 typedef deviserobj* dvs;
@@ -85,6 +88,56 @@ void dup(deviserstate* dstate) {
         dstate->stack.push_back(dstate->stack[stacksize-1]);
     } else {
         throw "nothing to dup";
+    }
+}
+
+void read(deviserstate* dstate, std::istream& in) {
+    char c = static_cast<char>(in.peek());
+    while(isspace(c)) {
+        in.get();
+        c = static_cast<char>(in.peek());
+    }
+
+    if(c == '(') {
+        int num = 0;
+        in.get();
+        c = static_cast<char>(in.peek());
+        while(isspace(c)) {
+            in.get();
+            c = static_cast<char>(in.peek());
+        }
+        while(c != ')') {
+            read(dstate, in);
+            num++;
+
+            c = static_cast<char>(in.peek());
+            while(isspace(c)) {
+                in.get();
+                c = static_cast<char>(in.peek());
+            }
+        }
+
+        push_null(dstate);
+
+        for(int i = 0; i < num; ++i) {
+            make_cons(dstate);
+        }
+    } else if(isdigit(c)) {
+        string num(1, c);
+        in.get();
+        while(isdigit(in.peek())) {
+            num.append(1, static_cast<char>(in.get()));
+        }
+
+        push_int(dstate, stol(num));
+    } else if(isalpha(c)) {
+        string sym(1, c);
+        in.get();
+        while(isalnum(in.peek())) {
+            sym.append(1, static_cast<char>(in.get()));
+        }
+
+        push_symbol(dstate, sym);
     }
 }
 
@@ -244,10 +297,11 @@ void push_symbol(deviserstate* dstate, string symbolname) {
         symbol = alloc_dvs(dstate);
         set_typeid(symbol, symbol_typeid);
         symbol->cdr = reinterpret_cast<dvs>(new string(symbolname));
+        dstate->symbol_table.insert(std::make_pair(symbolname, symbol));
     } else {
         symbol = symbol_entry->second;
+        dstate->stack.push_back(symbol);
     }
-    dstate->stack.push_back(symbol);
 }
 
 string get_symbol_name(deviserstate* dstate, uint64_t pos) {
@@ -262,4 +316,13 @@ string get_symbol_name(deviserstate* dstate, uint64_t pos) {
     } else {
         throw "not a symbol";
     }
+}
+
+void dump_stack(deviserstate* dstate) {
+    cout << "stack:" << endl;
+    for(dvs item : dstate->stack) {
+        internal_print(item, cout);
+        cout << endl;
+    }
+    cout << endl;
 }

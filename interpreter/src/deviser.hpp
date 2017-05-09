@@ -16,6 +16,7 @@ void rot_two(deviserstate* dstate);
 void pop(deviserstate* dstate);
 void dup(deviserstate* dstate);
 
+void read(deviserstate* dstate, std::istream& in);
 void print(deviserstate* dstate, std::ostream& out);
 
 void push_int(deviserstate* dstate, dvs_int value);
@@ -28,3 +29,6 @@ void cons_cdr(deviserstate* dstate, uint64_t pos);
 
 void push_symbol(deviserstate* dstate, std::string symbolname);
 std::string get_symbol_name(deviserstate* dstate, uint64_t pos);
+
+
+void dump_stack(deviserstate* dstate);
