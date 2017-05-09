@@ -12,6 +12,7 @@ void test_read(deviserstate* dstate, string test) {
     std::stringstream ss(test);
     read(dstate, ss);
     print(dstate, cout);
+    pop(dstate);
     cout << endl;
 }
 
@@ -33,6 +34,7 @@ int main(int argc, char** argv) {
     test_read(dstate, "(aa bb cc dd)");
     test_read(dstate, "(test 11)");
     test_read(dstate, "(test a 123)");
+    dump_stack(dstate);
 
     destroy_deviser_state(dstate);
 

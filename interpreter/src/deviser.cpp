@@ -41,11 +41,15 @@ struct deviserobj {
     dvs cdr;
 };
 
+struct stackframe {
+    vector<dvs> workstack;
+};
+
 struct deviserstate {
     dvs memoryarena;
     size_t memoryarenasize;
     size_t nextfree;
-    vector<dvs> stack;
+    vector<stackframe> stack;
     map<string, dvs> symbol_table;
 };
 
@@ -54,13 +58,15 @@ deviserstate* create_deviser_state() {
     dstate->memoryarenasize = 1000;
     dstate->nextfree = 0;
     dstate->memoryarena = new deviserobj[dstate->memoryarenasize];
+    dstate->stack.push_back(stackframe());
     return dstate;
 }
 
 dvs alloc_dvs(deviserstate* dstate) {
     if(dstate->nextfree < dstate->memoryarenasize) {
+        stackframe& currentframe = dstate->stack.back();
         dvs newalloc = dstate->memoryarena + dstate->nextfree++;
-        dstate->stack.push_back(newalloc);
+        currentframe.workstack.push_back(newalloc);
         return newalloc;
     } else {
         return nullptr;
@@ -72,20 +78,22 @@ void destroy_deviser_state(deviserstate* ds) {
 }
 
 void rot_two(deviserstate* dstate) {
-    uint64_t stacksize = dstate->stack.size();
-    dvs temp = dstate->stack[stacksize-1];
-    dstate->stack[stacksize-1] = dstate->stack[stacksize-2];
-    dstate->stack[stacksize-2] = temp;
+    stackframe& currentframe = dstate->stack.back();
+    uint64_t stacksize = currentframe.workstack.size();
+    dvs temp = currentframe.workstack[stacksize-1];
+    currentframe.workstack[stacksize-1] = currentframe.workstack[stacksize-2];
+    currentframe.workstack[stacksize-2] = temp;
 }
 
 void pop(deviserstate* dstate) {
-    dstate->stack.pop_back();
+    dstate->stack.back().workstack.pop_back();
 }
 
 void dup(deviserstate* dstate) {
-    uint64_t stacksize = dstate->stack.size();
+    stackframe& currentframe = dstate->stack.back();
+    uint64_t stacksize = currentframe.workstack.size();
     if(stacksize > 0) {
-        dstate->stack.push_back(dstate->stack[stacksize-1]);
+        currentframe.workstack.push_back(currentframe.workstack[stacksize-1]);
     } else {
         throw "nothing to dup";
     }
@@ -179,12 +187,13 @@ void internal_print(dvs obj, std::ostream& out) {
 }
 
 void print(deviserstate* dstate, std::ostream& out) {
-    uint64_t stacksize = dstate->stack.size();
+    stackframe& currentframe = dstate->stack.back();
+    uint64_t stacksize = currentframe.workstack.size();
     if(stacksize == 0) {
         throw "nothing to print";
     }
 
-    dvs obj = dstate->stack[stacksize - 1];
+    dvs obj = currentframe.workstack[stacksize - 1];
     internal_print(obj, out);
 }
 
@@ -231,26 +240,28 @@ void push_int(deviserstate* dstate, dvs_int value) {
 }
 
 dvs_int get_int_value(deviserstate* dstate, uint64_t pos) {
-    uint64_t int_pos = dstate->stack.size() - (pos + 1);
-    if(int_pos >= dstate->stack.size()) {
+    stackframe& currentframe = dstate->stack.back();
+    uint64_t int_pos = currentframe.workstack.size() - (pos + 1);
+    if(int_pos >= currentframe.workstack.size()) {
         throw "stack pos out of range";
     }
-    dvs i = dstate->stack[int_pos];
+    dvs i = currentframe.workstack[int_pos];
     return get_int(i);
 }
 
 void push_null(deviserstate* dstate) {
-    dstate->stack.push_back(nullptr);
+    dstate->stack.back().workstack.push_back(nullptr);
 }
 
 void make_cons(deviserstate* dstate) {
-    if(dstate->stack.size() < 2) {
+    stackframe& currentframe = dstate->stack.back();
+    if(currentframe.workstack.size() < 2) {
         throw "stack too small for cons";
     }
 
-    uint64_t stacksize = dstate->stack.size();
-    dvs car = dstate->stack[stacksize - 2];
-    dvs cdr = dstate->stack[stacksize - 1];
+    uint64_t stacksize = currentframe.workstack.size();
+    dvs car = currentframe.workstack[stacksize - 2];
+    dvs cdr = currentframe.workstack[stacksize - 1];
 
     dvs newcons = alloc_dvs(dstate);
     newcons->car = car;
@@ -263,31 +274,33 @@ void make_cons(deviserstate* dstate) {
 }
 
 void cons_car(deviserstate* dstate, uint64_t pos) {
-    if(dstate->stack.size() < pos) {
+    stackframe& currentframe = dstate->stack.back();
+    if(currentframe.workstack.size() < pos) {
         throw "invalid position for cons_car";
     }
 
-    uint64_t cons_pos = dstate->stack.size() - (pos + 1);
-    dvs conscell = dstate->stack[cons_pos];
+    uint64_t cons_pos = currentframe.workstack.size() - (pos + 1);
+    dvs conscell = currentframe.workstack[cons_pos];
     if(!is_cons(conscell)) {
         throw "not a cons";
     }
 
-    dstate->stack.push_back(conscell->pcar());
+    currentframe.workstack.push_back(conscell->pcar());
 }
 
 void cons_cdr(deviserstate* dstate, uint64_t pos) {
-    if(dstate->stack.size() < pos) {
+    stackframe& currentframe = dstate->stack.back();
+    if(currentframe.workstack.size() < pos) {
         throw "invalid position for cons_cdr";
     }
 
-    uint64_t cons_pos = dstate->stack.size() - (pos + 1);
-    dvs conscell = dstate->stack[cons_pos];
+    uint64_t cons_pos = currentframe.workstack.size() - (pos + 1);
+    dvs conscell = currentframe.workstack[cons_pos];
     if(!is_cons(conscell)) {
         throw "not a cons";
     }
 
-    dstate->stack.push_back(conscell->cdr);
+    currentframe.workstack.push_back(conscell->cdr);
 }
 
 void push_symbol(deviserstate* dstate, string symbolname) {
@@ -300,17 +313,18 @@ void push_symbol(deviserstate* dstate, string symbolname) {
         dstate->symbol_table.insert(std::make_pair(symbolname, symbol));
     } else {
         symbol = symbol_entry->second;
-        dstate->stack.push_back(symbol);
+        dstate->stack.back().workstack.push_back(symbol);
     }
 }
 
 string get_symbol_name(deviserstate* dstate, uint64_t pos) {
-    if(dstate->stack.size() < pos) {
+    stackframe& currentframe = dstate->stack.back();
+    if(currentframe.workstack.size() < pos) {
         throw "invalid position for get_symbol_name";
     }
 
-    uint64_t symbol_pos = dstate->stack.size() - (pos + 1);
-    dvs symbol = dstate->stack[symbol_pos];
+    uint64_t symbol_pos = currentframe.workstack.size() - (pos + 1);
+    dvs symbol = currentframe.workstack[symbol_pos];
     if(is_symbol(symbol)) {
         return *reinterpret_cast<string*>(symbol->cdr);
     } else {
@@ -320,9 +334,12 @@ string get_symbol_name(deviserstate* dstate, uint64_t pos) {
 
 void dump_stack(deviserstate* dstate) {
     cout << "stack:" << endl;
-    for(dvs item : dstate->stack) {
-        internal_print(item, cout);
-        cout << endl;
+    for(stackframe& frame : dstate->stack) {
+        cout << "frame:" << endl;
+        for(dvs item : frame.workstack) {
+            internal_print(item, cout);
+            cout << endl;
+        }
     }
     cout << endl;
 }
