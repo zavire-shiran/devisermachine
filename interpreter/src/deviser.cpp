@@ -4,6 +4,7 @@
 #include <vector>
 #include <iostream>
 #include <utility>
+#include <sstream>
 
 using std::vector;
 using std::map;
@@ -41,6 +42,42 @@ struct deviserobj {
     dvs cdr;
 };
 
+bool is_null(dvs d) {
+    return d == nullptr;
+}
+
+bool is_cons(dvs d) {
+    return (reinterpret_cast<dvs_int>(d->car) & 0x1) == 0;
+}
+
+bool is_marked(dvs d) {
+    return (reinterpret_cast<dvs_int>(d->car) & 0x2) == 2;
+}
+
+void set_typeid(dvs d, dvs_int tid) {
+    d->car = reinterpret_cast<dvs>(tid << 2 | 0x1);
+}
+
+dvs_int get_typeid(dvs d) {
+    return reinterpret_cast<dvs_int>(d->car) >> 2;
+}
+
+bool is_int(dvs d) {
+    return get_typeid(d) == int_typeid;
+}
+
+bool is_symbol(dvs d) {
+    return get_typeid(d) == symbol_typeid;
+}
+
+dvs_int get_int(dvs d) {
+    if(is_int(d)) {
+        return reinterpret_cast<dvs_int>(d->cdr);
+    } else {
+        throw "not an integer";
+    }
+}
+
 struct stackframe {
     vector<dvs> workstack;
 };
@@ -73,6 +110,42 @@ dvs alloc_dvs(deviserstate* dstate) {
     }
 }
 
+void call_function(deviserstate* dstate, uint64_t argc) {
+    stackframe& currentframe = dstate->stack[dstate->stack.size() - 1];
+    uint64_t stacksize = currentframe.workstack.size();
+    if(currentframe.workstack.size() < argc + 1) {
+        throw "invalid function call: not enough args on stack";
+    }
+
+    auto begin_args_iter = currentframe.workstack.end();
+    auto end_args_iter = currentframe.workstack.end();
+    for(uint64_t i = 0; i < argc; ++i) {
+        --begin_args_iter;
+    }
+
+    dvs function = currentframe.workstack[stacksize - (argc+1)];
+    stackframe newframe;
+    newframe.workstack.insert(newframe.workstack.begin(), begin_args_iter, end_args_iter);
+    dump_stack(dstate);
+    currentframe.workstack.erase(begin_args_iter, end_args_iter);
+    pop(dstate);
+    dstate->stack.push_back(newframe);
+    cout << "called function ";
+    internal_print(function, cout);
+    cout << " with stack" << endl;
+    dump_stack(dstate);
+}
+
+void return_function(deviserstate* dstate) {
+    if(dstate->stack.size() < 2) {
+        throw "can't return from top level";
+    }
+
+    dvs retval = *(dstate->stack.back().workstack.rbegin());
+    dstate->stack.pop_back();
+    dstate->stack.back().workstack.push_back(retval);
+}
+
 void destroy_deviser_state(deviserstate* ds) {
     delete ds;
 }
@@ -97,6 +170,11 @@ void dup(deviserstate* dstate) {
     } else {
         throw "nothing to dup";
     }
+}
+
+void read(deviserstate* dstate, const std::string& in) {
+    std::stringstream ss(in);
+    read(dstate, ss);
 }
 
 void read(deviserstate* dstate, std::istream& in) {
@@ -181,7 +259,6 @@ void internal_print(dvs obj, std::ostream& out) {
         }
         default:
             throw "unknown typeid to print";
-            break;
         }
     }
 }
@@ -195,42 +272,6 @@ void print(deviserstate* dstate, std::ostream& out) {
 
     dvs obj = currentframe.workstack[stacksize - 1];
     internal_print(obj, out);
-}
-
-bool is_null(dvs d) {
-    return d == nullptr;
-}
-
-bool is_cons(dvs d) {
-    return (reinterpret_cast<dvs_int>(d->car) & 0x1) == 0;
-}
-
-bool is_marked(dvs d) {
-    return (reinterpret_cast<dvs_int>(d->car) & 0x2) == 2;
-}
-
-void set_typeid(dvs d, dvs_int tid) {
-    d->car = reinterpret_cast<dvs>(tid << 2 | 0x1);
-}
-
-dvs_int get_typeid(dvs d) {
-    return reinterpret_cast<dvs_int>(d->car) >> 2;
-}
-
-bool is_int(dvs d) {
-    return get_typeid(d) == int_typeid;
-}
-
-bool is_symbol(dvs d) {
-    return get_typeid(d) == symbol_typeid;
-}
-
-dvs_int get_int(dvs d) {
-    if(is_int(d)) {
-        return reinterpret_cast<dvs_int>(d->cdr);
-    } else {
-        throw "not an integer";
-    }
 }
 
 void push_int(deviserstate* dstate, dvs_int value) {

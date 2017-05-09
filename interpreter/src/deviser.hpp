@@ -12,10 +12,14 @@ typedef double dvs_float;
 deviserstate* create_deviser_state();
 void destroy_deviser_state(deviserstate*);
 
+void call_function(deviserstate* dstate, uint64_t argc);
+void return_function(deviserstate* dstate);
+
 void rot_two(deviserstate* dstate);
 void pop(deviserstate* dstate);
 void dup(deviserstate* dstate);
 
+void read(deviserstate* dstate, const std::string& in);
 void read(deviserstate* dstate, std::istream& in);
 void print(deviserstate* dstate, std::ostream& out);
 
