@@ -38,4 +38,7 @@ std::string get_symbol_name(deviserstate* dstate, uint64_t pos);
 
 void push_cfunc(deviserstate* dstate, cfunc_type func);
 
+void store_variable(deviserstate* dstate, uint64_t varnum);
+void load_variable(deviserstate* dstate, uint64_t varnum);
+
 void dump_stack(deviserstate* dstate);

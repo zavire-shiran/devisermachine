@@ -19,8 +19,10 @@ int main(int argc, char** argv) {
 
         push_cfunc(dstate, testfunc);
         read(dstate, "a");
-        read(dstate, "b");
-        read(dstate, "c");
+        store_variable(dstate, 0);
+        load_variable(dstate, 0);
+        load_variable(dstate, 0);
+        load_variable(dstate, 0);
         read(dstate, "1");
         read(dstate, "2");
         read(dstate, "3");

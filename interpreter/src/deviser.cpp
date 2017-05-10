@@ -85,6 +85,8 @@ dvs_int get_int(dvs d) {
 
 struct stackframe {
     vector<dvs> workstack;
+    vector<dvs> variables;
+    vector<dvs> constants;
 };
 
 struct deviserstate {
@@ -101,6 +103,8 @@ deviserstate* create_deviser_state() {
     dstate->nextfree = 0;
     dstate->memoryarena = new deviserobj[dstate->memoryarenasize];
     dstate->stack.push_back(stackframe());
+    stackframe& tsf = dstate->stack.back();
+    tsf.variables.insert(tsf.variables.begin(), 3, nullptr);
     return dstate;
 }
 
@@ -131,6 +135,7 @@ void call_function(deviserstate* dstate, uint64_t argc) {
     dvs function = currentframe.workstack[stacksize - (argc+1)];
     stackframe newframe;
     newframe.workstack.insert(newframe.workstack.begin(), begin_args_iter, end_args_iter);
+    newframe.variables.insert(newframe.variables.begin(), 3, nullptr);
     dump_stack(dstate);
     currentframe.workstack.erase(begin_args_iter, end_args_iter);
     pop(dstate);
@@ -396,6 +401,28 @@ void push_cfunc(deviserstate* dstate, cfunc_type func) {
     dvs cfunc = alloc_dvs(dstate);
     set_typeid(cfunc, cfunc_typeid);
     cfunc->cdr = reinterpret_cast<dvs>(func);
+}
+
+void store_variable(deviserstate* dstate, uint64_t varnum) {
+    stackframe& currentframe = dstate->stack.back();
+    if(varnum >= currentframe.variables.size()) {
+        throw "out of range variable store";
+    }
+    if(currentframe.workstack.empty()) {
+        throw "no value to store in variable";
+    }
+
+    currentframe.variables[varnum] = currentframe.workstack.back();
+    pop(dstate);
+}
+
+void load_variable(deviserstate* dstate, uint64_t varnum) {
+    stackframe& currentframe = dstate->stack.back();
+    if(varnum >= currentframe.variables.size()) {
+        throw "out of range variable load";
+    }
+
+    currentframe.workstack.push_back(currentframe.variables[varnum]);
 }
 
 void dump_stack(deviserstate* dstate) {
