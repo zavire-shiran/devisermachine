@@ -32,6 +32,7 @@ dvs_int get_int(dvs d);
 
 const dvs_int int_typeid = 1;
 const dvs_int symbol_typeid = 2;
+const dvs_int cfunc_typeid = 3;
 
 struct deviserobj {
     dvs pcar() {
@@ -70,6 +71,9 @@ bool is_symbol(dvs d) {
     return get_typeid(d) == symbol_typeid;
 }
 
+bool is_cfunc(dvs d) {
+    return get_typeid(d) == cfunc_typeid;
+}
 dvs_int get_int(dvs d) {
     if(is_int(d)) {
         return reinterpret_cast<dvs_int>(d->cdr);
@@ -130,10 +134,17 @@ void call_function(deviserstate* dstate, uint64_t argc) {
     currentframe.workstack.erase(begin_args_iter, end_args_iter);
     pop(dstate);
     dstate->stack.push_back(newframe);
-    cout << "called function ";
-    internal_print(function, cout);
-    cout << " with stack" << endl;
-    dump_stack(dstate);
+
+    if(is_cfunc(function)) {
+        cfunc_type cfunc = reinterpret_cast<cfunc_type>(function->cdr);
+        (*cfunc)(dstate);
+        return_function(dstate);
+    } else {
+        cout << "called function ";
+        internal_print(function, cout);
+        cout << " with stack" << endl;
+        dump_stack(dstate);
+    }
 }
 
 void return_function(deviserstate* dstate) {
@@ -148,6 +159,10 @@ void return_function(deviserstate* dstate) {
 
 void destroy_deviser_state(deviserstate* ds) {
     delete ds;
+}
+
+uint64_t workstacksize(deviserstate* dstate) {
+    return dstate->stack.back().workstack.size();
 }
 
 void rot_two(deviserstate* dstate) {
@@ -257,6 +272,9 @@ void internal_print(dvs obj, std::ostream& out) {
             out << name;
             break;
         }
+        case cfunc_typeid:
+            out << "<cfunc " << obj->cdr << ">";
+            break;
         default:
             throw "unknown typeid to print";
         }
@@ -371,6 +389,12 @@ string get_symbol_name(deviserstate* dstate, uint64_t pos) {
     } else {
         throw "not a symbol";
     }
+}
+
+void push_cfunc(deviserstate* dstate, cfunc_type func) {
+    dvs cfunc = alloc_dvs(dstate);
+    set_typeid(cfunc, cfunc_typeid);
+    cfunc->cdr = reinterpret_cast<dvs>(func);
 }
 
 void dump_stack(deviserstate* dstate) {
