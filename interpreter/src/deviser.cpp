@@ -74,6 +74,7 @@ bool is_symbol(dvs d) {
 bool is_cfunc(dvs d) {
     return get_typeid(d) == cfunc_typeid;
 }
+
 dvs_int get_int(dvs d) {
     if(is_int(d)) {
         return reinterpret_cast<dvs_int>(d->cdr);
