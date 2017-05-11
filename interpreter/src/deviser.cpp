@@ -6,14 +6,13 @@
 #include <utility>
 #include <sstream>
 
+#include "bytecode.hpp"
+
 using std::vector;
 using std::map;
 using std::string;
 using std::cout;
 using std::endl;
-
-struct deviserobj;
-typedef deviserobj* dvs;
 
 dvs alloc_dvs(deviserstate* dstate);
 
@@ -28,20 +27,15 @@ dvs_int get_typeid(dvs d);
 
 bool is_symbol(dvs d);
 bool is_int(dvs d);
+bool is_cfunc(dvs d);
+bool is_lfunc(dvs d);
+
 dvs_int get_int(dvs d);
 
 const dvs_int int_typeid = 1;
 const dvs_int symbol_typeid = 2;
 const dvs_int cfunc_typeid = 3;
-
-struct deviserobj {
-    dvs pcar() {
-        // clear the low 2 bits
-        return reinterpret_cast<dvs>(reinterpret_cast<dvs_int>(car) & (~0x3));
-    }
-    dvs car;
-    dvs cdr;
-};
+const dvs_int lfunc_typeid = 4;
 
 bool is_null(dvs d) {
     return d == nullptr;
@@ -75,6 +69,10 @@ bool is_cfunc(dvs d) {
     return get_typeid(d) == cfunc_typeid;
 }
 
+bool is_lfunc(dvs d) {
+    return get_typeid(d) == lfunc_typeid;
+}
+
 dvs_int get_int(dvs d) {
     if(is_int(d)) {
         return reinterpret_cast<dvs_int>(d->cdr);
@@ -83,18 +81,10 @@ dvs_int get_int(dvs d) {
     }
 }
 
-struct stackframe {
-    vector<dvs> workstack;
-    vector<dvs> variables;
-    vector<dvs> constants;
-};
-
-struct deviserstate {
-    dvs memoryarena;
-    size_t memoryarenasize;
-    size_t nextfree;
-    vector<stackframe> stack;
-    map<string, dvs> symbol_table;
+struct lfunc_info {
+    uint64_t num_args;
+    uint64_t num_var;
+    vector<int8_t> bytecode;
 };
 
 deviserstate* create_deviser_state() {
@@ -134,22 +124,31 @@ void call_function(deviserstate* dstate, uint64_t argc) {
 
     dvs function = currentframe.workstack[stacksize - (argc+1)];
     stackframe newframe;
-    newframe.workstack.insert(newframe.workstack.begin(), begin_args_iter, end_args_iter);
-    newframe.variables.insert(newframe.variables.begin(), 3, nullptr);
-    dump_stack(dstate);
-    currentframe.workstack.erase(begin_args_iter, end_args_iter);
-    pop(dstate);
-    dstate->stack.push_back(newframe);
+    newframe.pc = 0;
 
     if(is_cfunc(function)) {
+
+        newframe.workstack.insert(newframe.workstack.begin(), begin_args_iter, end_args_iter);
+        newframe.variables.insert(newframe.variables.begin(), 3, nullptr);
+        currentframe.workstack.erase(begin_args_iter, end_args_iter);
+        pop(dstate);
+        dstate->stack.push_back(newframe);
+
         cfunc_type cfunc = reinterpret_cast<cfunc_type>(function->cdr);
         (*cfunc)(dstate);
         return_function(dstate);
+    } else if(is_lfunc(function)) {
+        lfunc_info* finfo = reinterpret_cast<lfunc_info*>(function->cdr);
+        newframe.variables.insert(newframe.variables.begin(), begin_args_iter, end_args_iter);
+        while(newframe.variables.size() < finfo->num_var) {
+            newframe.variables.push_back(nullptr);
+        }
+        newframe.bytecode = finfo->bytecode;
+        currentframe.workstack.erase(begin_args_iter, end_args_iter);
+        pop(dstate);
+        dstate->stack.push_back(newframe);
     } else {
-        cout << "called function ";
-        internal_print(function, cout);
-        cout << " with stack" << endl;
-        dump_stack(dstate);
+        throw "not a function";
     }
 }
 
@@ -281,6 +280,9 @@ void internal_print(dvs obj, std::ostream& out) {
         case cfunc_typeid:
             out << "<cfunc " << obj->cdr << ">";
             break;
+        case lfunc_typeid:
+            out << "<lfunc " << obj->cdr << ">";
+            break;
         default:
             throw "unknown typeid to print";
         }
@@ -403,6 +405,16 @@ void push_cfunc(deviserstate* dstate, cfunc_type func) {
     cfunc->cdr = reinterpret_cast<dvs>(func);
 }
 
+void generate_lfunc(deviserstate* dstate) {
+    dvs lfunc = alloc_dvs(dstate);
+    set_typeid(lfunc, lfunc_typeid);
+    lfunc_info* finfo = new lfunc_info;
+    finfo->num_args = 1;
+    finfo->num_var = 1;
+    finfo->bytecode = {load_var_op, 0, push_null_op, call_function_op, 1, return_function_op};
+    lfunc->cdr = reinterpret_cast<dvs>(finfo);
+}
+
 void store_variable(deviserstate* dstate, uint64_t varnum) {
     stackframe& currentframe = dstate->stack.back();
     if(varnum >= currentframe.variables.size()) {
@@ -429,6 +441,8 @@ void dump_stack(deviserstate* dstate) {
     cout << "stack:" << endl;
     for(stackframe& frame : dstate->stack) {
         cout << "frame:" << endl;
+        cout << "pc: " << frame.pc << endl;
+        cout << "workstack:" << endl;
         for(dvs item : frame.workstack) {
             internal_print(item, cout);
             cout << endl;

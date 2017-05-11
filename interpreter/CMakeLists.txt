@@ -7,4 +7,5 @@ set(CMAKE_LD_FLAGS "-g")
 project(deviser)
 
 add_executable(deviser src/main.cpp
-                       src/deviser.cpp)
+                       src/deviser.cpp
+                       src/bytecode.cpp)

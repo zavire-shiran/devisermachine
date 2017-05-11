@@ -2,6 +2,11 @@
 #include <cstdint>
 #include <ostream>
 #include <string>
+#include <vector>
+#include <map>
+
+struct deviserobj;
+typedef deviserobj* dvs;
 
 struct deviserstate;
 
@@ -9,6 +14,31 @@ struct deviserstate;
 typedef int64_t dvs_int;
 typedef double dvs_float;
 typedef void (*cfunc_type)(deviserstate*);
+
+struct deviserobj {
+    dvs pcar() {
+        // clear the low 2 bits
+        return reinterpret_cast<dvs>(reinterpret_cast<dvs_int>(car) & (~0x3));
+    }
+    dvs car;
+    dvs cdr;
+};
+
+struct stackframe {
+    std::vector<dvs> workstack;
+    std::vector<dvs> variables;
+    std::vector<dvs> constants;
+    std::vector<int8_t> bytecode;
+    uint64_t pc;
+};
+
+struct deviserstate {
+    dvs memoryarena;
+    size_t memoryarenasize;
+    size_t nextfree;
+    std::vector<stackframe> stack;
+    std::map<std::string, dvs> symbol_table;
+};
 
 deviserstate* create_deviser_state();
 void destroy_deviser_state(deviserstate*);
@@ -37,6 +67,8 @@ void push_symbol(deviserstate* dstate, std::string symbolname);
 std::string get_symbol_name(deviserstate* dstate, uint64_t pos);
 
 void push_cfunc(deviserstate* dstate, cfunc_type func);
+
+void generate_lfunc(deviserstate* dstate);
 
 void store_variable(deviserstate* dstate, uint64_t varnum);
 void load_variable(deviserstate* dstate, uint64_t varnum);
