@@ -18,31 +18,22 @@ dvs alloc_dvs(deviserstate* dstate);
 
 void internal_print(dvs obj, std::ostream& out);
 
-bool is_null(dvs d);
-bool is_cons(dvs d);
-bool is_marked(dvs d);
-
-void set_typeid(dvs d, dvs_int tid);
-dvs_int get_typeid(dvs d);
-
-bool is_symbol(dvs d);
-bool is_int(dvs d);
-bool is_cfunc(dvs d);
-bool is_lfunc(dvs d);
-
-dvs_int get_int(dvs d);
-
-const dvs_int int_typeid = 1;
-const dvs_int symbol_typeid = 2;
-const dvs_int cfunc_typeid = 3;
-const dvs_int lfunc_typeid = 4;
+const dvs_int null_typeid = 1;
+const dvs_int int_typeid = 2;
+const dvs_int symbol_typeid = 3;
+const dvs_int cfunc_typeid = 4;
+const dvs_int lfunc_typeid = 5;
 
 bool is_null(dvs d) {
     return d == nullptr;
 }
 
 bool is_cons(dvs d) {
-    return (reinterpret_cast<dvs_int>(d->car) & 0x1) == 0;
+    return !is_null(d) && (reinterpret_cast<dvs_int>(d->car) & 0x1) == 0;
+}
+
+bool is_list(dvs d) {
+    return is_null(d) || is_cons(d);
 }
 
 bool is_marked(dvs d) {
@@ -54,7 +45,13 @@ void set_typeid(dvs d, dvs_int tid) {
 }
 
 dvs_int get_typeid(dvs d) {
-    return reinterpret_cast<dvs_int>(d->car) >> 2;
+    if(is_null(d)) {
+        return null_typeid;
+    } else if((reinterpret_cast<dvs_int>(d->car) & 0x1) != 0x1) {
+        return 0;
+    } else {
+        return reinterpret_cast<dvs_int>(d->car) >> 2;
+    }
 }
 
 bool is_int(dvs d) {
@@ -405,13 +402,14 @@ void push_cfunc(deviserstate* dstate, cfunc_type func) {
     cfunc->cdr = reinterpret_cast<dvs>(func);
 }
 
-void generate_lfunc(deviserstate* dstate) {
+void generate_lfunc(deviserstate* dstate, uint64_t num_args, uint64_t num_var,
+                    const vector<int8_t>& bytecode) {
     dvs lfunc = alloc_dvs(dstate);
     set_typeid(lfunc, lfunc_typeid);
     lfunc_info* finfo = new lfunc_info;
-    finfo->num_args = 1;
-    finfo->num_var = 1;
-    finfo->bytecode = {load_var_op, 0, push_null_op, call_function_op, 1, return_function_op};
+    finfo->num_args = num_args;
+    finfo->num_var = num_var;
+    finfo->bytecode = bytecode;
     lfunc->cdr = reinterpret_cast<dvs>(finfo);
 }
 

@@ -6,3 +6,4 @@ const int8_t return_function_op = 2;
 const int8_t push_null_op = 3;
 
 dvs run_bytecode(deviserstate* dstate);
+void compile_function(deviserstate* dstate);

@@ -40,6 +40,21 @@ struct deviserstate {
     std::map<std::string, dvs> symbol_table;
 };
 
+bool is_null(dvs d);
+bool is_cons(dvs d);
+bool is_list(dvs d);
+bool is_marked(dvs d);
+
+void set_typeid(dvs d, dvs_int tid);
+dvs_int get_typeid(dvs d);
+
+bool is_symbol(dvs d);
+bool is_int(dvs d);
+bool is_cfunc(dvs d);
+bool is_lfunc(dvs d);
+
+dvs_int get_int(dvs d);
+
 deviserstate* create_deviser_state();
 void destroy_deviser_state(deviserstate*);
 
@@ -68,7 +83,8 @@ std::string get_symbol_name(deviserstate* dstate, uint64_t pos);
 
 void push_cfunc(deviserstate* dstate, cfunc_type func);
 
-void generate_lfunc(deviserstate* dstate);
+void generate_lfunc(deviserstate* dstate, uint64_t num_args, uint64_t num_var,
+                    const std::vector<int8_t>& bytecode);
 
 void store_variable(deviserstate* dstate, uint64_t varnum);
 void load_variable(deviserstate* dstate, uint64_t varnum);

@@ -27,12 +27,21 @@ int main(int argc, char** argv) {
         read(dstate, "1");
         read(dstate, "2");
         read(dstate, "3");
-        call_function(dstate, 6);*/
+        call_function(dstate, 6);
+        std::vector<int8_t> bytecode = {load_var_op, 0,
+                                        push_null_op,
+                                        call_function_op, 1,
+                                        return_function_op};
+        generate_lfunc(dstate, 1, 1, bytecode);
+        push_cfunc(dstate, testfunc);*/
 
-        generate_lfunc(dstate);
-        push_cfunc(dstate, testfunc);
-        call_function(dstate, 1);
+        read(dstate, "(f () ())");
+        compile_function(dstate);
+
+        call_function(dstate, 0);
         run_bytecode(dstate);
+        print(dstate, cout);
+        cout << endl;
         //dump_stack(dstate);
 
         destroy_deviser_state(dstate);

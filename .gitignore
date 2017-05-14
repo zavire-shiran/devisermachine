@@ -7,4 +7,5 @@ gmock-1.7.0
 testout
 deviser
 interpretertests
-
+CMakeCache.txt
+CMakeFiles
