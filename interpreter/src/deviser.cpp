@@ -219,6 +219,7 @@ void read(deviserstate* dstate, std::istream& in) {
                 c = static_cast<char>(in.peek());
             }
         }
+        in.get();
 
         push_null(dstate);
 

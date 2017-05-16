@@ -1,7 +1,11 @@
 #include "deviser.hpp"
 #include "bytecode.hpp"
 
+#include <iostream>
+
 using std::vector;
+using std::cout;
+using std::endl;
 
 vector<dvs> extract_func_args(dvs func_args);
 
@@ -50,6 +54,7 @@ struct compilation_info {
 };
 
 void extract_func_args(dvs func_args, compilation_info& cinfo);
+int8_t get_variable_location(dvs var_name, compilation_info& cinfo);
 void generate_statement_bytecode(dvs statement, compilation_info& cinfo);
 
 void extract_func_args(dvs func_args, compilation_info& cinfo) {
@@ -59,12 +64,32 @@ void extract_func_args(dvs func_args, compilation_info& cinfo) {
             throw "arguments must be symbols";
         }
         cinfo.arguments.push_back(arg);
+        func_args = func_args->cdr;
     }
+}
+
+int8_t get_variable_location(dvs var_name, compilation_info& cinfo) {
+    for(uint32_t i = 0; i < cinfo.arguments.size(); ++i) {
+        if(cinfo.arguments[i] == var_name) {
+            return static_cast<int8_t>(i);
+        }
+    }
+
+    for(uint32_t i = 0; i < cinfo.variables.size(); ++i) {
+        if(cinfo.variables[i] == var_name) {
+            return static_cast<int8_t>(i + cinfo.arguments.size());
+        }
+    }
+
+    throw "cannot find variable in scope";
 }
 
 void generate_statement_bytecode(dvs statement, compilation_info& cinfo) {
     if(is_null(statement)) {
         cinfo.bytecode.push_back(push_null_op);
+    } else if(is_symbol(statement)) {
+        cinfo.bytecode.push_back(load_var_op);
+        cinfo.bytecode.push_back(get_variable_location(statement, cinfo));
     } else {
         throw "cannot compile statement";
     }
