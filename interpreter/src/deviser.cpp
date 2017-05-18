@@ -82,6 +82,7 @@ struct lfunc_info {
     uint64_t num_args;
     uint64_t num_var;
     vector<int8_t> bytecode;
+    vector<dvs> constants;
 };
 
 deviserstate* create_deviser_state() {
@@ -124,7 +125,6 @@ void call_function(deviserstate* dstate, uint64_t argc) {
     newframe.pc = 0;
 
     if(is_cfunc(function)) {
-
         newframe.workstack.insert(newframe.workstack.begin(), begin_args_iter, end_args_iter);
         newframe.variables.insert(newframe.variables.begin(), 3, nullptr);
         currentframe.workstack.erase(begin_args_iter, end_args_iter);
@@ -141,6 +141,7 @@ void call_function(deviserstate* dstate, uint64_t argc) {
             newframe.variables.push_back(nullptr);
         }
         newframe.bytecode = finfo->bytecode;
+        newframe.constants = finfo->constants;
         currentframe.workstack.erase(begin_args_iter, end_args_iter);
         pop(dstate);
         dstate->stack.push_back(newframe);
@@ -404,6 +405,7 @@ void push_cfunc(deviserstate* dstate, cfunc_type func) {
 }
 
 void generate_lfunc(deviserstate* dstate, uint64_t num_args, uint64_t num_var,
+                    const vector<dvs>& constants,
                     const vector<int8_t>& bytecode) {
     dvs lfunc = alloc_dvs(dstate);
     set_typeid(lfunc, lfunc_typeid);
@@ -411,6 +413,7 @@ void generate_lfunc(deviserstate* dstate, uint64_t num_args, uint64_t num_var,
     finfo->num_args = num_args;
     finfo->num_var = num_var;
     finfo->bytecode = bytecode;
+    finfo->constants = constants;
     lfunc->cdr = reinterpret_cast<dvs>(finfo);
 }
 
@@ -434,6 +437,39 @@ void load_variable(deviserstate* dstate, uint64_t varnum) {
     }
 
     currentframe.workstack.push_back(currentframe.variables[varnum]);
+}
+
+void store_global(deviserstate* dstate) {
+    stackframe& currentframe = dstate->stack.back();
+    size_t stacksize = currentframe.workstack.size();
+    auto insert_status = dstate->top_level_env.insert(std::make_pair(
+                                                          currentframe.workstack[stacksize-2],
+                                                          currentframe.workstack[stacksize-1]));
+    if(!insert_status.second) {
+        insert_status.first->second = currentframe.workstack[stacksize-1];
+    }
+}
+
+void load_global(deviserstate* dstate) {
+    stackframe& currentframe = dstate->stack.back();
+    size_t stacksize = currentframe.workstack.size();
+    dvs varname = currentframe.workstack[stacksize-1];
+    auto binding = dstate->top_level_env.find(varname);
+    pop(dstate);
+    if(binding != dstate->top_level_env.end()) {
+        currentframe.workstack.push_back(binding->second);
+    } else {
+        throw "cannot find top level var";
+    }
+}
+
+void push_constant(deviserstate* dstate, uint64_t constnum) {
+    stackframe& currentframe = dstate->stack.back();
+    if(constnum < currentframe.constants.size()) {
+        currentframe.workstack.push_back(currentframe.constants[constnum]);
+    } else {
+        throw "constnum out of range";
+    }
 }
 
 void dump_stack(deviserstate* dstate) {

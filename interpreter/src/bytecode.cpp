@@ -40,6 +40,13 @@ dvs run_bytecode(deviserstate* dstate) {
             currentframe.pc += 1;
             break;
 
+        case push_constant_op:
+        {
+            uint64_t constnum = static_cast<uint64_t>(currentframe.bytecode[currentframe.pc+1]);
+            currentframe.pc += 2;
+            push_constant(dstate, constnum);
+            break;
+        }
         default:
             throw "unknown opcode";
         }
@@ -50,6 +57,7 @@ struct compilation_info {
     dvs name;
     vector<dvs> arguments;
     vector<dvs> variables;
+    vector<dvs> constants;
     vector<int8_t> bytecode;
 };
 
@@ -90,6 +98,11 @@ void generate_statement_bytecode(dvs statement, compilation_info& cinfo) {
     } else if(is_symbol(statement)) {
         cinfo.bytecode.push_back(load_var_op);
         cinfo.bytecode.push_back(get_variable_location(statement, cinfo));
+    } else if(is_int(statement)) {
+        int8_t constnum = static_cast<int8_t>(cinfo.constants.size());
+        cinfo.constants.push_back(statement);
+        cinfo.bytecode.push_back(push_constant_op);
+        cinfo.bytecode.push_back(constnum);
     } else {
         throw "cannot compile statement";
     }
@@ -138,5 +151,6 @@ void compile_function(deviserstate* dstate) {
 
     generate_lfunc(dstate, cinfo.arguments.size(),
                    cinfo.arguments.size() + cinfo.variables.size(),
+                   cinfo.constants,
                    cinfo.bytecode);
 }

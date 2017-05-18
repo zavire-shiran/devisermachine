@@ -35,11 +35,11 @@ int main(int argc, char** argv) {
         generate_lfunc(dstate, 1, 1, bytecode);
         push_cfunc(dstate, testfunc);*/
 
-        read(dstate, "(f (a) a)");
+        read(dstate, "(f () 1)");
         compile_function(dstate);
 
-        push_int(dstate, 1);
-        call_function(dstate, 1);
+        //push_int(dstate, 1);
+        call_function(dstate, 0);
         run_bytecode(dstate);
         print(dstate, cout);
         cout << endl;
