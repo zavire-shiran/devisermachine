@@ -35,7 +35,12 @@ int main(int argc, char** argv) {
         generate_lfunc(dstate, 1, 1, bytecode);
         push_cfunc(dstate, testfunc);*/
 
-        read(dstate, "(f () 1)");
+        read(dstate, "testval");
+        read(dstate, "2");
+        //push_cfunc(dstate, testfunc);
+        store_global(dstate);
+
+        read(dstate, "(f () testval)");
         compile_function(dstate);
 
         //push_int(dstate, 1);

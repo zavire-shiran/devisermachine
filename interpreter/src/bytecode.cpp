@@ -47,6 +47,11 @@ dvs run_bytecode(deviserstate* dstate) {
             push_constant(dstate, constnum);
             break;
         }
+        case load_global_op:
+            load_global(dstate);
+            currentframe.pc += 1;
+            break;
+
         default:
             throw "unknown opcode";
         }
@@ -63,6 +68,7 @@ struct compilation_info {
 
 void extract_func_args(dvs func_args, compilation_info& cinfo);
 int8_t get_variable_location(dvs var_name, compilation_info& cinfo);
+int8_t add_const(dvs constant, compilation_info& cinfo);
 void generate_statement_bytecode(dvs statement, compilation_info& cinfo);
 
 void extract_func_args(dvs func_args, compilation_info& cinfo) {
@@ -89,18 +95,31 @@ int8_t get_variable_location(dvs var_name, compilation_info& cinfo) {
         }
     }
 
-    throw "cannot find variable in scope";
+    return -1;
+}
+
+int8_t add_const(dvs constant, compilation_info& cinfo) {
+    int8_t constnum = static_cast<int8_t>(cinfo.constants.size());
+    cinfo.constants.push_back(constant);
+    return constnum;
 }
 
 void generate_statement_bytecode(dvs statement, compilation_info& cinfo) {
     if(is_null(statement)) {
         cinfo.bytecode.push_back(push_null_op);
     } else if(is_symbol(statement)) {
-        cinfo.bytecode.push_back(load_var_op);
-        cinfo.bytecode.push_back(get_variable_location(statement, cinfo));
+        int8_t local_varnum = get_variable_location(statement, cinfo);
+        if(local_varnum > 0) {
+            cinfo.bytecode.push_back(load_var_op);
+            cinfo.bytecode.push_back(local_varnum);
+        } else {
+            int8_t constnum = add_const(statement, cinfo);
+            cinfo.bytecode.push_back(push_constant_op);
+            cinfo.bytecode.push_back(constnum);
+            cinfo.bytecode.push_back(load_global_op);
+        }
     } else if(is_int(statement)) {
-        int8_t constnum = static_cast<int8_t>(cinfo.constants.size());
-        cinfo.constants.push_back(statement);
+        int8_t constnum = add_const(statement, cinfo);
         cinfo.bytecode.push_back(push_constant_op);
         cinfo.bytecode.push_back(constnum);
     } else {

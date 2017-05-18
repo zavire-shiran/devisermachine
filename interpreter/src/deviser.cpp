@@ -448,6 +448,9 @@ void store_global(deviserstate* dstate) {
     if(!insert_status.second) {
         insert_status.first->second = currentframe.workstack[stacksize-1];
     }
+
+    pop(dstate);
+    pop(dstate);
 }
 
 void load_global(deviserstate* dstate) {
