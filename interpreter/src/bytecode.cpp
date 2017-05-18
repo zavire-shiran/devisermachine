@@ -122,6 +122,20 @@ void generate_statement_bytecode(dvs statement, compilation_info& cinfo) {
         int8_t constnum = add_const(statement, cinfo);
         cinfo.bytecode.push_back(push_constant_op);
         cinfo.bytecode.push_back(constnum);
+    } else if(is_cons(statement)) {
+        int8_t argc = 0;
+        generate_statement_bytecode(statement->pcar(), cinfo);
+        statement = statement->cdr;
+        while(is_cons(statement)) {
+            ++argc;
+            generate_statement_bytecode(statement->pcar(), cinfo);
+            statement = statement->cdr;
+        }
+        if(!is_null(statement)) {
+            throw "invalid function call";
+        }
+        cinfo.bytecode.push_back(call_function_op);
+        cinfo.bytecode.push_back(argc);
     } else {
         throw "cannot compile statement";
     }

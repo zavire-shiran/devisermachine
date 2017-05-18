@@ -12,6 +12,7 @@ using std::string;
 void testfunc(deviserstate* dstate);
 void testfunc(deviserstate* dstate) {
     cout << "testfunc got " << workstacksize(dstate) << " arguments" << endl;
+    push_null(dstate);
 }
 
 int main(int argc, char** argv) {
@@ -37,10 +38,13 @@ int main(int argc, char** argv) {
 
         read(dstate, "testval");
         read(dstate, "2");
-        //push_cfunc(dstate, testfunc);
         store_global(dstate);
 
-        read(dstate, "(f () testval)");
+        read(dstate, "testfunc");
+        push_cfunc(dstate, testfunc);
+        store_global(dstate);
+
+        read(dstate, "(f () (testfunc testval))");
         compile_function(dstate);
 
         //push_int(dstate, 1);
