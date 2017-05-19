@@ -38,7 +38,8 @@ struct deviserstate {
     size_t nextfree;
     std::vector<stackframe> stack;
     std::map<std::string, dvs> symbol_table;
-    std::map<dvs, dvs> top_level_env;
+    std::map<dvs, dvs> top_level_var_env;
+    std::map<dvs, dvs> top_level_func_env;
 };
 
 bool is_null(dvs d);
@@ -91,8 +92,13 @@ void generate_lfunc(deviserstate* dstate, uint64_t num_args, uint64_t num_var,
 void store_variable(deviserstate* dstate, uint64_t varnum);
 void load_variable(deviserstate* dstate, uint64_t varnum);
 
-void store_global(deviserstate* dstate);
-void load_global(deviserstate* dstate);
+void store_global(deviserstate* dstate, std::map<dvs,dvs>& top_level_env);
+void load_global(deviserstate* dstate, std::map<dvs,dvs>& top_level_env);
+
+void store_global_var(deviserstate* dstate);
+void load_global_var(deviserstate* dstate);
+void store_global_func(deviserstate* dstate);
+void load_global_func(deviserstate* dstate);
 
 void push_constant(deviserstate* dstate, uint64_t constnum);
 

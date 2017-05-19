@@ -439,12 +439,12 @@ void load_variable(deviserstate* dstate, uint64_t varnum) {
     currentframe.workstack.push_back(currentframe.variables[varnum]);
 }
 
-void store_global(deviserstate* dstate) {
+void store_global(deviserstate* dstate, map<dvs,dvs>& top_level_env) {
     stackframe& currentframe = dstate->stack.back();
     size_t stacksize = currentframe.workstack.size();
-    auto insert_status = dstate->top_level_env.insert(std::make_pair(
-                                                          currentframe.workstack[stacksize-2],
-                                                          currentframe.workstack[stacksize-1]));
+    auto insert_status = top_level_env.insert(std::make_pair(
+                                                  currentframe.workstack[stacksize-2],
+                                                  currentframe.workstack[stacksize-1]));
     if(!insert_status.second) {
         insert_status.first->second = currentframe.workstack[stacksize-1];
     }
@@ -453,17 +453,33 @@ void store_global(deviserstate* dstate) {
     pop(dstate);
 }
 
-void load_global(deviserstate* dstate) {
+void load_global(deviserstate* dstate, map<dvs,dvs>& top_level_env) {
     stackframe& currentframe = dstate->stack.back();
     size_t stacksize = currentframe.workstack.size();
     dvs varname = currentframe.workstack[stacksize-1];
-    auto binding = dstate->top_level_env.find(varname);
+    auto binding = top_level_env.find(varname);
     pop(dstate);
-    if(binding != dstate->top_level_env.end()) {
+    if(binding != top_level_env.end()) {
         currentframe.workstack.push_back(binding->second);
     } else {
         throw "cannot find top level var";
     }
+}
+
+void store_global_var(deviserstate* dstate) {
+    store_global(dstate, dstate->top_level_var_env);
+}
+
+void load_global_var(deviserstate* dstate) {
+    load_global(dstate, dstate->top_level_var_env);
+}
+
+void store_global_func(deviserstate* dstate) {
+    store_global(dstate, dstate->top_level_func_env);
+}
+
+void load_global_func(deviserstate* dstate) {
+    load_global(dstate, dstate->top_level_func_env);
 }
 
 void push_constant(deviserstate* dstate, uint64_t constnum) {

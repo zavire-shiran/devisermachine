@@ -48,7 +48,12 @@ dvs run_bytecode(deviserstate* dstate) {
             break;
         }
         case load_global_op:
-            load_global(dstate);
+            load_global_var(dstate);
+            currentframe.pc += 1;
+            break;
+
+        case load_global_func_op:
+            load_global_func(dstate);
             currentframe.pc += 1;
             break;
 
@@ -69,7 +74,7 @@ struct compilation_info {
 void extract_func_args(dvs func_args, compilation_info& cinfo);
 int8_t get_variable_location(dvs var_name, compilation_info& cinfo);
 int8_t add_const(dvs constant, compilation_info& cinfo);
-void generate_statement_bytecode(dvs statement, compilation_info& cinfo);
+void generate_statement_bytecode(dvs statement, compilation_info& cinfo, bool function_position = false);
 
 void extract_func_args(dvs func_args, compilation_info& cinfo) {
     while(!is_null(func_args)) {
@@ -104,19 +109,27 @@ int8_t add_const(dvs constant, compilation_info& cinfo) {
     return constnum;
 }
 
-void generate_statement_bytecode(dvs statement, compilation_info& cinfo) {
+void generate_statement_bytecode(dvs statement, compilation_info& cinfo, bool function_position) {
     if(is_null(statement)) {
         cinfo.bytecode.push_back(push_null_op);
     } else if(is_symbol(statement)) {
-        int8_t local_varnum = get_variable_location(statement, cinfo);
-        if(local_varnum > 0) {
-            cinfo.bytecode.push_back(load_var_op);
-            cinfo.bytecode.push_back(local_varnum);
-        } else {
+        if(function_position) {
+            // eventually we will need to look in local funcs, but we don't have that now
             int8_t constnum = add_const(statement, cinfo);
             cinfo.bytecode.push_back(push_constant_op);
             cinfo.bytecode.push_back(constnum);
-            cinfo.bytecode.push_back(load_global_op);
+            cinfo.bytecode.push_back(load_global_func_op);
+        } else {
+            int8_t local_varnum = get_variable_location(statement, cinfo);
+            if(local_varnum > 0) {
+                cinfo.bytecode.push_back(load_var_op);
+                cinfo.bytecode.push_back(local_varnum);
+            } else {
+                int8_t constnum = add_const(statement, cinfo);
+                cinfo.bytecode.push_back(push_constant_op);
+                cinfo.bytecode.push_back(constnum);
+                cinfo.bytecode.push_back(load_global_op);
+            }
         }
     } else if(is_int(statement)) {
         int8_t constnum = add_const(statement, cinfo);
@@ -124,7 +137,7 @@ void generate_statement_bytecode(dvs statement, compilation_info& cinfo) {
         cinfo.bytecode.push_back(constnum);
     } else if(is_cons(statement)) {
         int8_t argc = 0;
-        generate_statement_bytecode(statement->pcar(), cinfo);
+        generate_statement_bytecode(statement->pcar(), cinfo, true);
         statement = statement->cdr;
         while(is_cons(statement)) {
             ++argc;

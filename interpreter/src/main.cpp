@@ -38,11 +38,11 @@ int main(int argc, char** argv) {
 
         read(dstate, "testval");
         read(dstate, "2");
-        store_global(dstate);
+        store_global_var(dstate);
 
         read(dstate, "testfunc");
         push_cfunc(dstate, testfunc);
-        store_global(dstate);
+        store_global_func(dstate);
 
         read(dstate, "(f () (testfunc testval))");
         compile_function(dstate);
