@@ -90,6 +90,7 @@ void push_cfunc(deviserstate* dstate, cfunc_type func);
 void generate_lfunc(deviserstate* dstate, uint64_t num_args, uint64_t num_var,
                     const std::vector<dvs>& constants,
                     const std::vector<int8_t>& bytecode);
+void print_lfunc_info(deviserstate* dstate);
 
 void store_variable(deviserstate* dstate, uint64_t varnum);
 void load_variable(deviserstate* dstate, uint64_t varnum);

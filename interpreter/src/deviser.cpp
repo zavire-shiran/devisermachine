@@ -421,6 +421,24 @@ void generate_lfunc(deviserstate* dstate, uint64_t num_args, uint64_t num_var,
     lfunc->cdr = reinterpret_cast<dvs>(finfo);
 }
 
+void print_lfunc_info(deviserstate* dstate) {
+    stackframe& currentframe = dstate->stack.back();
+    dvs lfunc = currentframe.workstack.back();
+    if(!(is_lfunc(lfunc))) {
+        return;
+    }
+
+    lfunc_info* lfi = reinterpret_cast<lfunc_info*>(lfunc->cdr);
+    cout << "numargs: " << lfi->num_args << " numvars: " << lfi->num_var << endl;
+    cout << "constants:" << endl;
+    for(dvs constant : lfi->constants) {
+        internal_print(constant, cout);
+        cout << endl;
+    }
+    cout << "bytecode:" << endl;
+    disassemble_bytecode(lfi->bytecode, cout);
+}
+
 void store_variable(deviserstate* dstate, uint64_t varnum) {
     stackframe& currentframe = dstate->stack.back();
     if(varnum >= currentframe.variables.size()) {

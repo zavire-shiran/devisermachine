@@ -44,11 +44,12 @@ int main(int argc, char** argv) {
         push_cfunc(dstate, testfunc);
         store_global_func(dstate);
 
-        read(dstate, "(f () (if () (testfunc testval) (testfunc 1 2 3)))");
+        read(dstate, "(f (a) (if a (testfunc testval) (testfunc 1 2 3)))");
         compile_function(dstate);
+        print_lfunc_info(dstate);
 
-        //push_int(dstate, 1);
-        call_function(dstate, 0);
+        push_int(dstate, 1);
+        call_function(dstate, 1);
         run_bytecode(dstate);
         print(dstate, cout);
         cout << endl;

@@ -186,7 +186,7 @@ void generate_statement_bytecode(dvs statement, compilation_info& cinfo, bool fu
             cinfo.bytecode.push_back(load_global_func_op);
         } else {
             int8_t local_varnum = get_variable_location(statement, cinfo);
-            if(local_varnum > 0) {
+            if(local_varnum >= 0) {
                 cinfo.bytecode.push_back(load_var_op);
                 cinfo.bytecode.push_back(local_varnum);
             } else {
@@ -257,4 +257,57 @@ void compile_function(deviserstate* dstate) {
                    cinfo.arguments.size() + cinfo.variables.size(),
                    cinfo.constants,
                    cinfo.bytecode);
+}
+
+void disassemble_bytecode(vector<int8_t> bytecode, std::ostream& out) {
+    size_t index = 0;
+    while(index < bytecode.size()) {
+        int8_t command_code = bytecode[index];
+        switch(command_code) {
+        case load_var_op:
+            out << index << " load_var_op " << static_cast<int>(bytecode[index+1]) << endl;
+            index += 2;
+            break;
+
+        case call_function_op:
+            out << index << " call_function_op " << static_cast<int>(bytecode[index+1]) << endl;
+            index += 2;
+            break;
+
+        case return_function_op:
+            out << index << " return_function_op" << endl;
+            index += 1;
+            break;
+
+        case push_null_op:
+            out << index << " push_null_op" << endl;
+            index += 1;
+            break;
+
+        case push_constant_op:
+            out << index << " push_constant_op " << static_cast<int>(bytecode[index+1]) << endl;
+            index += 2;
+            break;
+
+        case load_global_op:
+            out << index << " load_global_op" << endl;
+            index += 1;
+            break;
+
+        case load_global_func_op:
+            out << index << " load_global_func_op" << endl;
+            index += 1;
+            break;
+
+        case branch_op:
+            out << index << " branch_op " << static_cast<int>(bytecode[index+1]) << endl;
+            index += 2;
+            break;
+
+        case branch_if_null_op:
+            out << index << " branch_if_null_op " << static_cast<int>(bytecode[index+1]) << endl;
+            index += 2;
+            break;
+        }
+    }
 }
