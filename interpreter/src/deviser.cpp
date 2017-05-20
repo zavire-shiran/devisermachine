@@ -70,6 +70,10 @@ bool is_lfunc(dvs d) {
     return get_typeid(d) == lfunc_typeid;
 }
 
+string symbol_string(dvs d) {
+    return *reinterpret_cast<string*>(d->cdr);
+}
+
 dvs_int get_int(dvs d) {
     if(is_int(d)) {
         return reinterpret_cast<dvs_int>(d->cdr);

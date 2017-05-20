@@ -44,7 +44,7 @@ int main(int argc, char** argv) {
         push_cfunc(dstate, testfunc);
         store_global_func(dstate);
 
-        read(dstate, "(f () (testfunc testval))");
+        read(dstate, "(f () (if () (testfunc testval) (testfunc 1 2 3)))");
         compile_function(dstate);
 
         //push_int(dstate, 1);

@@ -55,6 +55,8 @@ bool is_int(dvs d);
 bool is_cfunc(dvs d);
 bool is_lfunc(dvs d);
 
+std::string symbol_string(dvs d);
+
 dvs_int get_int(dvs d);
 
 deviserstate* create_deviser_state();

@@ -42,7 +42,7 @@ dvs run_bytecode(deviserstate* dstate) {
 
         case push_constant_op:
         {
-            uint64_t constnum = static_cast<uint64_t>(currentframe.bytecode[currentframe.pc+1]);
+            size_t constnum = static_cast<uint64_t>(currentframe.bytecode[currentframe.pc+1]);
             currentframe.pc += 2;
             push_constant(dstate, constnum);
             break;
@@ -56,6 +56,21 @@ dvs run_bytecode(deviserstate* dstate) {
             load_global_func(dstate);
             currentframe.pc += 1;
             break;
+
+        case branch_op:
+            currentframe.pc = static_cast<uint64_t>(currentframe.bytecode[currentframe.pc+1]);
+            break;
+
+        case branch_if_null_op:
+        {
+            size_t jump_location = static_cast<uint64_t>(currentframe.bytecode[currentframe.pc+1]);
+            currentframe.pc += 2;
+            if(is_null(currentframe.workstack.back())) {
+                currentframe.pc = jump_location;
+            }
+            pop(dstate);
+            break;
+        }
 
         default:
             throw "unknown opcode";
@@ -74,6 +89,8 @@ struct compilation_info {
 void extract_func_args(dvs func_args, compilation_info& cinfo);
 int8_t get_variable_location(dvs var_name, compilation_info& cinfo);
 int8_t add_const(dvs constant, compilation_info& cinfo);
+void generate_if_statement(dvs statement, compilation_info& cinfo);
+void generate_function_call(dvs statement, compilation_info& cinfo);
 void generate_statement_bytecode(dvs statement, compilation_info& cinfo, bool function_position = false);
 
 void extract_func_args(dvs func_args, compilation_info& cinfo) {
@@ -109,6 +126,54 @@ int8_t add_const(dvs constant, compilation_info& cinfo) {
     return constnum;
 }
 
+void generate_if_statement(dvs statement, compilation_info& cinfo) {
+    statement = statement->cdr;
+    if(!is_cons(statement)) {
+        throw "if requires condition clause";
+    }
+    dvs condition = statement->pcar();
+    generate_statement_bytecode(condition, cinfo);
+    cinfo.bytecode.push_back(branch_if_null_op);
+    size_t branch_to_else_index = cinfo.bytecode.size();
+    cinfo.bytecode.push_back(0);
+
+    statement = statement->cdr;
+    if(!is_cons(statement)) {
+        throw "if requires true branch";
+    }
+
+    dvs true_branch = statement->pcar();
+    generate_statement_bytecode(true_branch, cinfo);
+
+    statement = statement->cdr;
+    if(is_cons(statement)) {
+        cinfo.bytecode.push_back(branch_op);
+        size_t branch_to_end_index = cinfo.bytecode.size();
+        cinfo.bytecode.push_back(0);
+        cinfo.bytecode[branch_to_else_index] = static_cast<int8_t>(cinfo.bytecode.size());
+        generate_statement_bytecode(statement->pcar(), cinfo);
+        cinfo.bytecode[branch_to_end_index] = static_cast<int8_t>(cinfo.bytecode.size());
+    } else {
+        cinfo.bytecode[branch_to_else_index] = static_cast<int8_t>(cinfo.bytecode.size());
+    }
+}
+
+void generate_function_call(dvs statement, compilation_info& cinfo) {
+    int8_t argc = 0;
+    generate_statement_bytecode(statement->pcar(), cinfo, true);
+    statement = statement->cdr;
+    while(is_cons(statement)) {
+        ++argc;
+        generate_statement_bytecode(statement->pcar(), cinfo);
+        statement = statement->cdr;
+    }
+    if(!is_null(statement)) {
+        throw "invalid function call";
+    }
+    cinfo.bytecode.push_back(call_function_op);
+    cinfo.bytecode.push_back(argc);
+}
+
 void generate_statement_bytecode(dvs statement, compilation_info& cinfo, bool function_position) {
     if(is_null(statement)) {
         cinfo.bytecode.push_back(push_null_op);
@@ -136,19 +201,12 @@ void generate_statement_bytecode(dvs statement, compilation_info& cinfo, bool fu
         cinfo.bytecode.push_back(push_constant_op);
         cinfo.bytecode.push_back(constnum);
     } else if(is_cons(statement)) {
-        int8_t argc = 0;
-        generate_statement_bytecode(statement->pcar(), cinfo, true);
-        statement = statement->cdr;
-        while(is_cons(statement)) {
-            ++argc;
-            generate_statement_bytecode(statement->pcar(), cinfo);
-            statement = statement->cdr;
+        dvs first_element = statement->pcar();
+        if(is_symbol(first_element) && symbol_string(first_element) == "if") {
+            generate_if_statement(statement, cinfo);
+        } else {
+            generate_function_call(statement, cinfo);
         }
-        if(!is_null(statement)) {
-            throw "invalid function call";
-        }
-        cinfo.bytecode.push_back(call_function_op);
-        cinfo.bytecode.push_back(argc);
     } else {
         throw "cannot compile statement";
     }
