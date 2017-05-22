@@ -7,8 +7,6 @@ using std::vector;
 using std::cout;
 using std::endl;
 
-vector<dvs> extract_func_args(dvs func_args);
-
 dvs run_bytecode(deviserstate* dstate) {
     while(true) {
         stackframe& currentframe = dstate->stack.back();
