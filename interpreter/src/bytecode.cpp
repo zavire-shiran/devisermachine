@@ -308,6 +308,11 @@ void disassemble_bytecode(vector<bytecode> bcode, std::ostream& out) {
             out << index << " branch_if_null_op " << static_cast<int>(bcode[index+1]) << endl;
             index += 2;
             break;
+
+        default:
+            out << index << " unknown" << endl;
+            index += 1;
+            break;
         }
     }
 }
