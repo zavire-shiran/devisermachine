@@ -85,7 +85,7 @@ dvs_int get_int(dvs d) {
 struct lfunc_info {
     uint64_t num_args;
     uint64_t num_var;
-    vector<int8_t> bytecode;
+    vector<bytecode> bytecode;
     vector<dvs> constants;
 };
 
@@ -410,7 +410,7 @@ void push_cfunc(deviserstate* dstate, cfunc_type func) {
 
 void generate_lfunc(deviserstate* dstate, uint64_t num_args, uint64_t num_var,
                     const vector<dvs>& constants,
-                    const vector<int8_t>& bytecode) {
+                    const vector<bytecode>& bytecode) {
     dvs lfunc = alloc_dvs(dstate);
     set_typeid(lfunc, lfunc_typeid);
     lfunc_info* finfo = new lfunc_info;

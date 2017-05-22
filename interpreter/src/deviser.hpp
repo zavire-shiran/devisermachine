@@ -5,15 +5,7 @@
 #include <vector>
 #include <map>
 
-struct deviserobj;
-typedef deviserobj* dvs;
-
-struct deviserstate;
-
-// these need to be the same size as deviserobj*
-typedef int64_t dvs_int;
-typedef double dvs_float;
-typedef void (*cfunc_type)(deviserstate*);
+#include "types.hpp"
 
 struct deviserobj {
     dvs pcar() {
@@ -28,7 +20,7 @@ struct stackframe {
     std::vector<dvs> workstack;
     std::vector<dvs> variables;
     std::vector<dvs> constants;
-    std::vector<int8_t> bytecode;
+    std::vector<bytecode> bytecode;
     uint64_t pc;
 };
 
@@ -89,7 +81,7 @@ void push_cfunc(deviserstate* dstate, cfunc_type func);
 
 void generate_lfunc(deviserstate* dstate, uint64_t num_args, uint64_t num_var,
                     const std::vector<dvs>& constants,
-                    const std::vector<int8_t>& bytecode);
+                    const std::vector<bytecode>& bytecode);
 void print_lfunc_info(deviserstate* dstate);
 
 void store_variable(deviserstate* dstate, uint64_t varnum);
