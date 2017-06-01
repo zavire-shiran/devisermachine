@@ -22,6 +22,7 @@ struct stackframe {
     std::vector<dvs> constants;
     std::vector<bytecode> bytecode;
     uint64_t pc;
+    std::shared_ptr<module_info> module; // eventually should include closure information
 };
 
 struct deviserstate {
@@ -32,6 +33,12 @@ struct deviserstate {
     std::map<std::string, dvs> symbol_table;
     std::map<dvs, dvs> top_level_var_env;
     std::map<dvs, dvs> top_level_func_env;
+};
+
+struct module_info {
+    dvs name;
+    std::map<dvs, dvs> value_bindings;
+    std::map<dvs, dvs> func_bindings;
 };
 
 bool is_null(dvs d);
@@ -46,6 +53,7 @@ bool is_symbol(dvs d);
 bool is_int(dvs d);
 bool is_cfunc(dvs d);
 bool is_lfunc(dvs d);
+bool is_module(dvs d);
 
 std::string symbol_string(dvs d);
 
@@ -77,11 +85,12 @@ void cons_cdr(deviserstate* dstate, uint64_t pos);
 void push_symbol(deviserstate* dstate, std::string symbolname);
 std::string get_symbol_name(deviserstate* dstate, uint64_t pos);
 
-void push_cfunc(deviserstate* dstate, cfunc_type func);
+void push_cfunc(deviserstate* dstate, cfunc_type func, std::shared_ptr<module_info> mod);
 
 void generate_lfunc(deviserstate* dstate, uint64_t num_args, uint64_t num_var,
                     const std::vector<dvs>& constants,
-                    const std::vector<bytecode>& bytecode);
+                    const std::vector<bytecode>& bytecode,
+                    const std::shared_ptr<module_info> mod);
 void print_lfunc_info(deviserstate* dstate);
 
 void store_variable(deviserstate* dstate, uint64_t varnum);

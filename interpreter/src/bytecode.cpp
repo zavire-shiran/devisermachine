@@ -210,7 +210,7 @@ void generate_statement_bytecode(dvs statement, compilation_info& cinfo, bool fu
     }
 }
 
-void compile_function(deviserstate* dstate) {
+void compile_function(deviserstate* dstate, std::shared_ptr<module_info> mod) {
     stackframe& currentframe = dstate->stack.back();
     dvs func_sexp = currentframe.workstack.back();
     compilation_info cinfo;
@@ -254,7 +254,8 @@ void compile_function(deviserstate* dstate) {
     generate_lfunc(dstate, cinfo.arguments.size(),
                    cinfo.arguments.size() + cinfo.variables.size(),
                    cinfo.constants,
-                   cinfo.bytecode);
+                   cinfo.bytecode,
+                   mod);
 }
 
 void disassemble_bytecode(vector<bytecode> bcode, std::ostream& out) {

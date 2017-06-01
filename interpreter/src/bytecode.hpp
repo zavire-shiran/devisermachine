@@ -14,5 +14,5 @@ const bytecode branch_op = 7;
 const bytecode branch_if_null_op = 8;
 
 dvs run_bytecode(deviserstate* dstate);
-void compile_function(deviserstate* dstate);
+void compile_function(deviserstate* dstate, std::shared_ptr<module_info> mod);
 void disassemble_bytecode(std::vector<bytecode> bytecode, std::ostream& out);

@@ -19,6 +19,8 @@ int main(int argc, char** argv) {
     try {
         deviserstate* dstate = create_deviser_state();
 
+        std::shared_ptr<module_info> mod = std::make_shared<module_info>();
+
 /*
         read(dstate, "a");
         store_variable(dstate, 0);
@@ -41,11 +43,11 @@ int main(int argc, char** argv) {
         store_global_var(dstate);
 
         read(dstate, "testfunc");
-        push_cfunc(dstate, testfunc);
+        push_cfunc(dstate, testfunc, mod);
         store_global_func(dstate);
 
         read(dstate, "(f (a) (if a (testfunc testval) (testfunc 1 2 3)))");
-        compile_function(dstate);
+        compile_function(dstate, mod);
         print_lfunc_info(dstate);
 
         push_int(dstate, 1);

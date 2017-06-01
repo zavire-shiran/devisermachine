@@ -6,6 +6,7 @@ struct deviserobj;
 typedef deviserobj* dvs;
 
 struct deviserstate;
+struct module_info;
 
 // these need to be the same size as deviserobj*
 typedef int64_t dvs_int;

@@ -23,6 +23,7 @@ const dvs_int int_typeid = 2;
 const dvs_int symbol_typeid = 3;
 const dvs_int cfunc_typeid = 4;
 const dvs_int lfunc_typeid = 5;
+const dvs_int module_typeid = 6;
 
 bool is_null(dvs d) {
     return d == nullptr;
@@ -70,6 +71,10 @@ bool is_lfunc(dvs d) {
     return get_typeid(d) == lfunc_typeid;
 }
 
+bool is_module(dvs d) {
+    return get_typeid(d) == module_typeid;
+}
+
 string symbol_string(dvs d) {
     return *reinterpret_cast<string*>(d->cdr);
 }
@@ -87,6 +92,12 @@ struct lfunc_info {
     uint64_t num_var;
     vector<bytecode> bytecode;
     vector<dvs> constants;
+    std::shared_ptr<module_info> module;
+};
+
+struct cfunc_info {
+    cfunc_type func_ptr;
+    std::shared_ptr<module_info> module;
 };
 
 deviserstate* create_deviser_state() {
@@ -133,10 +144,12 @@ void call_function(deviserstate* dstate, uint64_t argc) {
         newframe.variables.insert(newframe.variables.begin(), 3, nullptr);
         currentframe.workstack.erase(begin_args_iter, end_args_iter);
         pop(dstate);
-        dstate->stack.push_back(newframe);
 
-        cfunc_type cfunc = reinterpret_cast<cfunc_type>(function->cdr);
-        (*cfunc)(dstate);
+        cfunc_info* finfo = reinterpret_cast<cfunc_info*>(function->cdr);
+        newframe.module = finfo->module;
+
+        dstate->stack.push_back(newframe);
+        (*finfo->func_ptr)(dstate);
         return_function(dstate);
     } else if(is_lfunc(function)) {
         lfunc_info* finfo = reinterpret_cast<lfunc_info*>(function->cdr);
@@ -146,6 +159,7 @@ void call_function(deviserstate* dstate, uint64_t argc) {
         }
         newframe.bytecode = finfo->bytecode;
         newframe.constants = finfo->constants;
+        newframe.module = finfo->module;
         currentframe.workstack.erase(begin_args_iter, end_args_iter);
         pop(dstate);
         dstate->stack.push_back(newframe);
@@ -402,15 +416,19 @@ string get_symbol_name(deviserstate* dstate, uint64_t pos) {
     }
 }
 
-void push_cfunc(deviserstate* dstate, cfunc_type func) {
+void push_cfunc(deviserstate* dstate, cfunc_type func, std::shared_ptr<module_info> mod) {
     dvs cfunc = alloc_dvs(dstate);
     set_typeid(cfunc, cfunc_typeid);
-    cfunc->cdr = reinterpret_cast<dvs>(func);
+    cfunc_info* finfo = new cfunc_info;
+    finfo->func_ptr = func;
+    finfo->module = mod;
+    cfunc->cdr = reinterpret_cast<dvs>(finfo);
 }
 
 void generate_lfunc(deviserstate* dstate, uint64_t num_args, uint64_t num_var,
                     const vector<dvs>& constants,
-                    const vector<bytecode>& bytecode) {
+                    const vector<bytecode>& bytecode,
+                    const std::shared_ptr<module_info> mod) {
     dvs lfunc = alloc_dvs(dstate);
     set_typeid(lfunc, lfunc_typeid);
     lfunc_info* finfo = new lfunc_info;
@@ -418,6 +436,7 @@ void generate_lfunc(deviserstate* dstate, uint64_t num_args, uint64_t num_var,
     finfo->num_var = num_var;
     finfo->bytecode = bytecode;
     finfo->constants = constants;
+    finfo->module = mod;
     lfunc->cdr = reinterpret_cast<dvs>(finfo);
 }
 
