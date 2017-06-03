@@ -15,6 +15,7 @@ using std::cout;
 using std::endl;
 
 dvs alloc_dvs(deviserstate* dstate);
+std::shared_ptr<module_info> make_module(deviserstate* dstate, dvs name);
 
 void internal_print(dvs obj, std::ostream& out);
 
@@ -194,8 +195,10 @@ void rot_two(deviserstate* dstate) {
     currentframe.workstack[stacksize-2] = temp;
 }
 
-void pop(deviserstate* dstate) {
+dvs pop(deviserstate* dstate) {
+    dvs back = dstate->stack.back().workstack.back();
     dstate->stack.back().workstack.pop_back();
+    return back;
 }
 
 void dup(deviserstate* dstate) {
@@ -544,4 +547,22 @@ void dump_stack(deviserstate* dstate) {
         }
     }
     cout << endl;
+}
+
+std::shared_ptr<module_info> make_module(deviserstate* dstate, dvs name) {
+    std::shared_ptr<module_info> module = std::make_shared<module_info>();
+    module->name = name;
+    dstate->modules.insert(make_pair(name, module));
+    return module;
+}
+
+std::shared_ptr<module_info> get_module(deviserstate* dstate, std::string name) {
+    push_symbol(dstate, name);
+    dvs sym_name = pop(dstate);
+    auto it = dstate->modules.find(sym_name);
+    if(it != dstate->modules.end()) {
+        return make_module(dstate, sym_name);
+    } else {
+        return it->second;
+    }
 }

@@ -33,6 +33,7 @@ struct deviserstate {
     std::map<std::string, dvs> symbol_table;
     std::map<dvs, dvs> top_level_var_env;
     std::map<dvs, dvs> top_level_func_env;
+    std::map<dvs, std::shared_ptr<module_info> > modules;
 };
 
 struct module_info {
@@ -67,7 +68,7 @@ void return_function(deviserstate* dstate);
 
 uint64_t workstacksize(deviserstate* dstate);
 void rot_two(deviserstate* dstate);
-void pop(deviserstate* dstate);
+dvs pop(deviserstate* dstate);
 void dup(deviserstate* dstate);
 
 void read(deviserstate* dstate, const std::string& in);
@@ -107,3 +108,5 @@ void load_global_func(deviserstate* dstate);
 void push_constant(deviserstate* dstate, uint64_t constnum);
 
 void dump_stack(deviserstate* dstate);
+
+std::shared_ptr<module_info> get_module(deviserstate* dstate, std::string name);

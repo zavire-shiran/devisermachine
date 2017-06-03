@@ -19,7 +19,7 @@ int main(int argc, char** argv) {
     try {
         deviserstate* dstate = create_deviser_state();
 
-        std::shared_ptr<module_info> mod = std::make_shared<module_info>();
+        std::shared_ptr<module_info> mod = get_module(dstate, "user");
 
 /*
         read(dstate, "a");
