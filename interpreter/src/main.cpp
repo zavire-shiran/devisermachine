@@ -16,6 +16,10 @@ void testfunc(deviserstate* dstate) {
 }
 
 int main(int argc, char** argv) {
+    string testmodule =
+        "(module test\n"
+        "  (defun f () 1))";
+
     try {
         deviserstate* dstate = create_deviser_state();
 
@@ -55,7 +59,9 @@ int main(int argc, char** argv) {
         run_bytecode(dstate);
         print(dstate, cout);
         cout << endl;
-        //dump_stack(dstate);
+        dump_stack(dstate);
+
+        load_module(dstate, testmodule);
 
         destroy_deviser_state(dstate);
 

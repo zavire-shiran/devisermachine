@@ -251,11 +251,15 @@ void compile_function(deviserstate* dstate, std::shared_ptr<module_info> mod) {
 
     cinfo.bytecode.push_back(return_function_op);
 
-    generate_lfunc(dstate, cinfo.arguments.size(),
+    generate_lfunc(dstate, cinfo.name, cinfo.arguments.size(),
                    cinfo.arguments.size() + cinfo.variables.size(),
                    cinfo.constants,
                    cinfo.bytecode,
                    mod);
+
+    // pop the source
+    rot_two(dstate);
+    pop(dstate);
 }
 
 void disassemble_bytecode(vector<bytecode> bcode, std::ostream& out) {

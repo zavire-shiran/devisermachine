@@ -15,6 +15,7 @@ using std::cout;
 using std::endl;
 
 dvs alloc_dvs(deviserstate* dstate);
+dvs get_lfunc_name(dvs lfunc);
 std::shared_ptr<module_info> make_module(deviserstate* dstate, dvs name);
 
 void internal_print(dvs obj, std::ostream& out);
@@ -89,12 +90,22 @@ dvs_int get_int(dvs d) {
 }
 
 struct lfunc_info {
+    dvs name;
     uint64_t num_args;
     uint64_t num_var;
     vector<bytecode> bytecode;
     vector<dvs> constants;
     std::shared_ptr<module_info> module;
 };
+
+dvs get_lfunc_name(dvs lfunc) {
+    if(is_lfunc(lfunc)) {
+        lfunc_info* finfo = reinterpret_cast<lfunc_info*>(lfunc->cdr);
+        return finfo->name;
+    } else {
+        throw "not an lfunc";
+    }
+}
 
 struct cfunc_info {
     cfunc_type func_ptr;
@@ -199,6 +210,11 @@ dvs pop(deviserstate* dstate) {
     dvs back = dstate->stack.back().workstack.back();
     dstate->stack.back().workstack.pop_back();
     return back;
+}
+
+void push(deviserstate* dstate, dvs val) {
+    stackframe& currentframe = dstate->stack.back();
+    currentframe.workstack.push_back(val);
 }
 
 void dup(deviserstate* dstate) {
@@ -428,13 +444,14 @@ void push_cfunc(deviserstate* dstate, cfunc_type func, std::shared_ptr<module_in
     cfunc->cdr = reinterpret_cast<dvs>(finfo);
 }
 
-void generate_lfunc(deviserstate* dstate, uint64_t num_args, uint64_t num_var,
+void generate_lfunc(deviserstate* dstate, dvs name, uint64_t num_args, uint64_t num_var,
                     const vector<dvs>& constants,
                     const vector<bytecode>& bytecode,
                     const std::shared_ptr<module_info> mod) {
     dvs lfunc = alloc_dvs(dstate);
     set_typeid(lfunc, lfunc_typeid);
     lfunc_info* finfo = new lfunc_info;
+    finfo->name = name;
     finfo->num_args = num_args;
     finfo->num_var = num_var;
     finfo->bytecode = bytecode;
@@ -560,9 +577,62 @@ std::shared_ptr<module_info> get_module(deviserstate* dstate, std::string name) 
     push_symbol(dstate, name);
     dvs sym_name = pop(dstate);
     auto it = dstate->modules.find(sym_name);
-    if(it != dstate->modules.end()) {
+    if(it == dstate->modules.end()) {
         return make_module(dstate, sym_name);
     } else {
         return it->second;
+    }
+}
+
+void load_module(deviserstate* dstate, std::string modulestring) {
+    read(dstate, modulestring);
+    stackframe& currentframe = dstate->stack.back();
+    dvs modulesrc = currentframe.workstack.back();
+
+    if(!is_cons(modulesrc)) {
+        throw "module source should be a list";
+    }
+
+    //TODO: check that module car is 'module
+
+    modulesrc = modulesrc->cdr;
+    if(modulesrc == nullptr) {
+        throw "module source too short";
+    }
+
+    dvs modulename = modulesrc->pcar();
+    modulesrc = modulesrc->cdr;
+
+    if(!is_symbol(modulename)) {
+        throw "module name is not a symbol";
+    }
+
+    //inefficiency: we are pulling the string out of a symbol here, but it
+    //gets turned back into a symbol in get_module.
+    std::shared_ptr<module_info> module = get_module(dstate, symbol_string(modulename));
+
+    while(modulesrc != nullptr) {
+        if(!is_cons(modulesrc)) {
+            throw "module should be a list";
+        }
+
+        dvs item = modulesrc->pcar();
+        if(!is_cons(item)) {
+            throw "module items should be a list";
+        }
+
+        dvs itemcar = item->pcar();
+        if(!is_symbol(itemcar)) {
+            throw "module items should start with a symbol";
+        }
+
+        if(symbol_string(itemcar) == "defun") {
+            push(dstate, item->cdr);
+            compile_function(dstate, module);
+            dvs lfunc = pop(dstate);
+            dvs name = get_lfunc_name(lfunc);
+            module->func_bindings.insert(std::make_pair(name, lfunc));
+        }
+        modulesrc = modulesrc->cdr;
     }
 }

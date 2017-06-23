@@ -69,6 +69,7 @@ void return_function(deviserstate* dstate);
 uint64_t workstacksize(deviserstate* dstate);
 void rot_two(deviserstate* dstate);
 dvs pop(deviserstate* dstate);
+void push(deviserstate* dstate, dvs val);
 void dup(deviserstate* dstate);
 
 void read(deviserstate* dstate, const std::string& in);
@@ -88,7 +89,7 @@ std::string get_symbol_name(deviserstate* dstate, uint64_t pos);
 
 void push_cfunc(deviserstate* dstate, cfunc_type func, std::shared_ptr<module_info> mod);
 
-void generate_lfunc(deviserstate* dstate, uint64_t num_args, uint64_t num_var,
+void generate_lfunc(deviserstate* dstate, dvs name, uint64_t num_args, uint64_t num_var,
                     const std::vector<dvs>& constants,
                     const std::vector<bytecode>& bytecode,
                     const std::shared_ptr<module_info> mod);
@@ -110,3 +111,4 @@ void push_constant(deviserstate* dstate, uint64_t constnum);
 void dump_stack(deviserstate* dstate);
 
 std::shared_ptr<module_info> get_module(deviserstate* dstate, std::string name);
+void load_module(deviserstate* dstate, std::string modulesrc);
