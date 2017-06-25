@@ -45,12 +45,12 @@ dvs run_bytecode(deviserstate* dstate) {
             push_constant(dstate, constnum);
             break;
         }
-        case load_global_op:
+        case load_module_op:
             load_module_var(dstate);
             currentframe.pc += 1;
             break;
 
-        case load_global_func_op:
+        case load_module_func_op:
             load_module_func(dstate);
             currentframe.pc += 1;
             break;
@@ -181,7 +181,7 @@ void generate_statement_bytecode(dvs statement, compilation_info& cinfo, bool fu
             bytecode constnum = add_const(statement, cinfo);
             cinfo.bytecode.push_back(push_constant_op);
             cinfo.bytecode.push_back(constnum);
-            cinfo.bytecode.push_back(load_global_func_op);
+            cinfo.bytecode.push_back(load_module_func_op);
         } else {
             bytecode local_varnum = get_variable_location(statement, cinfo);
             if(local_varnum >= 0) {
@@ -191,7 +191,7 @@ void generate_statement_bytecode(dvs statement, compilation_info& cinfo, bool fu
                 bytecode constnum = add_const(statement, cinfo);
                 cinfo.bytecode.push_back(push_constant_op);
                 cinfo.bytecode.push_back(constnum);
-                cinfo.bytecode.push_back(load_global_op);
+                cinfo.bytecode.push_back(load_module_op);
             }
         }
     } else if(is_int(statement)) {
@@ -292,13 +292,13 @@ void disassemble_bytecode(vector<bytecode> bcode, std::ostream& out) {
             index += 2;
             break;
 
-        case load_global_op:
-            out << index << " load_global_op" << endl;
+        case load_module_op:
+            out << index << " load_module_op" << endl;
             index += 1;
             break;
 
-        case load_global_func_op:
-            out << index << " load_global_func_op" << endl;
+        case load_module_func_op:
+            out << index << " load_module_func_op" << endl;
             index += 1;
             break;
 
