@@ -31,8 +31,6 @@ struct deviserstate {
     size_t nextfree;
     std::vector<stackframe> stack;
     std::map<std::string, dvs> symbol_table;
-    std::map<dvs, dvs> top_level_var_env;
-    std::map<dvs, dvs> top_level_func_env;
     std::map<dvs, std::shared_ptr<module_info> > modules;
 };
 
@@ -101,10 +99,10 @@ void load_variable(deviserstate* dstate, uint64_t varnum);
 void store_global(deviserstate* dstate, std::map<dvs,dvs>& top_level_env);
 void load_global(deviserstate* dstate, std::map<dvs,dvs>& top_level_env);
 
-void store_global_var(deviserstate* dstate);
-void load_global_var(deviserstate* dstate);
-void store_global_func(deviserstate* dstate);
-void load_global_func(deviserstate* dstate);
+void store_module_var(deviserstate* dstate);
+void load_module_var(deviserstate* dstate);
+void store_module_func(deviserstate* dstate);
+void load_module_func(deviserstate* dstate);
 
 void push_constant(deviserstate* dstate, uint64_t constnum);
 
@@ -112,3 +110,4 @@ void dump_stack(deviserstate* dstate);
 
 std::shared_ptr<module_info> get_module(deviserstate* dstate, std::string name);
 void load_module(deviserstate* dstate, std::string modulesrc);
+void set_module(deviserstate* dstate, std::string module_name);

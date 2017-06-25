@@ -46,12 +46,12 @@ dvs run_bytecode(deviserstate* dstate) {
             break;
         }
         case load_global_op:
-            load_global_var(dstate);
+            load_module_var(dstate);
             currentframe.pc += 1;
             break;
 
         case load_global_func_op:
-            load_global_func(dstate);
+            load_module_func(dstate);
             currentframe.pc += 1;
             break;
 

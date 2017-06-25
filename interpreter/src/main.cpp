@@ -24,6 +24,7 @@ int main(int argc, char** argv) {
         deviserstate* dstate = create_deviser_state();
 
         std::shared_ptr<module_info> mod = get_module(dstate, "user");
+        set_module(dstate, "user");
 
 /*
         read(dstate, "a");
@@ -44,11 +45,11 @@ int main(int argc, char** argv) {
 
         read(dstate, "testval");
         read(dstate, "2");
-        store_global_var(dstate);
+        store_module_var(dstate);
 
         read(dstate, "testfunc");
         push_cfunc(dstate, testfunc, mod);
-        store_global_func(dstate);
+        store_module_func(dstate);
 
         read(dstate, "(f (a) (if a (testfunc testval) (testfunc 1 2 3)))");
         compile_function(dstate, mod);

@@ -90,7 +90,7 @@ dvs_int get_int(dvs d) {
 }
 
 struct lfunc_info {
-    dvs name;
+    dvs name; // but not all functions have names...
     uint64_t num_args;
     uint64_t num_var;
     vector<bytecode> bytecode;
@@ -527,20 +527,24 @@ void load_global(deviserstate* dstate, map<dvs,dvs>& top_level_env) {
     }
 }
 
-void store_global_var(deviserstate* dstate) {
-    store_global(dstate, dstate->top_level_var_env);
+void store_module_var(deviserstate* dstate) {
+    stackframe& currentframe = dstate->stack.back();
+    store_global(dstate, currentframe.module->value_bindings);
 }
 
-void load_global_var(deviserstate* dstate) {
-    load_global(dstate, dstate->top_level_var_env);
+void load_module_var(deviserstate* dstate) {
+    stackframe& currentframe = dstate->stack.back();
+    load_global(dstate, currentframe.module->value_bindings);
 }
 
-void store_global_func(deviserstate* dstate) {
-    store_global(dstate, dstate->top_level_func_env);
+void store_module_func(deviserstate* dstate) {
+    stackframe& currentframe = dstate->stack.back();
+    store_global(dstate, currentframe.module->func_bindings);
 }
 
-void load_global_func(deviserstate* dstate) {
-    load_global(dstate, dstate->top_level_func_env);
+void load_module_func(deviserstate* dstate) {
+    stackframe& currentframe = dstate->stack.back();
+    load_global(dstate, currentframe.module->func_bindings);
 }
 
 void push_constant(deviserstate* dstate, uint64_t constnum) {
@@ -608,7 +612,7 @@ void load_module(deviserstate* dstate, std::string modulestring) {
     }
 
     //inefficiency: we are pulling the string out of a symbol here, but it
-    //gets turned back into a symbol in get_module.
+    //gets turned back into a symbol in get_module().
     std::shared_ptr<module_info> module = get_module(dstate, symbol_string(modulename));
 
     while(modulesrc != nullptr) {
@@ -635,4 +639,9 @@ void load_module(deviserstate* dstate, std::string modulestring) {
         }
         modulesrc = modulesrc->cdr;
     }
+}
+
+void set_module(deviserstate* dstate, std::string module_name) {
+    stackframe& currentframe = dstate->stack.back();
+    currentframe.module = get_module(dstate, module_name);
 }
