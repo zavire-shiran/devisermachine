@@ -43,7 +43,7 @@ int main(int argc, char** argv) {
         generate_lfunc(dstate, 1, 1, bytecode);
         push_cfunc(dstate, testfunc);*/
 
-        read(dstate, "testval");
+/*        read(dstate, "testval");
         read(dstate, "2");
         store_module_var(dstate);
 
@@ -62,7 +62,12 @@ int main(int argc, char** argv) {
         cout << endl;
         dump_stack(dstate);
 
-        load_module(dstate, testmodule);
+        load_module(dstate, testmodule);*/
+
+        read(dstate, std::cin);
+        eval(dstate);
+        print(dstate, std::cout);
+        std::cout << std::endl;
 
         destroy_deviser_state(dstate);
 

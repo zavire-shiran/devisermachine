@@ -645,3 +645,30 @@ void set_module(deviserstate* dstate, std::string module_name) {
     stackframe& currentframe = dstate->stack.back();
     currentframe.module = get_module(dstate, module_name);
 }
+
+void eval(deviserstate* dstate) {
+    stackframe& currentframe = dstate->stack.back();
+    dvs expression = currentframe.workstack.back();
+    if(is_cons(expression) &&
+       is_symbol(expression->pcar()) &&
+       symbol_string(expression->pcar()) == "defun") {
+        throw "don't know how to do defun yet";
+    } else {
+        push_null(dstate);
+        make_cons(dstate);
+
+        push_null(dstate);
+        rot_two(dstate);
+        make_cons(dstate);
+
+        push_symbol(dstate, "lambda");
+        rot_two(dstate);
+        make_cons(dstate);
+        print(dstate, std::cout);
+
+        compile_function(dstate, currentframe.module);
+        print_lfunc_info(dstate);
+        call_function(dstate, 0);
+        run_bytecode(dstate);
+    }
+}

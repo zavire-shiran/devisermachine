@@ -111,3 +111,5 @@ void dump_stack(deviserstate* dstate);
 std::shared_ptr<module_info> get_module(deviserstate* dstate, std::string name);
 void load_module(deviserstate* dstate, std::string modulesrc);
 void set_module(deviserstate* dstate, std::string module_name);
+
+void eval(deviserstate* dstate);
