@@ -659,8 +659,14 @@ void eval(deviserstate* dstate) {
             throw "don't know how to do defun yet";
             return;
         } else if(symbol_string(expression->pcar()) == "in-module") {
-            std::cout << "in-module" << std::endl;
-            throw "don't know how to do in-module yet";
+            expression = expression->cdr;
+            if(is_cons(expression) && is_symbol(expression->pcar())) {
+                set_module(dstate, symbol_string(expression->pcar()));
+                pop(dstate);
+                push(dstate, expression->pcar());
+            } else {
+                throw "malformed in-module";
+            }
             return;
         }
     }
