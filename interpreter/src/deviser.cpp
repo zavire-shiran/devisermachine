@@ -81,6 +81,10 @@ string symbol_string(dvs d) {
     return *reinterpret_cast<string*>(d->cdr);
 }
 
+bool issymchar(int c) {
+    return !isspace(c) && isprint(c) && c != '(' && c != ')';
+}
+
 dvs_int get_int(dvs d) {
     if(is_int(d)) {
         return reinterpret_cast<dvs_int>(d->cdr);
@@ -272,10 +276,10 @@ void read(deviserstate* dstate, std::istream& in) {
         }
 
         push_int(dstate, stol(num));
-    } else if(isalpha(c)) {
+    } else {
         string sym(1, c);
         in.get();
-        while(isalnum(in.peek())) {
+        while(issymchar(in.peek())) {
             sym.append(1, static_cast<char>(in.get()));
         }
 
@@ -650,25 +654,30 @@ void eval(deviserstate* dstate) {
     stackframe& currentframe = dstate->stack.back();
     dvs expression = currentframe.workstack.back();
     if(is_cons(expression) &&
-       is_symbol(expression->pcar()) &&
-       symbol_string(expression->pcar()) == "defun") {
-        throw "don't know how to do defun yet";
-    } else {
-        push_null(dstate);
-        make_cons(dstate);
-
-        push_null(dstate);
-        rot_two(dstate);
-        make_cons(dstate);
-
-        push_symbol(dstate, "lambda");
-        rot_two(dstate);
-        make_cons(dstate);
-        print(dstate, std::cout);
-
-        compile_function(dstate, currentframe.module);
-        print_lfunc_info(dstate);
-        call_function(dstate, 0);
-        run_bytecode(dstate);
+       is_symbol(expression->pcar())) {
+        if(symbol_string(expression->pcar()) == "defun") {
+            throw "don't know how to do defun yet";
+            return;
+        } else if(symbol_string(expression->pcar()) == "in-module") {
+            std::cout << "in-module" << std::endl;
+            throw "don't know how to do in-module yet";
+            return;
+        }
     }
+    push_null(dstate);
+    make_cons(dstate);
+
+    push_null(dstate);
+    rot_two(dstate);
+    make_cons(dstate);
+
+    push_symbol(dstate, "lambda");
+    rot_two(dstate);
+    make_cons(dstate);
+    print(dstate, std::cout);
+
+    compile_function(dstate, currentframe.module);
+    print_lfunc_info(dstate);
+    call_function(dstate, 0);
+    run_bytecode(dstate);
 }

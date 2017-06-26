@@ -55,6 +55,7 @@ bool is_lfunc(dvs d);
 bool is_module(dvs d);
 
 std::string symbol_string(dvs d);
+bool issymchar(int c);
 
 dvs_int get_int(dvs d);
 
