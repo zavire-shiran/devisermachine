@@ -71,8 +71,8 @@ dvs pop(deviserstate* dstate);
 void push(deviserstate* dstate, dvs val);
 void dup(deviserstate* dstate);
 
-void read(deviserstate* dstate, const std::string& in);
-void read(deviserstate* dstate, std::istream& in);
+bool read(deviserstate* dstate, const std::string& in);
+bool read(deviserstate* dstate, std::istream& in);
 void print(deviserstate* dstate, std::ostream& out);
 
 void push_int(deviserstate* dstate, dvs_int value);

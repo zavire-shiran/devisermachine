@@ -64,10 +64,14 @@ int main(int argc, char** argv) {
 
         load_module(dstate, testmodule);*/
 
-        read(dstate, std::cin);
-        eval(dstate);
-        print(dstate, std::cout);
-        std::cout << std::endl;
+        while(std::cin) {
+            std::cout << "> ";
+            if(read(dstate, std::cin)) {
+                eval(dstate);
+                print(dstate, std::cout);
+                std::cout << std::endl;
+            }
+        }
 
         destroy_deviser_state(dstate);
 

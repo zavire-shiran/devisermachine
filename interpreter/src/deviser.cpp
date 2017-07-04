@@ -231,12 +231,12 @@ void dup(deviserstate* dstate) {
     }
 }
 
-void read(deviserstate* dstate, const std::string& in) {
+bool read(deviserstate* dstate, const std::string& in) {
     std::stringstream ss(in);
-    read(dstate, ss);
+    return read(dstate, ss);
 }
 
-void read(deviserstate* dstate, std::istream& in) {
+bool read(deviserstate* dstate, std::istream& in) {
     char c = static_cast<char>(in.peek());
     while(isspace(c)) {
         in.get();
@@ -276,7 +276,7 @@ void read(deviserstate* dstate, std::istream& in) {
         }
 
         push_int(dstate, stol(num));
-    } else {
+    } else if(issymchar(c)) {
         string sym(1, c);
         in.get();
         while(issymchar(in.peek())) {
@@ -284,7 +284,10 @@ void read(deviserstate* dstate, std::istream& in) {
         }
 
         push_symbol(dstate, sym);
+    } else {
+        return false;
     }
+    return true;
 }
 
 void internal_print(dvs obj, std::ostream& out) {
@@ -680,10 +683,10 @@ void eval(deviserstate* dstate) {
     push_symbol(dstate, "lambda");
     rot_two(dstate);
     make_cons(dstate);
-    print(dstate, std::cout);
+    //print(dstate, std::cout);
 
     compile_function(dstate, currentframe.module);
-    print_lfunc_info(dstate);
+    //print_lfunc_info(dstate);
     call_function(dstate, 0);
     run_bytecode(dstate);
 }
