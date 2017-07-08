@@ -595,6 +595,14 @@ std::shared_ptr<module_info> get_module(deviserstate* dstate, std::string name) 
     }
 }
 
+void defun(deviserstate* dstate, std::shared_ptr<module_info> module,  dvs expr) {
+    push(dstate, expr);
+    compile_function(dstate, module);
+    dvs lfunc = pop(dstate);
+    dvs name = get_lfunc_name(lfunc);
+    module->func_bindings.insert(std::make_pair(name, lfunc));
+}
+
 void load_module(deviserstate* dstate, std::string modulestring) {
     read(dstate, modulestring);
     stackframe& currentframe = dstate->stack.back();
@@ -638,11 +646,7 @@ void load_module(deviserstate* dstate, std::string modulestring) {
         }
 
         if(symbol_string(itemcar) == "defun") {
-            push(dstate, item->cdr);
-            compile_function(dstate, module);
-            dvs lfunc = pop(dstate);
-            dvs name = get_lfunc_name(lfunc);
-            module->func_bindings.insert(std::make_pair(name, lfunc));
+            defun(dstate, module, item->cdr);
         }
         modulesrc = modulesrc->cdr;
     }
@@ -653,17 +657,14 @@ void set_module(deviserstate* dstate, std::string module_name) {
     currentframe.module = get_module(dstate, module_name);
 }
 
+
 void eval(deviserstate* dstate) {
     stackframe& currentframe = dstate->stack.back();
     dvs expression = currentframe.workstack.back();
     if(is_cons(expression) &&
        is_symbol(expression->pcar())) {
         if(symbol_string(expression->pcar()) == "defun") {
-            push(dstate, expression->cdr);
-            compile_function(dstate, currentframe.module);
-            dvs lfunc = pop(dstate);
-            dvs name = get_lfunc_name(lfunc);
-            currentframe.module->func_bindings.insert(std::make_pair(name, lfunc));
+            defun(dstate, currentframe.module, expression->cdr);
             return;
         } else if(symbol_string(expression->pcar()) == "in-module") {
             expression = expression->cdr;
