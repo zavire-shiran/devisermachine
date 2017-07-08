@@ -69,7 +69,13 @@ dvs run_bytecode(deviserstate* dstate) {
             pop(dstate);
             break;
         }
-
+        case set_var_op:
+        {
+            size_t varnum = static_cast<size_t>(currentframe.bytecode[currentframe.pc+1]);
+            store_variable(dstate, varnum);
+            currentframe.pc += 2;
+            break;
+        }
         default:
             throw "unknown opcode";
         }
@@ -89,6 +95,7 @@ bytecode get_variable_location(dvs var_name, compilation_info& cinfo);
 bytecode add_const(dvs constant, compilation_info& cinfo);
 void generate_if_statement(dvs statement, compilation_info& cinfo);
 void generate_quote(dvs statement, compilation_info& cinfo);
+void generate_let(dvs statement, compilation_info& cinfo);
 void generate_function_call(dvs statement, compilation_info& cinfo);
 void generate_statement_bytecode(dvs statement, compilation_info& cinfo, bool function_position = false);
 
@@ -104,15 +111,17 @@ void extract_func_args(dvs func_args, compilation_info& cinfo) {
 }
 
 bytecode get_variable_location(dvs var_name, compilation_info& cinfo) {
-    for(size_t i = 0; i < cinfo.arguments.size(); ++i) {
-        if(cinfo.arguments[i] == var_name) {
-            return static_cast<bytecode>(i);
+    // do this one first and backwards for proper variable shadowing mechanism
+    for(int i = static_cast<int>(cinfo.variables.size()) - 1; i >= 0; --i) {
+        size_t pos = static_cast<size_t>(i);
+        if(cinfo.variables[pos] == var_name) {
+            return static_cast<bytecode>(pos + cinfo.arguments.size());
         }
     }
 
-    for(size_t i = 0; i < cinfo.variables.size(); ++i) {
-        if(cinfo.variables[i] == var_name) {
-            return static_cast<bytecode>(i + cinfo.arguments.size());
+    for(size_t i = 0; i < cinfo.arguments.size(); ++i) {
+        if(cinfo.arguments[i] == var_name) {
+            return static_cast<bytecode>(i);
         }
     }
 
@@ -168,6 +177,54 @@ void generate_quote(dvs statement, compilation_info& cinfo) {
     cinfo.bytecode.push_back(constnum);
 }
 
+void generate_let(dvs statement, compilation_info& cinfo) {
+    statement = statement->cdr;
+    if(!is_cons(statement) || !is_list(statement->pcar())) {
+        throw "malformed let";
+    }
+
+    vector<dvs> new_vars;
+    bytecode next_var_number = static_cast<bytecode>(cinfo.variables.size());
+
+    dvs bindings = statement->pcar();
+    while(!is_null(bindings)) {
+        dvs binding = bindings->pcar();
+
+        if(is_symbol(binding)) {
+            new_vars.push_back(binding);
+            ++next_var_number;
+        } else if(is_cons(binding)) {
+            if(!is_symbol(binding->pcar())) {
+                throw "variables must be symbols";
+            }
+            new_vars.push_back(binding->pcar());
+
+            if(is_cons(binding->cdr)) {
+                generate_statement_bytecode(binding->cdr->pcar(), cinfo);
+                cinfo.bytecode.push_back(set_var_op);
+                cinfo.bytecode.push_back(next_var_number);
+            }
+
+            ++next_var_number;
+        } else {
+            throw "invalid let binding";
+        }
+
+        bindings = bindings->cdr;
+    }
+
+    cinfo.variables.insert(cinfo.variables.end(), new_vars.begin(), new_vars.end());
+    statement = statement->cdr;
+    if(is_null(statement)) {
+        cinfo.bytecode.push_back(push_null_op);
+    }
+
+    while(!is_null(statement)) {
+        generate_statement_bytecode(statement->pcar(), cinfo);
+        statement = statement->cdr;
+    }
+}
+
 void generate_function_call(dvs statement, compilation_info& cinfo) {
     bytecode argc = 0;
     generate_statement_bytecode(statement->pcar(), cinfo, true);
@@ -216,6 +273,8 @@ void generate_statement_bytecode(dvs statement, compilation_info& cinfo, bool fu
             generate_if_statement(statement, cinfo);
         } else if(is_symbol(first_element) && symbol_string(first_element) == "quote") {
             generate_quote(statement, cinfo);
+        } else if(is_symbol(first_element) && symbol_string(first_element) == "let") {
+            generate_let(statement, cinfo);
         } else{
             generate_function_call(statement, cinfo);
         }

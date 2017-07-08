@@ -12,6 +12,7 @@ const bytecode load_module_op = 5;
 const bytecode load_module_func_op = 6;
 const bytecode branch_op = 7;
 const bytecode branch_if_null_op = 8;
+const bytecode set_var_op = 9;
 
 dvs run_bytecode(deviserstate* dstate);
 void compile_function(deviserstate* dstate, std::shared_ptr<module_info> mod);
