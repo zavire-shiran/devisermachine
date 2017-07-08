@@ -659,7 +659,11 @@ void eval(deviserstate* dstate) {
     if(is_cons(expression) &&
        is_symbol(expression->pcar())) {
         if(symbol_string(expression->pcar()) == "defun") {
-            throw "don't know how to do defun yet";
+            push(dstate, expression->cdr);
+            compile_function(dstate, currentframe.module);
+            dvs lfunc = pop(dstate);
+            dvs name = get_lfunc_name(lfunc);
+            currentframe.module->func_bindings.insert(std::make_pair(name, lfunc));
             return;
         } else if(symbol_string(expression->pcar()) == "in-module") {
             expression = expression->cdr;

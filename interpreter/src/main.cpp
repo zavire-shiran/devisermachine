@@ -72,6 +72,7 @@ int main(int argc, char** argv) {
                 std::cout << std::endl;
             }
         }
+        std::cout << std::endl;
 
         destroy_deviser_state(dstate);
 
