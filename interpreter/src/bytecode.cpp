@@ -88,6 +88,7 @@ void extract_func_args(dvs func_args, compilation_info& cinfo);
 bytecode get_variable_location(dvs var_name, compilation_info& cinfo);
 bytecode add_const(dvs constant, compilation_info& cinfo);
 void generate_if_statement(dvs statement, compilation_info& cinfo);
+void generate_quote(dvs statement, compilation_info& cinfo);
 void generate_function_call(dvs statement, compilation_info& cinfo);
 void generate_statement_bytecode(dvs statement, compilation_info& cinfo, bool function_position = false);
 
@@ -156,6 +157,17 @@ void generate_if_statement(dvs statement, compilation_info& cinfo) {
     }
 }
 
+void generate_quote(dvs statement, compilation_info& cinfo) {
+    statement = statement->cdr;
+    if(!is_cons(statement)) {
+        throw "invalid quote";
+    }
+    dvs constant = statement->pcar();
+    bytecode constnum = add_const(constant, cinfo);
+    cinfo.bytecode.push_back(push_constant_op);
+    cinfo.bytecode.push_back(constnum);
+}
+
 void generate_function_call(dvs statement, compilation_info& cinfo) {
     bytecode argc = 0;
     generate_statement_bytecode(statement->pcar(), cinfo, true);
@@ -202,7 +214,9 @@ void generate_statement_bytecode(dvs statement, compilation_info& cinfo, bool fu
         dvs first_element = statement->pcar();
         if(is_symbol(first_element) && symbol_string(first_element) == "if") {
             generate_if_statement(statement, cinfo);
-        } else {
+        } else if(is_symbol(first_element) && symbol_string(first_element) == "quote") {
+            generate_quote(statement, cinfo);
+        } else{
             generate_function_call(statement, cinfo);
         }
     } else {
