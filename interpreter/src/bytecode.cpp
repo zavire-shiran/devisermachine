@@ -223,6 +223,12 @@ void generate_let(dvs statement, compilation_info& cinfo) {
         generate_statement_bytecode(statement->pcar(), cinfo);
         statement = statement->cdr;
     }
+
+    // clear the new bindings so that other code won't reference them
+    auto it = cinfo.variables.rbegin();
+    for(size_t i = 0; i < new_vars.size(); ++i, ++it) {
+        *it = nullptr;
+    }
 }
 
 void generate_function_call(dvs statement, compilation_info& cinfo) {
