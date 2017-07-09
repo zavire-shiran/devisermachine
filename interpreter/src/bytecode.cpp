@@ -28,7 +28,8 @@ dvs run_bytecode(deviserstate* dstate) {
         case return_function_op:
         {
             return_function(dstate);
-            if(dstate->stack.size() == 1) {
+            if((dstate->stack.size() == 1) ||
+               (dstate->stack.back().bytecode.size() == 0)) {
                 return dstate->stack.back().workstack.back();
             }
             break;
@@ -97,7 +98,9 @@ void generate_if_statement(dvs statement, compilation_info& cinfo);
 void generate_quote(dvs statement, compilation_info& cinfo);
 void generate_let(dvs statement, compilation_info& cinfo);
 void generate_function_call(dvs statement, compilation_info& cinfo);
-void generate_statement_bytecode(dvs statement, compilation_info& cinfo, bool function_position = false);
+void generate_statement_bytecode(dvs statement, compilation_info& cinfo,
+                                 bool function_position = false);
+void generate_function_bytecode(dvs func_sexp, compilation_info& cinfo);
 
 void extract_func_args(dvs func_args, compilation_info& cinfo) {
     while(!is_null(func_args)) {
@@ -289,11 +292,7 @@ void generate_statement_bytecode(dvs statement, compilation_info& cinfo, bool fu
     }
 }
 
-void compile_function(deviserstate* dstate, std::shared_ptr<module_info> mod) {
-    stackframe& currentframe = dstate->stack.back();
-    dvs func_sexp = currentframe.workstack.back();
-    compilation_info cinfo;
-
+void generate_function_bytecode(dvs func_sexp, compilation_info& cinfo) {
     if(!is_cons(func_sexp)) {
         throw "only cons can be compiled";
     }
@@ -329,8 +328,34 @@ void compile_function(deviserstate* dstate, std::shared_ptr<module_info> mod) {
     }
 
     cinfo.bytecode.push_back(return_function_op);
+}
+
+void compile_function(deviserstate* dstate, std::shared_ptr<module_info> mod) {
+    stackframe& currentframe = dstate->stack.back();
+    dvs func_sexp = currentframe.workstack.back();
+    compilation_info cinfo;
+
+    generate_function_bytecode(func_sexp, cinfo);
 
     generate_lfunc(dstate, cinfo.name, cinfo.arguments.size(),
+                   cinfo.arguments.size() + cinfo.variables.size(),
+                   cinfo.constants,
+                   cinfo.bytecode,
+                   mod);
+
+    // pop the source
+    rot_two(dstate);
+    pop(dstate);
+}
+
+void compile_macro(deviserstate* dstate, std::shared_ptr<module_info> mod) {
+    stackframe& currentframe = dstate->stack.back();
+    dvs func_sexp = currentframe.workstack.back();
+    compilation_info cinfo;
+
+    generate_function_bytecode(func_sexp, cinfo);
+
+    generate_macro(dstate, cinfo.name, cinfo.arguments.size(),
                    cinfo.arguments.size() + cinfo.variables.size(),
                    cinfo.constants,
                    cinfo.bytecode,

@@ -16,4 +16,5 @@ const bytecode set_var_op = 9;
 
 dvs run_bytecode(deviserstate* dstate);
 void compile_function(deviserstate* dstate, std::shared_ptr<module_info> mod);
+void compile_macro(deviserstate* dstate, std::shared_ptr<module_info> mod);
 void disassemble_bytecode(std::vector<bytecode> bytecode, std::ostream& out);

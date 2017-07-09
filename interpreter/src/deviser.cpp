@@ -26,6 +26,7 @@ const dvs_int symbol_typeid = 3;
 const dvs_int cfunc_typeid = 4;
 const dvs_int lfunc_typeid = 5;
 const dvs_int module_typeid = 6;
+const dvs_int macro_typeid = 7;
 
 bool is_null(dvs d) {
     return d == nullptr;
@@ -75,6 +76,10 @@ bool is_lfunc(dvs d) {
 
 bool is_module(dvs d) {
     return get_typeid(d) == module_typeid;
+}
+
+bool is_macro(dvs d) {
+    return get_typeid(d) == macro_typeid;
 }
 
 string symbol_string(dvs d) {
@@ -129,6 +134,9 @@ deviserstate* create_deviser_state() {
 
 dvs alloc_dvs(deviserstate* dstate) {
     if(dstate->nextfree < dstate->memoryarenasize) {
+        if(dstate->nextfree >= dstate->memoryarenasize) {
+            throw "out of dvs cells";
+        }
         stackframe& currentframe = dstate->stack.back();
         dvs newalloc = dstate->memoryarena + dstate->nextfree++;
         currentframe.workstack.push_back(newalloc);
@@ -467,10 +475,26 @@ void generate_lfunc(deviserstate* dstate, dvs name, uint64_t num_args, uint64_t 
     lfunc->cdr = reinterpret_cast<dvs>(finfo);
 }
 
+void generate_macro(deviserstate* dstate, dvs name, uint64_t num_args, uint64_t num_var,
+                    const vector<dvs>& constants,
+                    const vector<bytecode>& bytecode,
+                    const std::shared_ptr<module_info> mod) {
+    dvs macro = alloc_dvs(dstate);
+    set_typeid(macro, macro_typeid);
+    lfunc_info* finfo = new lfunc_info;
+    finfo->name = name;
+    finfo->num_args = num_args;
+    finfo->num_var = num_var;
+    finfo->bytecode = bytecode;
+    finfo->constants = constants;
+    finfo->module = mod;
+    macro->cdr = reinterpret_cast<dvs>(finfo);
+}
+
 void print_lfunc_info(deviserstate* dstate) {
     stackframe& currentframe = dstate->stack.back();
     dvs lfunc = currentframe.workstack.back();
-    if(!(is_lfunc(lfunc))) {
+    if(!(is_lfunc(lfunc) || is_macro(lfunc))) {
         return;
     }
 
@@ -603,6 +627,14 @@ void defun(deviserstate* dstate, std::shared_ptr<module_info> module,  dvs expr)
     module->func_bindings.insert(std::make_pair(name, lfunc));
 }
 
+void defmacro(deviserstate* dstate, std::shared_ptr<module_info> module,  dvs expr) {
+    push(dstate, expr);
+    compile_macro(dstate, module);
+    dvs macro = pop(dstate);
+    dvs name = get_lfunc_name(macro);
+    module->func_bindings.insert(std::make_pair(name, macro));
+}
+
 void load_module(deviserstate* dstate, std::string modulestring) {
     read(dstate, modulestring);
     stackframe& currentframe = dstate->stack.back();
@@ -648,6 +680,10 @@ void load_module(deviserstate* dstate, std::string modulestring) {
         if(symbol_string(itemcar) == "defun") {
             defun(dstate, module, item->cdr);
         }
+
+        if(symbol_string(itemcar) == "defmacro") {
+            defmacro(dstate, module, item->cdr);
+        }
         modulesrc = modulesrc->cdr;
     }
 }
@@ -657,7 +693,6 @@ void set_module(deviserstate* dstate, std::string module_name) {
     currentframe.module = get_module(dstate, module_name);
 }
 
-
 void eval(deviserstate* dstate) {
     stackframe& currentframe = dstate->stack.back();
     dvs expression = currentframe.workstack.back();
@@ -666,6 +701,8 @@ void eval(deviserstate* dstate) {
         if(symbol_string(expression->pcar()) == "defun") {
             defun(dstate, currentframe.module, expression->cdr);
             return;
+        } else if(symbol_string(expression->pcar()) == "defmacro") {
+            defmacro(dstate, currentframe.module, expression->cdr);
         } else if(symbol_string(expression->pcar()) == "in-module") {
             expression = expression->cdr;
             if(is_cons(expression) && is_symbol(expression->pcar())) {
@@ -678,6 +715,7 @@ void eval(deviserstate* dstate) {
             return;
         }
     }
+
     push_null(dstate);
     make_cons(dstate);
 
@@ -694,4 +732,8 @@ void eval(deviserstate* dstate) {
     //print_lfunc_info(dstate);
     call_function(dstate, 0);
     run_bytecode(dstate);
+}
+
+void macroexpand1(deviserstate* dstate) {
+
 }

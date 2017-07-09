@@ -53,6 +53,7 @@ bool is_int(dvs d);
 bool is_cfunc(dvs d);
 bool is_lfunc(dvs d);
 bool is_module(dvs d);
+bool is_macro(dvs d);
 
 std::string symbol_string(dvs d);
 bool issymchar(int c);
@@ -92,6 +93,10 @@ void generate_lfunc(deviserstate* dstate, dvs name, uint64_t num_args, uint64_t 
                     const std::vector<dvs>& constants,
                     const std::vector<bytecode>& bytecode,
                     const std::shared_ptr<module_info> mod);
+void generate_macro(deviserstate* dstate, dvs name, uint64_t num_args, uint64_t num_var,
+                    const std::vector<dvs>& constants,
+                    const std::vector<bytecode>& bytecode,
+                    const std::shared_ptr<module_info> mod);
 void print_lfunc_info(deviserstate* dstate);
 
 void store_variable(deviserstate* dstate, uint64_t varnum);
@@ -110,6 +115,7 @@ void push_constant(deviserstate* dstate, uint64_t constnum);
 void dump_stack(deviserstate* dstate);
 
 void defun(deviserstate* dstate, std::shared_ptr<module_info> module, dvs expr);
+void defmacro(deviserstate* dstate, std::shared_ptr<module_info> module,  dvs expr);
 
 std::shared_ptr<module_info> get_module(deviserstate* dstate, std::string name);
 void load_module(deviserstate* dstate, std::string modulesrc);
