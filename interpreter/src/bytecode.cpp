@@ -8,6 +8,11 @@ using std::cout;
 using std::endl;
 
 dvs run_bytecode(deviserstate* dstate) {
+    size_t beginning_stack_size = dstate->stack.size();
+    if(beginning_stack_size < 2) {
+        beginning_stack_size = 2;
+    }
+
     while(true) {
         stackframe& currentframe = dstate->stack.back();
         switch(currentframe.bytecode[currentframe.pc]) {
@@ -28,8 +33,7 @@ dvs run_bytecode(deviserstate* dstate) {
         case return_function_op:
         {
             return_function(dstate);
-            if((dstate->stack.size() == 1) ||
-               (dstate->stack.back().bytecode.size() == 0)) {
+            if((dstate->stack.size() < beginning_stack_size)) {
                 return dstate->stack.back().workstack.back();
             }
             break;
@@ -94,13 +98,15 @@ struct compilation_info {
 void extract_func_args(dvs func_args, compilation_info& cinfo);
 bytecode get_variable_location(dvs var_name, compilation_info& cinfo);
 bytecode add_const(dvs constant, compilation_info& cinfo);
-void generate_if_statement(dvs statement, compilation_info& cinfo);
+void generate_if_statement(deviserstate* dstate, dvs statement, compilation_info& cinfo);
 void generate_quote(dvs statement, compilation_info& cinfo);
-void generate_let(dvs statement, compilation_info& cinfo);
-void generate_function_call(dvs statement, compilation_info& cinfo);
-void generate_statement_bytecode(dvs statement, compilation_info& cinfo,
+void generate_let(deviserstate* dstate, dvs statement, compilation_info& cinfo);
+void generate_function_call(deviserstate* dstate, dvs statement, compilation_info& cinfo);
+void generate_statement_bytecode(deviserstate* dstate,
+                                 dvs statement, compilation_info& cinfo,
                                  bool function_position = false);
-void generate_function_bytecode(dvs func_sexp, compilation_info& cinfo);
+void generate_function_bytecode(deviserstate* dstate,
+                                dvs func_sexp, compilation_info& cinfo);
 
 void extract_func_args(dvs func_args, compilation_info& cinfo) {
     while(!is_null(func_args)) {
@@ -137,13 +143,15 @@ bytecode add_const(dvs constant, compilation_info& cinfo) {
     return constnum;
 }
 
-void generate_if_statement(dvs statement, compilation_info& cinfo) {
+void generate_if_statement(deviserstate* dstate,
+                           dvs statement,
+                           compilation_info& cinfo) {
     statement = statement->cdr;
     if(!is_cons(statement)) {
         throw "if requires condition clause";
     }
     dvs condition = statement->pcar();
-    generate_statement_bytecode(condition, cinfo);
+    generate_statement_bytecode(dstate, condition, cinfo);
     cinfo.bytecode.push_back(branch_if_null_op);
     size_t branch_to_else_index = cinfo.bytecode.size();
     cinfo.bytecode.push_back(0);
@@ -154,7 +162,7 @@ void generate_if_statement(dvs statement, compilation_info& cinfo) {
     }
 
     dvs true_branch = statement->pcar();
-    generate_statement_bytecode(true_branch, cinfo);
+    generate_statement_bytecode(dstate, true_branch, cinfo);
 
     statement = statement->cdr;
     if(is_cons(statement)) {
@@ -162,7 +170,7 @@ void generate_if_statement(dvs statement, compilation_info& cinfo) {
         size_t branch_to_end_index = cinfo.bytecode.size();
         cinfo.bytecode.push_back(0);
         cinfo.bytecode[branch_to_else_index] = static_cast<bytecode>(cinfo.bytecode.size());
-        generate_statement_bytecode(statement->pcar(), cinfo);
+        generate_statement_bytecode(dstate, statement->pcar(), cinfo);
         cinfo.bytecode[branch_to_end_index] = static_cast<bytecode>(cinfo.bytecode.size());
     } else {
         cinfo.bytecode[branch_to_else_index] = static_cast<bytecode>(cinfo.bytecode.size());
@@ -180,7 +188,7 @@ void generate_quote(dvs statement, compilation_info& cinfo) {
     cinfo.bytecode.push_back(constnum);
 }
 
-void generate_let(dvs statement, compilation_info& cinfo) {
+void generate_let(deviserstate* dstate, dvs statement, compilation_info& cinfo) {
     statement = statement->cdr;
     if(!is_cons(statement) || !is_list(statement->pcar())) {
         throw "malformed let";
@@ -203,7 +211,7 @@ void generate_let(dvs statement, compilation_info& cinfo) {
             new_vars.push_back(binding->pcar());
 
             if(is_cons(binding->cdr)) {
-                generate_statement_bytecode(binding->cdr->pcar(), cinfo);
+                generate_statement_bytecode(dstate, binding->cdr->pcar(), cinfo);
                 cinfo.bytecode.push_back(set_var_op);
                 cinfo.bytecode.push_back(next_var_number);
             }
@@ -223,7 +231,7 @@ void generate_let(dvs statement, compilation_info& cinfo) {
     }
 
     while(!is_null(statement)) {
-        generate_statement_bytecode(statement->pcar(), cinfo);
+        generate_statement_bytecode(dstate, statement->pcar(), cinfo);
         statement = statement->cdr;
     }
 
@@ -234,13 +242,15 @@ void generate_let(dvs statement, compilation_info& cinfo) {
     }
 }
 
-void generate_function_call(dvs statement, compilation_info& cinfo) {
+void generate_function_call(deviserstate* dstate,
+                            dvs statement,
+                            compilation_info& cinfo) {
     bytecode argc = 0;
-    generate_statement_bytecode(statement->pcar(), cinfo, true);
+    generate_statement_bytecode(dstate, statement->pcar(), cinfo, true);
     statement = statement->cdr;
     while(is_cons(statement)) {
         ++argc;
-        generate_statement_bytecode(statement->pcar(), cinfo);
+        generate_statement_bytecode(dstate, statement->pcar(), cinfo);
         statement = statement->cdr;
     }
     if(!is_null(statement)) {
@@ -250,7 +260,13 @@ void generate_function_call(dvs statement, compilation_info& cinfo) {
     cinfo.bytecode.push_back(argc);
 }
 
-void generate_statement_bytecode(dvs statement, compilation_info& cinfo, bool function_position) {
+void generate_statement_bytecode(deviserstate* dstate,
+                                 dvs statement,
+                                 compilation_info& cinfo,
+                                 bool function_position) {
+    push(dstate, statement);
+    macroexpand(dstate);
+    statement = pop(dstate);
     if(is_null(statement)) {
         cinfo.bytecode.push_back(push_null_op);
     } else if(is_symbol(statement)) {
@@ -279,20 +295,22 @@ void generate_statement_bytecode(dvs statement, compilation_info& cinfo, bool fu
     } else if(is_cons(statement)) {
         dvs first_element = statement->pcar();
         if(is_symbol(first_element) && symbol_string(first_element) == "if") {
-            generate_if_statement(statement, cinfo);
+            generate_if_statement(dstate, statement, cinfo);
         } else if(is_symbol(first_element) && symbol_string(first_element) == "quote") {
             generate_quote(statement, cinfo);
         } else if(is_symbol(first_element) && symbol_string(first_element) == "let") {
-            generate_let(statement, cinfo);
+            generate_let(dstate, statement, cinfo);
         } else{
-            generate_function_call(statement, cinfo);
+            generate_function_call(dstate, statement, cinfo);
         }
     } else {
         throw "cannot compile statement";
     }
 }
 
-void generate_function_bytecode(dvs func_sexp, compilation_info& cinfo) {
+void generate_function_bytecode(deviserstate* dstate,
+                                dvs func_sexp,
+                                compilation_info& cinfo) {
     if(!is_cons(func_sexp)) {
         throw "only cons can be compiled";
     }
@@ -319,7 +337,7 @@ void generate_function_bytecode(dvs func_sexp, compilation_info& cinfo) {
         if(!is_cons(func_sexp)) {
             throw "improper list in function declaration";
         }
-        generate_statement_bytecode(func_sexp->pcar(), cinfo);
+        generate_statement_bytecode(dstate, func_sexp->pcar(), cinfo);
         func_sexp = func_sexp->cdr;
     }
 
@@ -335,7 +353,7 @@ void compile_function(deviserstate* dstate, std::shared_ptr<module_info> mod) {
     dvs func_sexp = currentframe.workstack.back();
     compilation_info cinfo;
 
-    generate_function_bytecode(func_sexp, cinfo);
+    generate_function_bytecode(dstate, func_sexp, cinfo);
 
     generate_lfunc(dstate, cinfo.name, cinfo.arguments.size(),
                    cinfo.arguments.size() + cinfo.variables.size(),
@@ -353,7 +371,7 @@ void compile_macro(deviserstate* dstate, std::shared_ptr<module_info> mod) {
     dvs func_sexp = currentframe.workstack.back();
     compilation_info cinfo;
 
-    generate_function_bytecode(func_sexp, cinfo);
+    generate_function_bytecode(dstate, func_sexp, cinfo);
 
     generate_macro(dstate, cinfo.name, cinfo.arguments.size(),
                    cinfo.arguments.size() + cinfo.variables.size(),

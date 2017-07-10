@@ -54,6 +54,7 @@ bool is_cfunc(dvs d);
 bool is_lfunc(dvs d);
 bool is_module(dvs d);
 bool is_macro(dvs d);
+bool is_func(dvs d);
 
 std::string symbol_string(dvs d);
 bool issymchar(int c);
@@ -122,3 +123,5 @@ void load_module(deviserstate* dstate, std::string modulesrc);
 void set_module(deviserstate* dstate, std::string module_name);
 
 void eval(deviserstate* dstate);
+void macroexpand1(deviserstate* dstate);
+void macroexpand(deviserstate* dstate);

@@ -15,7 +15,7 @@ using std::cout;
 using std::endl;
 
 dvs alloc_dvs(deviserstate* dstate);
-dvs get_lfunc_name(dvs lfunc);
+dvs get_func_name(dvs lfunc);
 std::shared_ptr<module_info> make_module(deviserstate* dstate, dvs name);
 
 void internal_print(dvs obj, std::ostream& out);
@@ -82,6 +82,10 @@ bool is_macro(dvs d) {
     return get_typeid(d) == macro_typeid;
 }
 
+bool is_func(dvs d) {
+    return is_lfunc(d) || is_macro(d);
+}
+
 string symbol_string(dvs d) {
     return *reinterpret_cast<string*>(d->cdr);
 }
@@ -107,8 +111,8 @@ struct lfunc_info {
     std::shared_ptr<module_info> module;
 };
 
-dvs get_lfunc_name(dvs lfunc) {
-    if(is_lfunc(lfunc)) {
+dvs get_func_name(dvs lfunc) {
+    if(is_func(lfunc)) {
         lfunc_info* finfo = reinterpret_cast<lfunc_info*>(lfunc->cdr);
         return finfo->name;
     } else {
@@ -175,7 +179,7 @@ void call_function(deviserstate* dstate, uint64_t argc) {
         dstate->stack.push_back(newframe);
         (*finfo->func_ptr)(dstate);
         return_function(dstate);
-    } else if(is_lfunc(function)) {
+    } else if(is_func(function)) {
         lfunc_info* finfo = reinterpret_cast<lfunc_info*>(function->cdr);
         newframe.variables.insert(newframe.variables.begin(), begin_args_iter, end_args_iter);
         while(newframe.variables.size() < finfo->num_var) {
@@ -333,6 +337,9 @@ void internal_print(dvs obj, std::ostream& out) {
             break;
         case lfunc_typeid:
             out << "<lfunc " << obj->cdr << ">";
+            break;
+        case macro_typeid:
+            out << "<macro " << obj->cdr << ">";
             break;
         default:
             throw "unknown typeid to print";
@@ -623,16 +630,18 @@ void defun(deviserstate* dstate, std::shared_ptr<module_info> module,  dvs expr)
     push(dstate, expr);
     compile_function(dstate, module);
     dvs lfunc = pop(dstate);
-    dvs name = get_lfunc_name(lfunc);
+    dvs name = get_func_name(lfunc);
     module->func_bindings.insert(std::make_pair(name, lfunc));
+    pop(dstate);
 }
 
 void defmacro(deviserstate* dstate, std::shared_ptr<module_info> module,  dvs expr) {
     push(dstate, expr);
     compile_macro(dstate, module);
     dvs macro = pop(dstate);
-    dvs name = get_lfunc_name(macro);
+    dvs name = get_func_name(macro);
     module->func_bindings.insert(std::make_pair(name, macro));
+    pop(dstate);
 }
 
 void load_module(deviserstate* dstate, std::string modulestring) {
@@ -703,6 +712,7 @@ void eval(deviserstate* dstate) {
             return;
         } else if(symbol_string(expression->pcar()) == "defmacro") {
             defmacro(dstate, currentframe.module, expression->cdr);
+            return;
         } else if(symbol_string(expression->pcar()) == "in-module") {
             expression = expression->cdr;
             if(is_cons(expression) && is_symbol(expression->pcar())) {
@@ -735,5 +745,57 @@ void eval(deviserstate* dstate) {
 }
 
 void macroexpand1(deviserstate* dstate) {
+    stackframe& currentframe = dstate->stack.back();
+    dvs expr = currentframe.workstack.back();
 
+    if(!is_cons(expr)) {
+        // can only expand cons right now.
+        // symbol macros will be an exception later.
+        return;
+    }
+
+    dvs first = expr->pcar();
+
+    if(!is_symbol(first)) {
+        //definitely not a macro, at least until we have anonymous macros
+        return;
+    }
+
+    auto& top_level_env = currentframe.module->func_bindings;
+    auto binding = top_level_env.find(first);
+
+    if((binding != top_level_env.end()) &&
+       (is_macro(binding->second))) {
+        uint64_t argc = 0;
+
+        pop(dstate);
+        currentframe.workstack.push_back(binding->second);
+
+        expr = expr->cdr;
+        while(!is_null(expr)) {
+            push(dstate, expr->pcar());
+            ++argc;
+            expr = expr->cdr;
+        }
+
+        call_function(dstate, argc);
+        run_bytecode(dstate);
+    }
+}
+
+void macroexpand(deviserstate* dstate) {
+    bool loop = true;
+    while(loop) {
+        dup(dstate);
+        macroexpand1(dstate);
+        stackframe& currentframe = dstate->stack.back();
+        size_t stacksize = currentframe.workstack.size();
+        if(currentframe.workstack[stacksize-1] == currentframe.workstack[stacksize-2]) {
+            loop = false;
+            pop(dstate);
+        } else {
+            rot_two(dstate);
+            pop(dstate);
+        }
+    }
 }

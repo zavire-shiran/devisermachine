@@ -18,13 +18,18 @@ void testfunc(deviserstate* dstate) {
 int main(int argc, char** argv) {
     string testmodule =
         "(module test\n"
-        "  (defun f () 1))";
+        "  (defun f () 1)\n"
+        "  (defmacro a () (quote asdf)))";
 
     try {
         deviserstate* dstate = create_deviser_state();
 
         std::shared_ptr<module_info> mod = get_module(dstate, "user");
         set_module(dstate, "user");
+        read(dstate, "(defmacro a () (quote (quote asdf)))");
+        eval(dstate);
+        read(dstate, "(defun b () (quote asdf))");
+        eval(dstate);
 
 /*
         read(dstate, "a");
