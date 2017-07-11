@@ -35,7 +35,11 @@ bool is_list(dvs d) {
 }
 
 bool is_marked(dvs d) {
-    return (reinterpret_cast<dvs_int>(d->car) & 0x2) == 2;
+    if(is_null(d)) {
+        return true;
+    } else {
+        return (reinterpret_cast<dvs_int>(d->car) & 0x2) == 2;
+    }
 }
 
 bool is_free(dvs d) {

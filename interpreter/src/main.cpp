@@ -1,5 +1,6 @@
 #include "deviser.hpp"
 #include "bytecode.hpp"
+#include "gc.hpp"
 
 #include <iostream>
 #include <cstdint>
@@ -72,6 +73,7 @@ int main(int argc, char** argv) {
         while(std::cin) {
             std::cout << "> ";
             if(read(dstate, std::cin)) {
+                run_gc(dstate);
                 eval(dstate);
                 print(dstate, std::cout);
                 std::cout << std::endl;

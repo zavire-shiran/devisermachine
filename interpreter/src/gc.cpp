@@ -4,6 +4,7 @@
 
 #include <deque>
 #include <vector>
+#include <iostream>
 
 using std::deque;
 using std::vector;
@@ -101,7 +102,12 @@ void run_gc(deviserstate* dstate) {
         default:
             throw "unknown typeid";
         }
+        markingqueue.pop_front();
     }
+
+    int numfree = 0;
+    int numfull = 0;
+    int total = 0;
 
     //iterate through memory arenas
     //for each not already freed cell:
@@ -109,15 +115,24 @@ void run_gc(deviserstate* dstate) {
     //  else just clear the mark
     for(auto arena : dstate->memoryarenas) {
         for(size_t i = 0; i < arena.size; ++i) {
+            ++total;
             dvs item = arena.arena + i;
             if(!is_free(item)) {
                 if(is_marked(item)) {
                     unmark(item);
+                    ++numfull;
                 } else {
                     free(item);
                     dstate->freelist.push_front(item);
+                    ++numfree;
                 }
+            } else {
+                ++numfree;
             }
         }
     }
+
+    std::cout << "completed gc, total cells: " << total <<
+        " used: " << numfull <<
+        " free: " << numfree << std::endl;
 }
