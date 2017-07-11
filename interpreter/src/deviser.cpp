@@ -7,6 +7,7 @@
 #include <sstream>
 
 #include "bytecode.hpp"
+#include "gc.hpp"
 
 using std::vector;
 using std::map;
@@ -20,14 +21,6 @@ dvs get_func_name(dvs lfunc);
 std::shared_ptr<module_info> make_module(deviserstate* dstate, dvs name);
 
 void internal_print(dvs obj, std::ostream& out);
-
-const dvs_int null_typeid = 1;
-const dvs_int int_typeid = 2;
-const dvs_int symbol_typeid = 3;
-const dvs_int cfunc_typeid = 4;
-const dvs_int lfunc_typeid = 5;
-const dvs_int module_typeid = 6;
-const dvs_int macro_typeid = 7;
 
 bool is_null(dvs d) {
     return d == nullptr;
@@ -44,6 +37,46 @@ bool is_list(dvs d) {
 bool is_marked(dvs d) {
     return (reinterpret_cast<dvs_int>(d->car) & 0x2) == 2;
 }
+
+bool is_free(dvs d) {
+    return get_typeid(d) == free_typeid;
+}
+
+void mark(dvs d) {
+    d->car = reinterpret_cast<dvs>(reinterpret_cast<dvs_int>(d->car) | 0x2);
+}
+
+void unmark(dvs d) {
+    d->car = reinterpret_cast<dvs>(reinterpret_cast<dvs_int>(d->car) & ~0x2);
+}
+
+void free(dvs d) {
+    switch(get_typeid(d)) {
+    case cfunc_typeid:
+    {
+        cfunc_info* finfo = reinterpret_cast<cfunc_info*>(d->cdr);
+        delete finfo;
+        break;
+    }
+    case lfunc_typeid:
+    case macro_typeid:
+    {
+        lfunc_info* finfo = reinterpret_cast<lfunc_info*>(d->cdr);
+        delete finfo;
+        break;
+    }
+    case symbol_typeid:
+    {
+        string* s = reinterpret_cast<string*>(d->cdr);
+        delete s;
+        break;
+    }
+    }
+
+    set_typeid(d, free_typeid);
+    d->cdr = nullptr;
+}
+
 
 void set_typeid(dvs d, dvs_int tid) {
     d->car = reinterpret_cast<dvs>(tid << 2 | 0x1);
@@ -103,15 +136,6 @@ dvs_int get_int(dvs d) {
     }
 }
 
-struct lfunc_info {
-    dvs name; // but not all functions have names...
-    uint64_t num_args;
-    uint64_t num_var;
-    vector<bytecode> bytecode;
-    vector<dvs> constants;
-    std::shared_ptr<module_info> module;
-};
-
 dvs get_func_name(dvs lfunc) {
     if(is_func(lfunc)) {
         lfunc_info* finfo = reinterpret_cast<lfunc_info*>(lfunc->cdr);
@@ -120,11 +144,6 @@ dvs get_func_name(dvs lfunc) {
         throw "not an lfunc";
     }
 }
-
-struct cfunc_info {
-    cfunc_type func_ptr;
-    std::shared_ptr<module_info> module;
-};
 
 void make_new_arena(deviserstate* dstate) {
     dstate->memoryarenas.emplace_back(1024);
@@ -143,7 +162,7 @@ deviserstate* create_deviser_state() {
 
 dvs alloc_dvs(deviserstate* dstate) {
     if(dstate->freelist.empty()) {
-        throw "out of dvs cells";
+        run_gc(dstate);
     }
 
     dvs newalloc = dstate->freelist.front();

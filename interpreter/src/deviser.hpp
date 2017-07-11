@@ -50,10 +50,39 @@ struct module_info {
     std::map<dvs, dvs> func_bindings;
 };
 
+const dvs_int cons_typeid = 0;
+const dvs_int null_typeid = 1;
+const dvs_int int_typeid = 2;
+const dvs_int symbol_typeid = 3;
+const dvs_int cfunc_typeid = 4;
+const dvs_int lfunc_typeid = 5;
+const dvs_int module_typeid = 6;
+const dvs_int macro_typeid = 7;
+const dvs_int free_typeid = 8; // this can't be the best way to do this...
+
+struct lfunc_info {
+    dvs name; // but not all functions have names...
+    uint64_t num_args;
+    uint64_t num_var;
+    std::vector<bytecode> bytecode;
+    std::vector<dvs> constants;
+    std::shared_ptr<module_info> module;
+};
+
+struct cfunc_info {
+    cfunc_type func_ptr;
+    std::shared_ptr<module_info> module;
+};
+
 bool is_null(dvs d);
 bool is_cons(dvs d);
 bool is_list(dvs d);
 bool is_marked(dvs d);
+bool is_free(dvs d);
+
+void mark(dvs d);
+void unmark(dvs d);
+void free(dvs d);
 
 void set_typeid(dvs d, dvs_int tid);
 dvs_int get_typeid(dvs d);

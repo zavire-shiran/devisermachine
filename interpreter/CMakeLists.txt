@@ -8,4 +8,5 @@ project(deviser)
 
 add_executable(deviser src/main.cpp
                        src/deviser.cpp
-                       src/bytecode.cpp)
+                       src/bytecode.cpp
+                       src/gc.cpp)
