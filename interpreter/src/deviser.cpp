@@ -132,7 +132,6 @@ deviserstate* create_deviser_state() {
     dstate->memoryarena = new deviserobj[dstate->memoryarenasize];
     dstate->stack.push_back(stackframe());
     stackframe& tsf = dstate->stack.back();
-    tsf.variables.insert(tsf.variables.begin(), 3, nullptr);
     return dstate;
 }
 
