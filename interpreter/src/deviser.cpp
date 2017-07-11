@@ -14,6 +14,7 @@ using std::string;
 using std::cout;
 using std::endl;
 
+void make_new_arena(deviserstate* dstate);
 dvs alloc_dvs(deviserstate* dstate);
 dvs get_func_name(dvs lfunc);
 std::shared_ptr<module_info> make_module(deviserstate* dstate, dvs name);
