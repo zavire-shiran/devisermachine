@@ -125,28 +125,31 @@ struct cfunc_info {
     std::shared_ptr<module_info> module;
 };
 
+void make_new_arena(deviserstate* dstate) {
+    dstate->memoryarenas.emplace_back(1024);
+    memoryarena& arena = dstate->memoryarenas.back();
+    for(size_t i = 0; i < arena.size; ++i) {
+        dstate->freelist.push_front(arena.arena+i);
+    }
+}
+
 deviserstate* create_deviser_state() {
     deviserstate* dstate = new deviserstate;
-    dstate->memoryarenasize = 1000;
-    dstate->nextfree = 0;
-    dstate->memoryarena = new deviserobj[dstate->memoryarenasize];
+    make_new_arena(dstate);
     dstate->stack.push_back(stackframe());
-    stackframe& tsf = dstate->stack.back();
     return dstate;
 }
 
 dvs alloc_dvs(deviserstate* dstate) {
-    if(dstate->nextfree < dstate->memoryarenasize) {
-        if(dstate->nextfree >= dstate->memoryarenasize) {
-            throw "out of dvs cells";
-        }
-        stackframe& currentframe = dstate->stack.back();
-        dvs newalloc = dstate->memoryarena + dstate->nextfree++;
-        currentframe.workstack.push_back(newalloc);
-        return newalloc;
-    } else {
-        return nullptr;
+    if(dstate->freelist.empty()) {
+        throw "out of dvs cells";
     }
+
+    dvs newalloc = dstate->freelist.front();
+    stackframe& currentframe = dstate->stack.back();
+    currentframe.workstack.push_back(newalloc);
+    dstate->freelist.pop_front();
+    return newalloc;
 }
 
 void call_function(deviserstate* dstate, uint64_t argc) {

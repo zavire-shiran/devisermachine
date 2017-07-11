@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <forward_list>
 
 #include "types.hpp"
 
@@ -25,10 +26,19 @@ struct stackframe {
     std::shared_ptr<module_info> module; // eventually should include closure information
 };
 
+struct memoryarena {
+    dvs arena;
+    size_t size;
+
+    memoryarena(size_t _size) {
+        size = _size;
+        arena = new deviserobj[size];
+    }
+};
+
 struct deviserstate {
-    dvs memoryarena;
-    size_t memoryarenasize;
-    size_t nextfree;
+    std::vector<memoryarena> memoryarenas;
+    std::forward_list<dvs> freelist;
     std::vector<stackframe> stack;
     std::map<std::string, dvs> symbol_table;
     std::map<dvs, std::shared_ptr<module_info> > modules;
