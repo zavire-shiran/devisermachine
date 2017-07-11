@@ -77,6 +77,7 @@ int main(int argc, char** argv) {
                 eval(dstate);
                 print(dstate, std::cout);
                 std::cout << std::endl;
+                pop(dstate);
             }
         }
         std::cout << std::endl;
