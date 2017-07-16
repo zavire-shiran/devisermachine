@@ -40,6 +40,10 @@ int main(int argc, char** argv) {
         push_cfunc(dstate, lisp_cdr, mod);
         store_module_func(dstate);
 
+        push_symbol(dstate, "cons");
+        push_cfunc(dstate, lisp_cons, mod);
+        store_module_func(dstate);
+
 /*
         read(dstate, "a");
         store_variable(dstate, 0);

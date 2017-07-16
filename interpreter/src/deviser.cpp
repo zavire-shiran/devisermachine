@@ -869,3 +869,11 @@ void lisp_cdr(deviserstate* dstate) {
 
     cons_cdr(dstate);
 }
+
+void lisp_cons(deviserstate* dstate) {
+    if(stack_size(dstate) != 2) {
+        throw "cons wants two args";
+    }
+
+    make_cons(dstate);
+}
