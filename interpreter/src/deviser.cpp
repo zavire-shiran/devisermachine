@@ -857,3 +857,15 @@ void lisp_car(deviserstate* dstate) {
 
     cons_car(dstate);
 }
+
+void lisp_cdr(deviserstate* dstate) {
+    if(stack_size(dstate) != 1) {
+        throw "cdr wants only one arg";
+    }
+
+    if(!listp(dstate)) {
+        throw "cdr needs a list";
+    }
+
+    cons_cdr(dstate);
+}
