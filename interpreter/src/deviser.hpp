@@ -121,8 +121,8 @@ dvs_int get_int_value(deviserstate* dstate, uint64_t pos);
 
 void push_null(deviserstate* dstate);
 void make_cons(deviserstate* dstate);
-void cons_car(deviserstate* dstate, uint64_t pos);
-void cons_cdr(deviserstate* dstate, uint64_t pos);
+void cons_car(deviserstate* dstate, int position = 0);
+void cons_cdr(deviserstate* dstate, int position = 0);
 
 void push_symbol(deviserstate* dstate, std::string symbolname);
 std::string get_symbol_name(deviserstate* dstate, uint64_t pos);
@@ -164,3 +164,9 @@ void set_module(deviserstate* dstate, std::string module_name);
 void eval(deviserstate* dstate);
 void macroexpand1(deviserstate* dstate);
 void macroexpand(deviserstate* dstate);
+
+size_t stack_index(deviserstate* dstate, int position);
+size_t stack_size(deviserstate* dstate);
+
+bool listp(deviserstate* dstate, int position = 0);
+void lisp_car(deviserstate* dstate);

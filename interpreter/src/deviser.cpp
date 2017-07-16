@@ -424,36 +424,6 @@ void make_cons(deviserstate* dstate) {
     pop(dstate);
 }
 
-void cons_car(deviserstate* dstate, uint64_t pos) {
-    stackframe& currentframe = dstate->stack.back();
-    if(currentframe.workstack.size() < pos) {
-        throw "invalid position for cons_car";
-    }
-
-    uint64_t cons_pos = currentframe.workstack.size() - (pos + 1);
-    dvs conscell = currentframe.workstack[cons_pos];
-    if(!is_cons(conscell)) {
-        throw "not a cons";
-    }
-
-    currentframe.workstack.push_back(conscell->pcar());
-}
-
-void cons_cdr(deviserstate* dstate, uint64_t pos) {
-    stackframe& currentframe = dstate->stack.back();
-    if(currentframe.workstack.size() < pos) {
-        throw "invalid position for cons_cdr";
-    }
-
-    uint64_t cons_pos = currentframe.workstack.size() - (pos + 1);
-    dvs conscell = currentframe.workstack[cons_pos];
-    if(!is_cons(conscell)) {
-        throw "not a cons";
-    }
-
-    currentframe.workstack.push_back(conscell->cdr);
-}
-
 void push_symbol(deviserstate* dstate, string symbolname) {
     auto symbol_entry = dstate->symbol_table.find(symbolname);
     dvs symbol = nullptr;
@@ -824,4 +794,66 @@ void macroexpand(deviserstate* dstate) {
             pop(dstate);
         }
     }
+}
+
+void cons_car(deviserstate* dstate, int position) {
+    size_t index = stack_index(dstate, position);
+    stackframe& currentframe = dstate->stack.back();
+
+    dvs conscell = currentframe.workstack[index];
+    if(!is_cons(conscell)) {
+        throw "not a cons";
+    }
+
+    currentframe.workstack.push_back(conscell->pcar());
+}
+
+void cons_cdr(deviserstate* dstate, int position) {
+    size_t index = stack_index(dstate, position);
+    stackframe& currentframe = dstate->stack.back();
+
+    dvs conscell = currentframe.workstack[index];
+    if(!is_cons(conscell)) {
+        throw "not a cons";
+    }
+
+    currentframe.workstack.push_back(conscell->cdr);
+}
+
+size_t stack_index(deviserstate* dstate, int position) {
+    //0 to (n-1) goes from top of stack (i.e. next to pop) to bottom
+    //-1 to -n goes from bottom of stack to top
+    stackframe& currentframe = dstate->stack.back();
+    if(position >= static_cast<int>(currentframe.workstack.size()) ||
+       position < static_cast<int>(-currentframe.workstack.size())) {
+        throw "position out of range";
+    }
+    if(position < 0) {
+        return static_cast<size_t>(-position - 1);
+    } else {
+        return static_cast<size_t>(static_cast<int>(currentframe.workstack.size()) -
+                                   (position + 1));
+    }
+}
+
+bool listp(deviserstate* dstate, int position) {
+    stackframe& currentframe = dstate->stack.back();
+    size_t index = stack_index(dstate, position);
+    return is_list(currentframe.workstack[index]);
+}
+
+size_t stack_size(deviserstate* dstate) {
+    return dstate->stack.back().workstack.size();
+}
+
+void lisp_car(deviserstate* dstate) {
+    if(stack_size(dstate) != 1) {
+        throw "car wants only one arg";
+    }
+
+    if(!listp(dstate)) {
+        throw "car needs a list";
+    }
+
+    cons_car(dstate);
 }
