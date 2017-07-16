@@ -295,9 +295,21 @@ bool read(deviserstate* dstate, const std::string& in) {
 
 bool read(deviserstate* dstate, std::istream& in) {
     char c = static_cast<char>(in.peek());
-    while(isspace(c)) {
-        in.get();
-        c = static_cast<char>(in.peek());
+    bool loop = true;
+    while(loop) {
+        loop = false;
+        while(isspace(c)) {
+            in.get();
+            c = static_cast<char>(in.peek());
+        }
+
+        if(c == ';') {
+            while(c != '\n') {
+                in.get();
+                c = static_cast<char>(in.peek());
+            }
+            loop = true;
+        }
     }
 
     if(c == '(') {
