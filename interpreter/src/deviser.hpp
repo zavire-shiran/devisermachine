@@ -170,6 +170,8 @@ size_t stack_size(deviserstate* dstate);
 
 bool listp(deviserstate* dstate, int position = 0);
 bool consp(deviserstate* dstate, int position = 0);
+bool nullp(deviserstate* dstate, int position = 0);
+
 void lisp_car(deviserstate* dstate);
 void lisp_cdr(deviserstate* dstate);
 void lisp_cons(deviserstate* dstate);

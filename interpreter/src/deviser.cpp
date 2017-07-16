@@ -848,6 +848,12 @@ bool consp(deviserstate* dstate, int position) {
     return is_cons(currentframe.workstack[index]);
 }
 
+bool nullp(deviserstate* dstate, int position) {
+    stackframe& currentframe = dstate->stack.back();
+    size_t index = stack_index(dstate, position);
+    return is_null(currentframe.workstack[index]);
+}
+
 size_t stack_size(deviserstate* dstate) {
     return dstate->stack.back().workstack.size();
 }
@@ -861,7 +867,9 @@ void lisp_car(deviserstate* dstate) {
         throw "car needs a list";
     }
 
-    cons_car(dstate);
+    if(!nullp(dstate)) {
+        cons_car(dstate);
+    }
 }
 
 void lisp_cdr(deviserstate* dstate) {
@@ -873,7 +881,9 @@ void lisp_cdr(deviserstate* dstate) {
         throw "cdr needs a list";
     }
 
-    cons_cdr(dstate);
+    if(!nullp(dstate)) {
+        cons_cdr(dstate);
+    }
 }
 
 void lisp_cons(deviserstate* dstate) {
