@@ -583,7 +583,7 @@ void store_global(deviserstate* dstate, map<dvs,dvs>& top_level_env) {
     pop(dstate);
 }
 
-void load_global(deviserstate* dstate, map<dvs,dvs>& top_level_env) {
+bool load_global(deviserstate* dstate, map<dvs,dvs>& top_level_env) {
     stackframe& currentframe = dstate->stack.back();
     size_t stacksize = currentframe.workstack.size();
     dvs varname = currentframe.workstack[stacksize-1];
@@ -591,8 +591,9 @@ void load_global(deviserstate* dstate, map<dvs,dvs>& top_level_env) {
     pop(dstate);
     if(binding != top_level_env.end()) {
         currentframe.workstack.push_back(binding->second);
+        return true;
     } else {
-        throw "cannot find top level var";
+        return false;
     }
 }
 
@@ -603,7 +604,14 @@ void store_module_var(deviserstate* dstate) {
 
 void load_module_var(deviserstate* dstate) {
     stackframe& currentframe = dstate->stack.back();
-    load_global(dstate, currentframe.module->value_bindings);
+    if(!load_global(dstate, currentframe.module->value_bindings)) {
+        for(auto module : currentframe.module->imports) {
+            if(load_global(dstate, module->value_bindings)) {
+                return;
+            }
+        }
+        throw "cannot find top level var";
+    }
 }
 
 void store_module_func(deviserstate* dstate) {
@@ -613,7 +621,14 @@ void store_module_func(deviserstate* dstate) {
 
 void load_module_func(deviserstate* dstate) {
     stackframe& currentframe = dstate->stack.back();
-    load_global(dstate, currentframe.module->func_bindings);
+    if(!load_global(dstate, currentframe.module->func_bindings)) {
+        for(auto module : currentframe.module->imports) {
+            if(load_global(dstate, module->func_bindings)) {
+                return;
+            }
+        }
+        throw "cannot find top level var";
+    }
 }
 
 void push_constant(deviserstate* dstate, uint64_t constnum) {
@@ -724,6 +739,21 @@ void load_module(deviserstate* dstate, std::string modulestring) {
         if(symbol_string(itemcar) == "defmacro") {
             defmacro(dstate, module, item->cdr);
         }
+
+        if(symbol_string(itemcar) == "import") {
+            item = item->cdr;
+            if(!is_cons(item)) {
+                throw "import needs an argument";
+            }
+            dvs module_name = item->pcar();
+            if(!is_symbol(module_name)) {
+                throw "module name must be a symbol";
+            }
+
+            std::shared_ptr<module_info> impmod = get_module(dstate,
+                                                             symbol_string(module_name));
+            module->imports.push_back(impmod);
+        }
         modulesrc = modulesrc->cdr;
     }
 }
@@ -754,6 +784,20 @@ void eval(deviserstate* dstate) {
                 throw "malformed in-module";
             }
             return;
+        } else if(symbol_string(expression->pcar()) == "import") {
+            expression = expression->cdr;
+            if(!is_cons(expression)) {
+                throw "import needs an argument";
+            }
+
+            dvs module_name = expression->pcar();
+            if(!is_symbol(module_name)) {
+                throw "module name must be a symbol";
+            }
+
+            std::shared_ptr<module_info> impmod = get_module(dstate,
+                                                             symbol_string(module_name));
+            currentframe.module->imports.push_back(impmod);
         }
     }
 

@@ -48,6 +48,7 @@ struct module_info {
     dvs name;
     std::map<dvs, dvs> value_bindings;
     std::map<dvs, dvs> func_bindings;
+    std::vector<std::shared_ptr<module_info> > imports;
 };
 
 const dvs_int cons_typeid = 0;
@@ -146,7 +147,7 @@ void store_variable(deviserstate* dstate, uint64_t varnum);
 void load_variable(deviserstate* dstate, uint64_t varnum);
 
 void store_global(deviserstate* dstate, std::map<dvs,dvs>& top_level_env);
-void load_global(deviserstate* dstate, std::map<dvs,dvs>& top_level_env);
+bool load_global(deviserstate* dstate, std::map<dvs,dvs>& top_level_env);
 
 void store_module_var(deviserstate* dstate);
 void load_module_var(deviserstate* dstate);
