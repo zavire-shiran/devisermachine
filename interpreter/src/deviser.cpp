@@ -842,6 +842,12 @@ bool listp(deviserstate* dstate, int position) {
     return is_list(currentframe.workstack[index]);
 }
 
+bool consp(deviserstate* dstate, int position) {
+    stackframe& currentframe = dstate->stack.back();
+    size_t index = stack_index(dstate, position);
+    return is_cons(currentframe.workstack[index]);
+}
+
 size_t stack_size(deviserstate* dstate) {
     return dstate->stack.back().workstack.size();
 }
@@ -876,4 +882,16 @@ void lisp_cons(deviserstate* dstate) {
     }
 
     make_cons(dstate);
+}
+
+void lisp_consp(deviserstate* dstate) {
+    if(stack_size(dstate) != 1) {
+        throw "cons? wants one arg";
+    }
+
+    if(consp(dstate)) {
+        push_symbol(dstate, "t");
+    } else {
+        push_null(dstate);
+    }
 }
