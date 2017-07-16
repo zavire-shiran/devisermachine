@@ -207,6 +207,25 @@ void call_function(deviserstate* dstate, uint64_t argc) {
         return_function(dstate);
     } else if(is_func(function)) {
         lfunc_info* finfo = reinterpret_cast<lfunc_info*>(function->cdr);
+        if(finfo->has_rest) {
+            if(finfo->num_args - 1 <= argc) {
+                push_null(dstate);
+                for(size_t i = finfo->num_args; i <= argc; ++i) {
+                    make_cons(dstate);
+                }
+                begin_args_iter = currentframe.workstack.end();
+                end_args_iter = currentframe.workstack.end();
+                for(uint64_t i = 0; i < finfo->num_args; ++i) {
+                    --begin_args_iter;
+                }
+            } else {
+                throw "not enough args for function call";
+            }
+        } else {
+            if(finfo->num_args != argc) {
+                throw "not the right number of args for function call";
+            }
+        }
         newframe.variables.insert(newframe.variables.begin(), begin_args_iter, end_args_iter);
         while(newframe.variables.size() < finfo->num_var) {
             newframe.variables.push_back(nullptr);
@@ -465,6 +484,7 @@ void push_cfunc(deviserstate* dstate, cfunc_type func, std::shared_ptr<module_in
 void generate_lfunc(deviserstate* dstate, dvs name, uint64_t num_args, uint64_t num_var,
                     const vector<dvs>& constants,
                     const vector<bytecode>& bytecode,
+                    bool has_rest,
                     const std::shared_ptr<module_info> mod) {
     dvs lfunc = alloc_dvs(dstate);
     set_typeid(lfunc, lfunc_typeid);
@@ -475,12 +495,14 @@ void generate_lfunc(deviserstate* dstate, dvs name, uint64_t num_args, uint64_t 
     finfo->bytecode = bytecode;
     finfo->constants = constants;
     finfo->module = mod;
+    finfo->has_rest = has_rest;
     lfunc->cdr = reinterpret_cast<dvs>(finfo);
 }
 
 void generate_macro(deviserstate* dstate, dvs name, uint64_t num_args, uint64_t num_var,
                     const vector<dvs>& constants,
                     const vector<bytecode>& bytecode,
+                    bool has_rest,
                     const std::shared_ptr<module_info> mod) {
     dvs macro = alloc_dvs(dstate);
     set_typeid(macro, macro_typeid);
@@ -491,6 +513,7 @@ void generate_macro(deviserstate* dstate, dvs name, uint64_t num_args, uint64_t 
     finfo->bytecode = bytecode;
     finfo->constants = constants;
     finfo->module = mod;
+    finfo->has_rest = has_rest;
     macro->cdr = reinterpret_cast<dvs>(finfo);
 }
 

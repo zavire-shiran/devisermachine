@@ -93,6 +93,7 @@ struct compilation_info {
     vector<dvs> variables;
     vector<dvs> constants;
     vector<bytecode> bytecode;
+    bool has_rest;
 };
 
 void extract_func_args(dvs func_args, compilation_info& cinfo);
@@ -114,7 +115,13 @@ void extract_func_args(dvs func_args, compilation_info& cinfo) {
         if(!is_symbol(arg)) {
             throw "arguments must be symbols";
         }
-        cinfo.arguments.push_back(arg);
+
+        if(symbol_string(arg) == "&rest") {
+            cinfo.has_rest = true;
+        } else {
+            cinfo.arguments.push_back(arg);
+        }
+
         func_args = func_args->cdr;
     }
 }
@@ -359,6 +366,7 @@ void compile_function(deviserstate* dstate, std::shared_ptr<module_info> mod) {
                    cinfo.arguments.size() + cinfo.variables.size(),
                    cinfo.constants,
                    cinfo.bytecode,
+                   cinfo.has_rest,
                    mod);
 
     // pop the source
@@ -377,6 +385,7 @@ void compile_macro(deviserstate* dstate, std::shared_ptr<module_info> mod) {
                    cinfo.arguments.size() + cinfo.variables.size(),
                    cinfo.constants,
                    cinfo.bytecode,
+                   cinfo.has_rest,
                    mod);
 
     // pop the source

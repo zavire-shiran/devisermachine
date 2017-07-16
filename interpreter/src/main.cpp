@@ -32,6 +32,9 @@ int main(int argc, char** argv) {
         read(dstate, "(defun b () (quote asdf))");
         eval(dstate);
 
+        read(dstate, "(defun c (&rest a) a)");
+        eval(dstate);
+
         push_symbol(dstate, "car");
         push_cfunc(dstate, lisp_car, mod);
         store_module_func(dstate);

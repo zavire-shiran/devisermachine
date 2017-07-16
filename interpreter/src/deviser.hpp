@@ -64,6 +64,7 @@ struct lfunc_info {
     dvs name; // but not all functions have names...
     uint64_t num_args;
     uint64_t num_var;
+    bool has_rest;
     std::vector<bytecode> bytecode;
     std::vector<dvs> constants;
     std::shared_ptr<module_info> module;
@@ -132,10 +133,12 @@ void push_cfunc(deviserstate* dstate, cfunc_type func, std::shared_ptr<module_in
 void generate_lfunc(deviserstate* dstate, dvs name, uint64_t num_args, uint64_t num_var,
                     const std::vector<dvs>& constants,
                     const std::vector<bytecode>& bytecode,
+                    bool has_rest,
                     const std::shared_ptr<module_info> mod);
 void generate_macro(deviserstate* dstate, dvs name, uint64_t num_args, uint64_t num_var,
                     const std::vector<dvs>& constants,
                     const std::vector<bytecode>& bytecode,
+                    bool has_rest,
                     const std::shared_ptr<module_info> mod);
 void print_lfunc_info(deviserstate* dstate);
 
