@@ -16,6 +16,15 @@ void testfunc(deviserstate* dstate) {
     push_null(dstate);
 }
 
+void def_cfunc(deviserstate* dstate,
+               cfunc_type func,
+               std::string name,
+               std::shared_ptr<module_info> mod) {
+    push_symbol(dstate, name);
+    push_cfunc(dstate, func, mod);
+    store_module_func(dstate);
+}
+
 int main(int argc, char** argv) {
     string testmodule =
         "(module test\n"
@@ -35,25 +44,11 @@ int main(int argc, char** argv) {
         read(dstate, "(defun c (&rest a) a)");
         eval(dstate);
 
-        push_symbol(dstate, "car");
-        push_cfunc(dstate, lisp_car, mod);
-        store_module_func(dstate);
-
-        push_symbol(dstate, "cdr");
-        push_cfunc(dstate, lisp_cdr, mod);
-        store_module_func(dstate);
-
-        push_symbol(dstate, "cons");
-        push_cfunc(dstate, lisp_cons, mod);
-        store_module_func(dstate);
-
-        push_symbol(dstate, "cons?");
-        push_cfunc(dstate, lisp_consp, mod);
-        store_module_func(dstate);
-
-        push_symbol(dstate, "list");
-        push_cfunc(dstate, lisp_list, mod);
-        store_module_func(dstate);
+        def_cfunc(dstate, lisp_car, "car", mod);
+        def_cfunc(dstate, lisp_cdr, "cdr", mod);
+        def_cfunc(dstate, lisp_cons, "cons", mod);
+        def_cfunc(dstate, lisp_consp, "cons?", mod);
+        def_cfunc(dstate, lisp_list, "list", mod);
 
 /*
         read(dstate, "a");
