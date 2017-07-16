@@ -176,3 +176,4 @@ void lisp_car(deviserstate* dstate);
 void lisp_cdr(deviserstate* dstate);
 void lisp_cons(deviserstate* dstate);
 void lisp_consp(deviserstate* dstate);
+void lisp_list(deviserstate* dstate);

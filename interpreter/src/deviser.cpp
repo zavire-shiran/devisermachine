@@ -905,3 +905,12 @@ void lisp_consp(deviserstate* dstate) {
         push_null(dstate);
     }
 }
+
+void lisp_list(deviserstate* dstate) {
+    size_t numelems = stack_size(dstate);
+
+    push_null(dstate);
+    for(size_t i = 0; i < numelems; ++i) {
+        make_cons(dstate);
+    }
+}

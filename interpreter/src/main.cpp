@@ -48,6 +48,10 @@ int main(int argc, char** argv) {
         push_cfunc(dstate, lisp_consp, mod);
         store_module_func(dstate);
 
+        push_symbol(dstate, "list");
+        push_cfunc(dstate, lisp_list, mod);
+        store_module_func(dstate);
+
 /*
         read(dstate, "a");
         store_variable(dstate, 0);
