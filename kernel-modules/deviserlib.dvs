@@ -1,8 +1,8 @@
 (module
- (deviserlib)
+ deviserlib
 
- (import (builtins))
- (export and all all* append append* cond quasiquote macro-expand)
+ (import builtin)
+ ;(export and all all* append append* cond quasiquote macro-expand)
 
  ;;first comment
 
@@ -17,7 +17,7 @@
 
  (defun expand-cond-exps (exps)
    (if exps
-       (let* ((condition (car (car exps))) (actions (cdr (car exps))))
+       (let ((condition (car (car exps))) (actions (cdr (car exps))))
          (append (list (quote if) condition
                        (cons (quote begin) actions))
                  (list (expand-cond-exps (cdr exps)))))
@@ -54,7 +54,7 @@
    (car (cdr form)))
 
  (defun macro-expand (form)
-   (let* ((newform (macro-expand-1 form)))
+   (let ((newform (macro-expand-1 form)))
      (if (equal form newform)
          form
          (macro-expand newform))))

@@ -202,7 +202,7 @@ void generate_let(deviserstate* dstate, dvs statement, compilation_info& cinfo) 
     }
 
     vector<dvs> new_vars;
-    bytecode next_var_number = static_cast<bytecode>(cinfo.variables.size());
+    bytecode next_var_number = static_cast<bytecode>(cinfo.arguments.size() + cinfo.variables.size());
 
     dvs bindings = statement->pcar();
     while(!is_null(bindings)) {
@@ -271,6 +271,7 @@ void generate_statement_bytecode(deviserstate* dstate,
                                  dvs statement,
                                  compilation_info& cinfo,
                                  bool function_position) {
+    //dump_stack(dstate);
     push(dstate, statement);
     macroexpand(dstate);
     statement = pop(dstate);
@@ -368,10 +369,6 @@ void compile_function(deviserstate* dstate, std::shared_ptr<module_info> mod) {
                    cinfo.bytecode,
                    cinfo.has_rest,
                    mod);
-
-    // pop the source
-    rot_two(dstate);
-    pop(dstate);
 }
 
 void compile_macro(deviserstate* dstate, std::shared_ptr<module_info> mod) {
@@ -387,10 +384,6 @@ void compile_macro(deviserstate* dstate, std::shared_ptr<module_info> mod) {
                    cinfo.bytecode,
                    cinfo.has_rest,
                    mod);
-
-    // pop the source
-    rot_two(dstate);
-    pop(dstate);
 }
 
 void disassemble_bytecode(vector<bytecode> bcode, std::ostream& out) {
@@ -440,6 +433,11 @@ void disassemble_bytecode(vector<bytecode> bcode, std::ostream& out) {
 
         case branch_if_null_op:
             out << index << " branch_if_null_op " << static_cast<int>(bcode[index+1]) << endl;
+            index += 2;
+            break;
+
+        case set_var_op:
+            out << index << " set_var_op " << static_cast<int>(bcode[index+1]) << endl;
             index += 2;
             break;
 

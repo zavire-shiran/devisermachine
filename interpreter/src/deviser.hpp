@@ -21,6 +21,7 @@ struct stackframe {
     std::vector<dvs> workstack;
     std::vector<dvs> variables;
     std::vector<dvs> constants;
+    dvs name;
     std::vector<bytecode> bytecode;
     uint64_t pc;
     std::shared_ptr<module_info> module; // eventually should include closure information
@@ -163,6 +164,8 @@ void defmacro(deviserstate* dstate, std::shared_ptr<module_info> module,  dvs ex
 
 std::shared_ptr<module_info> get_module(deviserstate* dstate, std::string name);
 void load_module(deviserstate* dstate, std::string modulesrc);
+void load_module(deviserstate* dstate, std::istream& in);
+void load_module(deviserstate* dstate);
 void set_module(deviserstate* dstate, std::string module_name);
 
 void eval(deviserstate* dstate);

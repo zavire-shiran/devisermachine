@@ -6,6 +6,8 @@
 #include <cstdint>
 #include <sstream>
 
+#include <fstream>
+
 using std::cout;
 using std::endl;
 using std::string;
@@ -25,6 +27,15 @@ void def_cfunc(deviserstate* dstate,
     store_module_func(dstate);
 }
 
+void load_module_from_file(deviserstate* dstate, string filename) {
+    std::ifstream infile(filename);
+    if(!(infile.good())) {
+        cout << "Couldn't open " << filename << endl;
+    }
+
+    load_module(dstate, infile);
+}
+
 int main(int argc, char** argv) {
     string testmodule =
         "(module test\n"
@@ -33,6 +44,17 @@ int main(int argc, char** argv) {
 
     try {
         deviserstate* dstate = create_deviser_state();
+
+        std::shared_ptr<module_info> builtin_module = get_module(dstate, "builtin");
+        set_module(dstate, "builtin");
+
+        def_cfunc(dstate, lisp_car, "car", builtin_module);
+        def_cfunc(dstate, lisp_cdr, "cdr", builtin_module);
+        def_cfunc(dstate, lisp_cons, "cons", builtin_module);
+        def_cfunc(dstate, lisp_consp, "cons?", builtin_module);
+        def_cfunc(dstate, lisp_list, "list", builtin_module);
+
+        load_module_from_file(dstate, "../kernel-modules/deviserlib.dvs");
 
         std::shared_ptr<module_info> mod = get_module(dstate, "user");
         set_module(dstate, "user");
@@ -43,12 +65,6 @@ int main(int argc, char** argv) {
 
         read(dstate, "(defun c (&rest a) a)");
         eval(dstate);
-
-        def_cfunc(dstate, lisp_car, "car", mod);
-        def_cfunc(dstate, lisp_cdr, "cdr", mod);
-        def_cfunc(dstate, lisp_cons, "cons", mod);
-        def_cfunc(dstate, lisp_consp, "cons?", mod);
-        def_cfunc(dstate, lisp_list, "list", mod);
 
 /*
         read(dstate, "a");

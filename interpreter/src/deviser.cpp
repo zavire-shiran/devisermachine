@@ -23,7 +23,7 @@ std::shared_ptr<module_info> make_module(deviserstate* dstate, dvs name);
 void internal_print(dvs obj, std::ostream& out);
 
 bool is_null(dvs d) {
-    return d == nullptr;
+    return reinterpret_cast<dvs>(reinterpret_cast<dvs_int>(d) & ~3) == nullptr;
 }
 
 bool is_cons(dvs d) {
@@ -233,6 +233,7 @@ void call_function(deviserstate* dstate, uint64_t argc) {
         newframe.bytecode = finfo->bytecode;
         newframe.constants = finfo->constants;
         newframe.module = finfo->module;
+        newframe.name = finfo->name;
         currentframe.workstack.erase(begin_args_iter, end_args_iter);
         pop(dstate);
         dstate->stack.push_back(newframe);
@@ -269,6 +270,9 @@ void rot_two(deviserstate* dstate) {
 
 dvs pop(deviserstate* dstate) {
     dvs back = dstate->stack.back().workstack.back();
+    if(dstate->stack.back().workstack.empty()) {
+        throw "popping an empty stack";
+    }
     dstate->stack.back().workstack.pop_back();
     return back;
 }
@@ -588,8 +592,8 @@ bool load_global(deviserstate* dstate, map<dvs,dvs>& top_level_env) {
     size_t stacksize = currentframe.workstack.size();
     dvs varname = currentframe.workstack[stacksize-1];
     auto binding = top_level_env.find(varname);
-    pop(dstate);
     if(binding != top_level_env.end()) {
+        pop(dstate);
         currentframe.workstack.push_back(binding->second);
         return true;
     } else {
@@ -627,6 +631,7 @@ void load_module_func(deviserstate* dstate) {
                 return;
             }
         }
+        dump_stack(dstate);
         throw "cannot find top level var";
     }
 }
@@ -644,7 +649,9 @@ void dump_stack(deviserstate* dstate) {
     cout << "stack:" << endl;
     for(stackframe& frame : dstate->stack) {
         cout << "frame:" << endl;
+        cout << "name: "; internal_print(frame.name, cout); cout << endl;
         cout << "pc: " << frame.pc << endl;
+        disassemble_bytecode(frame.bytecode, cout);
         cout << "workstack:" << endl;
         for(dvs item : frame.workstack) {
             internal_print(item, cout);
@@ -692,6 +699,15 @@ void defmacro(deviserstate* dstate, std::shared_ptr<module_info> module,  dvs ex
 
 void load_module(deviserstate* dstate, std::string modulestring) {
     read(dstate, modulestring);
+    load_module(dstate);
+}
+
+void load_module(deviserstate* dstate, std::istream& in) {
+    read(dstate, in);
+    load_module(dstate);
+}
+
+void load_module(deviserstate* dstate) {
     stackframe& currentframe = dstate->stack.back();
     dvs modulesrc = currentframe.workstack.back();
 
@@ -715,7 +731,9 @@ void load_module(deviserstate* dstate, std::string modulestring) {
 
     //inefficiency: we are pulling the string out of a symbol here, but it
     //gets turned back into a symbol in get_module().
+    std::shared_ptr<module_info> old_module = currentframe.module;
     std::shared_ptr<module_info> module = get_module(dstate, symbol_string(modulename));
+    currentframe.module = module;
 
     while(modulesrc != nullptr) {
         if(!is_cons(modulesrc)) {
@@ -756,6 +774,7 @@ void load_module(deviserstate* dstate, std::string modulestring) {
         }
         modulesrc = modulesrc->cdr;
     }
+    currentframe.module = old_module;
 }
 
 void set_module(deviserstate* dstate, std::string module_name) {
@@ -957,6 +976,7 @@ void lisp_cdr(deviserstate* dstate) {
     }
 
     if(!listp(dstate)) {
+        dump_stack(dstate);
         throw "cdr needs a list";
     }
 
